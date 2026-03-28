@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4" style="max-width: 900px;">
+  <div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+      <h2 class="mb-1">Booking #{{ convo.booking_id }}</h2>
+
+{% if convo.booking %}
+  <div class="small text-muted">
+    <span class="fw-semibold">Service:</span>
+    <a href="{{ url_for('main.service_detail', service_id=convo.booking.service_id) }}">
+      {{ convo.booking.service.title if convo.booking.service else "—" }}
+    </a>
+    <span class="mx-2">•</span>
+    <span class="fw-semibold">When:</span>
+    {{ convo.booking.booking_datetime.strftime("%b %d, %Y %I:%M %p") if convo.booking.booking_datetime else "—" }}
+    <span class="mx-2">•</span>
+    <span class="status-badge {{ convo.booking.status }}">{{ convo.booking.status }}</span>
+  </div>
+{% endif %}
+      <div class="text-muted small">
+        {% if current_user.id == convo.client_id %}
+          Messaging Provider: {{ convo.provider.first_name }} {{ convo.provider.last_name }}
+        {% else %}
+          Messaging Client: {{ convo.client.first_name }} {{ convo.client.last_name }}
+        {% endif %}
+      </div>
+    </div>
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('messages.inbox') }}">Back to inbox</a>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body" id="msgScroll" style="max-height: 55vh; overflow-y: auto;">
+      {% if convo.messages %}
+        {% for m in convo.messages %}
+          <div class="mb-3">
+            <div class="d-flex justify-content-between">
+              <div class="fw-semibold">
+                {% if m.sender_id == current_user.id %}
+                  You
+                {% else %}
+                  {{ m.sender.first_name }} {{ m.sender.last_name }}
+                {% endif %}
+              </div>
+              <div class="text-muted small">{{ m.created_at.strftime("%b %d, %Y %I:%M %p") }}</div>
+            </div>
+            <div class="border rounded p-2 mt-1" style="white-space: pre-wrap;">{{ m.body }}</div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="text-muted">No messages yet. Send the first message below.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <form method="post" class="card">
+    <div class="card-body">
+        <div class="mb-2">
+  <div class="small text-muted mb-1">Suggested questions (click to add)</div>
+  <div class="d-flex flex-wrap gap-2">
+    <button type="button" class="btn btn-outline-secondary btn-sm msg-suggest" data-text="Hi! Quick question — what should I bring or prepare before our session?">What should I prepare?</button>
+    <button type="button" class="btn btn-outline-secondary btn-sm msg-suggest" data-text="Can you confirm what’s included in this service and what isn’t?">What’s included?</button>
+    <button type="button" class="btn btn-outline-secondary btn-sm msg-suggest" data-text="Do you have any requirements or preferences before we meet?">Any requirements?</button>
+    <button type="button" class="btn btn-outline-secondary btn-sm msg-suggest" data-text="Can we confirm the location / meeting method (in-person vs online) and any details?">Confirm logistics</button>
+  </div>
+</div>
+      <label class="form-label fw-semibold" for="body">New message</label>
+      <textarea class="form-control" id="body" name="body" rows="3" maxlength="5000" required></textarea>
+      <script>
+document.addEventListener("DOMContentLoaded", function () {
+  const textarea = document.getElementById("body");
+  document.querySelectorAll(".msg-suggest").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (!textarea) return;
+      const t = btn.getAttribute("data-text") || "";
+      if (!t) return;
+      textarea.value = textarea.value ? (textarea.value + "\n\n" + t) : t;
+      textarea.focus();
+    });
+  });
+});
+</script>
+      <div class="d-flex justify-content-end mt-2">
+        <button class="btn btn-primary" type="submit">Send</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  // Auto-scroll message pane to bottom
+  const scroller = document.getElementById("msgScroll");
+  if (scroller) scroller.scrollTop = scroller.scrollHeight;
+
+  // If URL has #compose, focus the textarea (nice for "Message" buttons later)
+  if (window.location.hash === "#compose") {
+    const textarea = document.getElementById("body");
+    if (textarea) textarea.focus();
+  }
+});
+</script>
+{% endblock %}

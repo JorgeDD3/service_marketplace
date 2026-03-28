@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Booking Requests{% endblock %}
+
+{% block content %}
+  <style>
+    /* Optional: highlight the targeted booking when arriving via #booking-123 */
+    li:target {
+      outline: 2px solid rgba(13,110,253,.35);
+      border-radius: 10px;
+      padding: 10px;
+      background: rgba(13,110,253,.05);
+    }
+  </style>
+
+  <h1>Booking Requests</h1>
+
+  {% if not bookings %}
+    <p>No booking requests yet.</p>
+  {% else %}
+    <ul>
+      {% for b in bookings %}
+        <li id="booking-{{ b.id }}" style="margin-bottom: 16px;">
+          <div>
+            <strong>Status:</strong>
+            <span class="badge {{ b.status }}">{{ b.status }}</span>
+
+            {% if b.payment_status == "paid" %}
+              <span class="badge bg-success" style="margin-left: 8px;">paid</span>
+            {% else %}
+              <span class="badge bg-warning text-dark" style="margin-left: 8px;">unpaid</span>
+            {% endif %}
+          </div>
+
+          <div>
+            <strong>Service:</strong>
+            <a href="{{ url_for('main.service_detail', service_id=b.service.id) }}">
+              {{ b.service.title }}
+            </a>
+          </div>
+
+          <div>
+            <strong>Client:</strong>
+            {{ b.client.first_name }} {{ b.client.last_name }}
+          </div>
+
+          <!-- scheduled booking time -->
+          <div>
+            <strong>Scheduled for:</strong>
+            {{ b.booking_datetime.strftime("%a %b %d, %Y %I:%M %p") if b.booking_datetime else "—" }}
+          </div>
+
+          <div>
+            <strong>Requested at:</strong>
+            {{ b.created_at.strftime("%a %b %d, %Y %I:%M %p") if b.created_at else "—" }}
+          </div>
+
+          {% if b.decided_at %}
+            <div>
+              <strong>Decided at:</strong>
+              {{ b.decided_at.strftime("%a %b %d, %Y %I:%M %p") }}
+            </div>
+          {% endif %}
+
+          {% if b.provider_note %}
+            <div><strong>Provider note:</strong> {{ b.provider_note }}</div>
+          {% endif %}
+
+          {% if b.payment_status == "paid" and b.paid_at %}
+            <div class="text-muted" style="margin-top: 6px;">
+              <small>
+                <strong>Paid at:</strong> {{ b.paid_at.strftime("%a %b %d, %Y %I:%M %p") }}
+                {% if b.payment_reference %}
+                  • <strong>Ref:</strong> {{ b.payment_reference }}
+                {% endif %}
+              </small>
+            </div>
+          {% endif %}
+
+          <div style="margin-top: 10px;">
+  {% if b.payment_status == "paid" %}
+    <a class="btn" href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">Messages</a>
+  {% else %}
+    <a class="btn" href="{{ url_for('main.checkout', booking_id=b.id) }}">View Checkout</a>
+    <span class="text-muted" style="margin-left: 8px;">
+      <small>Waiting on payment to unlock messaging.</small>
+    </span>
+  {% endif %}
+</div>
+
+          {% if b.status == "pending" %}
+            {% if b.payment_status == "paid" %}
+              <div style="margin-top: 10px;">
+                <form method="POST" action="{{ url_for('main.update_booking_status', booking_id=b.id) }}">
+                  <label>Note (optional)</label><br />
+                  <input type="text" name="provider_note" style="width: 420px;" placeholder="e.g., Can you do Tuesday at 6pm?" />
+                  <br /><br />
+                  <input type="hidden" name="status" value="accepted">
+                  <button class="btn" type="submit">Accept</button>
+                </form>
+
+                <form method="POST" action="{{ url_for('main.update_booking_status', booking_id=b.id) }}" style="margin-top: 8px;">
+                  <label>Note (optional)</label><br />
+                  <input type="text" name="provider_note" style="width: 420px;" placeholder="e.g., Not available this week." />
+                  <br /><br />
+                  <input type="hidden" name="status" value="declined">
+                  <button class="btn" type="submit">Decline</button>
+                </form>
+              </div>
+            {% else %}
+              <div class="text-muted" style="margin-top: 10px;">
+                <small>Waiting on client payment before you can accept or decline.</small>
+              </div>
+            {% endif %}
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endblock %}

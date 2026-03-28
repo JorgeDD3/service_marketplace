@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Service Requests</h2>
+
+<h3>Open Requests</h3>
+{% if open_requests %}
+  <table>
+    <thead>
+      <tr>
+        <th>Subject</th>
+        <th>Description</th>
+        <th>Created</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in open_requests %}
+      <tr>
+        <td>{{ r.subject }}</td>
+        <td>{{ r.description }}</td>
+        <td>{{ r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "" }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('service_requests.claim_request', request_id=r.id) }}">
+            <button type="submit">Claim</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No open requests right now.</p>
+{% endif %}
+
+<hr style="margin: 18px 0;">
+
+<h3>My Claimed Requests</h3>
+{% if my_claimed %}
+  <table>
+    <thead>
+      <tr>
+        <th>Subject</th>
+        <th>Description</th>
+        <th>Claimed</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in my_claimed %}
+      <tr>
+        <td>{{ r.subject }}</td>
+        <td>{{ r.description }}</td>
+        <td>{{ r.updated_at.strftime("%Y-%m-%d %H:%M") if r.updated_at else "" }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('service_requests.fulfill_request', request_id=r.id) }}">
+            <button type="submit">Mark Fulfilled</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>You have not claimed any requests.</p>
+{% endif %}
+
+{% endblock %}

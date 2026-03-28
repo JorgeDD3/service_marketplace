@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Request a Service</h2>
+
+<form method="POST" class="form-card">
+  <div class="form-group">
+    <label for="subject">Subject</label>
+    <input id="subject" name="subject" type="text" required maxlength="150">
+  </div>
+
+  <div class="form-group">
+    <label for="description">Describe what you need</label>
+    <textarea id="description" name="description" rows="6" required></textarea>
+  </div>
+
+  <button type="submit">Submit Request</button>
+</form>
+{% endblock %}

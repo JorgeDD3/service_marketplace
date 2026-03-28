@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Time Off</h2>
+    <a class="btn btn-outline-secondary" href="{{ url_for('provider.calendar_view') }}">Back to Calendar</a>
+  </div>
+
+  {# Safe defaults if prefill isn't provided #}
+  {% set p = prefill if prefill is defined else {
+    "all_day": false,
+    "start_date": "",
+    "end_date": "",
+    "start_time": "09:00",
+    "end_time": "17:00",
+    "reason": ""
+  } %}
+
+  <div class="row g-4">
+    <!-- Add Time Off Form -->
+    <div class="col-lg-5">
+      <div class="card">
+        <div class="card-header">
+          <strong>Add Time Off</strong>
+        </div>
+        <div class="card-body">
+          <form method="POST">
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" id="all_day" name="all_day"
+                     {% if p.all_day %}checked{% endif %}>
+              <label class="form-check-label" for="all_day">All day</label>
+              <div class="text-muted small">Use for vacation days or full-day unavailability.</div>
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Start date</label>
+                <input class="form-control" type="date" name="start_date" required
+                       value="{{ p.start_date }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">End date</label>
+                <input class="form-control" type="date" name="end_date" required
+                       value="{{ p.end_date }}">
+              </div>
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Start time</label>
+                <input class="form-control" type="time" name="start_time"
+                       value="{{ p.start_time or '09:00' }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">End time</label>
+                <input class="form-control" type="time" name="end_time"
+                       value="{{ p.end_time or '17:00' }}">
+              </div>
+              <div class="text-muted small mt-1">
+                If “All day” is checked, times are ignored.
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Reason (optional)</label>
+              <input class="form-control" type="text" name="reason"
+                     placeholder="Vacation / Appointment / Not available"
+                     value="{{ p.reason }}">
+            </div>
+
+            <button class="btn btn-primary" type="submit">Save Time Off</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Existing Entries -->
+    <div class="col-lg-7">
+      <div class="card">
+        <div class="card-header">
+          <strong>Existing Time Off</strong>
+        </div>
+        <div class="card-body">
+          {% if entries %}
+            <div class="table-responsive">
+              <table class="table table-sm align-middle">
+                <thead>
+                  <tr>
+                    <th>Start</th>
+                    <th>End</th>
+                    <th>All day</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for e in entries %}
+                    <tr>
+                      <td>{{ e.start_datetime.strftime("%Y-%m-%d %H:%M") }}</td>
+                      <td>{{ e.end_datetime.strftime("%Y-%m-%d %H:%M") }}</td>
+                      <td>
+                        {% if e.all_day %}
+                          <span class="badge bg-secondary">Yes</span>
+                        {% else %}
+                          <span class="badge bg-light text-dark">No</span>
+                        {% endif %}
+                      </td>
+                      <td>{{ e.reason or "" }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="text-muted">No time off entries yet.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

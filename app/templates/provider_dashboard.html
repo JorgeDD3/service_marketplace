@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Provider Dashboard{% endblock %}
+
+{% block content %}
+
+<h1 class="mb-4">Provider Dashboard</h1>
+
+<div class="row g-4">
+
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5>Profile</h5>
+        <p class="text-muted">Manage your provider bio and information.</p>
+        <a class="btn btn-primary" href="{{ url_for('provider.profile') }}">
+          Edit Profile
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5>Verification</h5>
+        <p class="text-muted">Submit verification details to earn a Verified badge.</p>
+        <a class="btn btn-primary" href="{{ url_for('provider.verification') }}">
+          View Verification
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5>Availability</h5>
+        <p class="text-muted">Set your weekly working hours.</p>
+        <a class="btn btn-primary" href="{{ url_for('provider.availability') }}">
+          Manage Availability
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5>Calendar</h5>
+        <p class="text-muted">View bookings and schedule blocks.</p>
+        <a class="btn btn-primary" href="{{ url_for('provider.calendar_view') }}">
+          Open Calendar
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5>My Services</h5>
+        <p class="text-muted">Manage services you offer.</p>
+        <a class="btn btn-primary" href="{{ url_for('provider_services.my_services') }}">
+          View Services
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5>Add Service</h5>
+        <p class="text-muted">Create a new service listing.</p>
+        <a class="btn btn-primary" href="{{ url_for('provider_services.new_service') }}">
+          Add Service
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5>Booking Requests</h5>
+        <p class="text-muted">Accept or decline booking requests.</p>
+        <a class="btn btn-primary" href="{{ url_for('main.provider_bookings') }}">
+          View Bookings
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

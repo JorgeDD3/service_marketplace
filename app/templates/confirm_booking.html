@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Confirm Booking{% endblock %}
+
+{% block content %}
+
+<div class="container" style="max-width:600px;">
+
+<h2 class="mb-4">Confirm Appointment</h2>
+
+<div class="card shadow-sm">
+
+<div class="card-body">
+
+<p>
+<strong>Service:</strong> {{ service.title }}
+</p>
+
+<p>
+<strong>Date:</strong> {{ booking_time.strftime("%A %B %d") }}
+</p>
+
+<p>
+<strong>Time:</strong> {{ booking_time.strftime("%I:%M %p") }}
+</p>
+
+<p>
+<strong>Duration:</strong> 60 minutes
+</p>
+
+<p>
+<strong>Price:</strong> ${{ '%.2f'|format(service.price) }}
+</p>
+
+<hr>
+
+<form method="POST"
+action="{{ url_for('main.book_service', service_id=service.id) }}">
+
+<input type="hidden"
+name="booking_datetime"
+value="{{ booking_time.isoformat() }}">
+
+<button class="btn btn-primary w-100">
+Confirm Appointment
+</button>
+
+</form>
+
+</div>
+</div>
+
+</div>
+
+{% endblock %}

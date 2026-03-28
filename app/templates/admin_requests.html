@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Admin: Service Requests</h2>
+
+{% if requests %}
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Client</th>
+        <th>Subject</th>
+        <th>Status</th>
+        <th>Created</th>
+        <th>Claimed By</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in requests %}
+      <tr>
+        <td>{{ r.id }}</td>
+        <td>{{ r.client.email }}</td>
+        <td>{{ r.subject }}</td>
+        <td><span class="badge badge-{{ r.status }}">{{ r.status }}</span></td>
+        <td>{{ r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "" }}</td>
+        <td>
+          {% if r.claimed_by_provider %}
+            {{ r.claimed_by_provider.email }}
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>
+          {% if r.status not in ["closed", "fulfilled"] %}
+            <form method="POST" action="{{ url_for('service_requests.admin_close_request', request_id=r.id) }}">
+              <button type="submit">Close</button>
+            </form>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No requests found.</p>
+{% endif %}
+
+{% endblock %}

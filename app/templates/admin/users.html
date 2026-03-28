@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Admin: Users</h2>
+
+{% if users %}
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Email</th>
+        <th>Name</th>
+        <th>Role</th>
+        <th>Status</th>
+        <th>Disabled Reason</th>
+        <th>Disabled At</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for u in users %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td>{{ u.email }}</td>
+        <td>{{ u.first_name }} {{ u.last_name }}</td>
+        <td>{{ u.role_display or "—" }}</td>
+        <td>
+          {% if u.is_active %}
+            <span class="badge badge-accepted">active</span>
+          {% else %}
+            <span class="badge badge-cancelled">disabled</span>
+          {% endif %}
+        </td>
+        <td>{{ u.disabled_reason or "—" }}</td>
+        <td>{{ u.disabled_at.strftime("%Y-%m-%d %H:%M") if u.disabled_at else "—" }}</td>
+        <td>
+          {% if u.id == current_user.id %}
+            —
+          {% else %}
+            <form method="POST" action="{{ url_for('admin.toggle_user_active', user_id=u.id) }}">
+              {% if u.is_active %}
+                <input type="text" name="disabled_reason" placeholder="Reason (optional)" />
+                <button type="submit">Disable</button>
+              {% else %}
+                <button type="submit">Enable</button>
+              {% endif %}
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No users found.</p>
+{% endif %}
+
+{% endblock %}

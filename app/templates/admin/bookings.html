@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Admin: Bookings</h2>
+
+{% if bookings %}
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Service</th>
+        <th>Client</th>
+        <th>Provider</th>
+        <th>Status</th>
+        <th>Created</th>
+        <th>Provider Note</th>
+        <th>Admin Action</th>
+        <th>Messages</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for b in bookings %}
+      <tr>
+        <td>{{ b.id }}</td>
+        <td>
+          {% if b.service %}
+            {{ b.service.title }}
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>{{ b.client.email if b.client else "—" }}</td>
+        <td>{{ b.provider.email if b.provider else "—" }}</td>
+        <td><span class="badge badge-{{ b.status }}">{{ b.status }}</span></td>
+        <td>{{ b.created_at.strftime("%Y-%m-%d %H:%M") if b.created_at else "" }}</td>
+        <td>{{ b.provider_note or "—" }}</td>
+        <td>
+          {% if b.status in ["pending", "accepted"] %}
+            <form method="POST" action="{{ url_for('admin.force_cancel_booking', booking_id=b.id) }}">
+              <input type="text" name="admin_note" placeholder="Reason (optional)" />
+              <button type="submit">Force Cancel</button>
+            </form>
+          {% else %}
+            <div>
+              {{ b.admin_note or "—" }}
+              {% if b.admin_action_at %}
+                <br><small>{{ b.admin_action_at.strftime("%Y-%m-%d %H:%M") }}</small>
+              {% endif %}
+            </div>
+          {% endif %}
+      </td>
+      <td>
+        <a href="{{ url_for('messages.booking_thread', booking_id=b.id) }}">
+          Open
+        </a>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No bookings found.</p>
+{% endif %}
+
+{% endblock %}

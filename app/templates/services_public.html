@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+{% block title %}Services{% endblock %}
+
+{% block content %}
+<style>
+  .services-page {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .services-hero {
+    text-align: center;
+    margin: 10px 0 28px 0;
+  }
+
+  .services-hero h1 {
+    margin-bottom: 8px;
+    font-weight: 700;
+    font-size: 2.4rem;
+  }
+
+  .services-hero p {
+    margin: 0;
+    color: #6c757d;
+    font-size: 1.05rem;
+  }
+
+    .services-categories {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin: 0 auto 20px auto;
+    max-width: 900px;
+  }
+
+  .category-pill {
+    display: inline-block;
+    padding: 10px 16px;
+    border-radius: 999px;
+    border: 1px solid #dee2e6;
+    background: #fff;
+    color: #495057;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.15s ease;
+  }
+
+  .category-pill:hover {
+    border-color: #0d6efd;
+    color: #0d6efd;
+    text-decoration: none;
+  }
+
+  .category-pill.active {
+    background: #0d6efd;
+    border-color: #0d6efd;
+    color: #fff;
+  }
+
+  .services-search {
+    max-width: 720px;
+    margin: 0 auto 28px auto;
+  }
+
+  .services-search form {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .services-search .form-control {
+    flex: 1 1 420px;
+    min-width: 260px;
+    height: 48px;
+    border-radius: 12px;
+  }
+
+  .services-search .btn {
+    height: 48px;
+    border-radius: 12px;
+    padding: 0 18px;
+  }
+
+  .services-results {
+    text-align: center;
+    color: #6c757d;
+    margin-bottom: 20px;
+    font-size: 0.95rem;
+  }
+
+  .services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
+  align-items: stretch;
+}
+
+  .service-card {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 18px;
+    padding: 22px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    min-height: 320px;
+    height: 100%;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .service-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.08);
+  }
+
+  .service-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .service-title {
+    margin: 0;
+    font-size: 1.25rem;
+    line-height: 1.25;
+    font-weight: 700;
+  }
+
+  .service-title a {
+    text-decoration: none;
+  }
+
+  .service-title a:hover {
+    text-decoration: underline;
+  }
+
+  .service-price {
+    white-space: nowrap;
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: #198754;
+  }
+
+  .service-duration {
+  font-size: 0.9rem;
+  color: #6c757d;
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+  .service-provider {
+    margin-bottom: 14px;
+    color: #495057;
+    font-size: 0.97rem;
+  }
+
+  .service-category-badge {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #0d6efd;
+}
+  
+  .service-description {
+    color: #212529;
+    margin-bottom: 20px;
+    flex-grow: 1;
+  }
+
+  .service-description p {
+    margin: 0;
+  }
+
+  .read-more-link {
+    display: inline-block;
+    margin-top: 8px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .read-more-link:hover {
+    text-decoration: underline;
+  }
+
+  .service-actions {
+    margin-top: auto;
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  .service-actions .btn {
+    border-radius: 10px;
+  }
+
+  .empty-state {
+    max-width: 720px;
+    margin: 0 auto;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 18px;
+    padding: 28px;
+    text-align: center;
+    color: #6c757d;
+  }
+
+  .empty-state h3 {
+    margin-bottom: 8px;
+    color: #212529;
+  }
+</style>
+
+<div class="container mt-4 services-page">
+  <div class="services-hero">
+    <h1>Services</h1>
+    <p>Browse provider offerings, compare options, and book a service that fits your needs.</p>
+  </div>
+
+    {% if categories %}
+    <div class="services-categories">
+      <a
+        href="{{ url_for('main.services', search=search) }}"
+        class="category-pill {% if not selected_category %}active{% endif %}"
+      >
+        All
+      </a>
+
+      {% for cat in categories %}
+        <a
+          href="{{ url_for('main.services', category=cat, search=search) }}"
+          class="category-pill {% if selected_category == cat %}active{% endif %}"
+        >
+          {{ cat }}
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="services-search">
+    <form method="GET" action="{{ url_for('main.services') }}">
+      <input
+        type="text"
+        name="q"
+        class="form-control"
+        placeholder="Search by service title or description"
+        value="{{ search or '' }}"
+      >
+      <button type="submit" class="btn btn-primary">Search</button>
+      {% if search or selected_category %}
+        <a href="{{ url_for('main.services') }}" class="btn btn-outline-secondary">Clear</a>
+      {% endif %}
+    </form>
+  </div>
+
+  {% if search %}
+    <div class="services-results">
+      Showing results for <strong>"{{ search }}"</strong>
+    </div>
+  {% endif %}
+
+  {% if not services %}
+    <div class="empty-state">
+      <h3>No services found</h3>
+      {% if q %}
+        <p>Try a different search term or clear the search to see all available services.</p>
+      {% else %}
+        <p>No services are available yet.</p>
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="services-grid">
+      {% for s in services %}
+        <div class="service-card">
+          <div class="service-card-top">
+            <h2 class="service-title">
+              <a href="{{ url_for('main.service_detail', service_id=s.id) }}">
+                {{ s.title }}
+              </a>
+            </h2>
+
+            <div class="service-price">
+  ${{ '%.2f'|format(s.price) }}
+  {% if s.duration_minutes %}
+    <span class="service-duration">• {{ s.duration_minutes }} min</span>
+  {% endif %}
+</div>
+          </div>
+
+          <div class="service-provider">
+  Provider:
+  <strong>
+    {{ s.provider_profile.user.first_name }} {{ s.provider_profile.user.last_name }}
+    {% if s.provider_profile.verification and s.provider_profile.verification.status == "verified" %}
+      <span class="badge text-bg-success ms-2">Verified</span>
+    {% endif %}
+  </strong>
+</div>
+
+{% if s.category %}
+  <div class="service-category-badge">
+    {% if s.category == "Academic Support" %}
+      🎓 {{ s.category }}
+    {% elif s.category == "Tech Help" %}
+      💻 {{ s.category }}
+    {% elif s.category == "Sports & Fitness" %}
+      ⛳ {{ s.category }}
+    {% else %}
+      📌 {{ s.category }}
+    {% endif %}
+  </div>
+{% endif %}
+
+          <div class="service-description">
+            {% set has_long_description = s.description and (s.description|length > 140) %}
+            <p>
+              {% if s.description %}
+                {{ s.description[:140] }}{% if has_long_description %}...{% endif %}
+              {% else %}
+                No description provided yet.
+              {% endif %}
+            </p>
+
+            {% if has_long_description %}
+              <a class="read-more-link" href="{{ url_for('main.service_detail', service_id=s.id) }}">
+                Read more
+              </a>
+            {% endif %}
+          </div>
+
+          <div class="service-actions">
+            <a class="btn btn-primary" href="{{ url_for('main.service_detail', service_id=s.id) }}">
+              View Details
+            </a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

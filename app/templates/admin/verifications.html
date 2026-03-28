@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Verification Queue{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1100px;">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Provider Verification Queue</h2>
+    <span class="badge text-bg-secondary">Pending: {{ pending|length }}</span>
+  </div>
+
+  <div class="card rounded-4 shadow-sm mb-4">
+    <div class="card-body p-4">
+      <h5 class="mb-3">Pending Review</h5>
+
+      {% if not pending %}
+        <div class="text-muted">No pending verification submissions.</div>
+      {% else %}
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead>
+              <tr>
+                <th>Provider</th>
+                <th>Legal Name</th>
+                <th>License #</th>
+                <th>Portfolio</th>
+                <th>Documents</th>
+                <th>Submitted</th>
+                <th style="width: 340px;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for v in pending %}
+                <tr>
+                  <td>
+                    <div class="fw-semibold">
+                      {{ v.provider_profile.user.first_name }} {{ v.provider_profile.user.last_name }}
+                    </div>
+                    <div class="text-muted small">{{ v.provider_profile.user.email }}</div>
+                  </td>
+                  <td>{{ v.legal_name or "-" }}</td>
+                  <td>{{ v.license_number or "-" }}</td>
+                  <td>
+                    {% if v.portfolio_url %}
+                      <a href="{{ v.portfolio_url }}" target="_blank" rel="noopener">Link</a>
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+
+                <td>
+  {% if v.id_document_filename %}
+    <a class="me-2" href="{{ url_for('admin.download_verification_doc', verification_id=v.id, kind='id') }}">
+      ID Doc
+    </a>
+  {% else %}
+    <span class="text-muted small">No ID</span>
+  {% endif %}
+
+  {% if v.certification_filename %}
+    <a class="ms-2" href="{{ url_for('admin.download_verification_doc', verification_id=v.id, kind='cert') }}">
+      Cert
+    </a>
+  {% else %}
+    <span class="text-muted small ms-2">No Cert</span>
+  {% endif %}
+</td>
+
+                  <td class="text-muted small">
+                    {% if v.submitted_at %}
+                      {{ v.submitted_at.strftime("%Y-%m-%d %I:%M %p") }}
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                  <td>
+                    <form class="d-flex gap-2" method="POST" action="{{ url_for('admin.approve_verification', verification_id=v.id) }}">
+                      <input class="form-control form-control-sm" name="admin_notes" placeholder="Optional notes">
+                      <button class="btn btn-sm btn-success" type="submit">Approve</button>
+                    </form>
+
+                    <form class="d-flex gap-2 mt-2" method="POST" action="{{ url_for('admin.reject_verification', verification_id=v.id) }}">
+                      <input class="form-control form-control-sm" name="admin_notes" placeholder="Required rejection reason">
+                      <button class="btn btn-sm btn-danger" type="submit">Reject</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card rounded-4 shadow-sm">
+    <div class="card-body p-4">
+      <h5 class="mb-3">Recently Reviewed</h5>
+
+      {% if not reviewed %}
+        <div class="text-muted">No reviewed verifications yet.</div>
+      {% else %}
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead>
+              <tr>
+                <th>Provider</th>
+                <th>Status</th>
+                <th>Reviewed</th>
+                <th>Admin Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for v in reviewed %}
+                <tr>
+                  <td>
+                    {{ v.provider_profile.user.first_name }} {{ v.provider_profile.user.last_name }}
+                    <div class="text-muted small">{{ v.provider_profile.user.email }}</div>
+                  </td>
+                  <td>
+                    <span class="badge
+                      {% if v.status == 'verified' %} text-bg-success
+                      {% elif v.status == 'rejected' %} text-bg-danger
+                      {% else %} text-bg-secondary
+                      {% endif %}
+                    ">
+                      {{ v.status.replace('_',' ') }}
+                    </span>
+                  </td>
+                  <td class="text-muted small">
+                    {% if v.reviewed_at %}
+                      {{ v.reviewed_at.strftime("%Y-%m-%d %I:%M %p") }}
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                  <td class="text-muted small">{{ v.admin_notes or "-" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

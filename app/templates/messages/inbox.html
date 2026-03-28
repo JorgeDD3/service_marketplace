@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="mb-0">Messages</h2>
+  </div>
+
+  {% if conversations %}
+    <div class="list-group">
+      {% for c in conversations %}
+        {% set last = last_by_convo.get(c.id) %}
+        {% set is_unread = c.id in unread_ids %}
+        <a class="list-group-item list-group-item-action"
+           href="{{ url_for('messages.thread', conversation_id=c.id) }}">
+
+          <div class="d-flex justify-content-between align-items-start gap-3">
+            <div style="min-width: 0;">
+              <div class="fw-semibold">
+                <div class="fw-semibold d-flex align-items-center gap-2">
+  {% if is_unread %}
+    <span title="Unread" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#2563eb;"></span>
+  {% endif %}
+  <span>Booking #{{ c.booking_id }}</span>
+  <span class="text-muted fw-normal small ms-2">
+    {% if current_user.id == c.client_id %}
+      with {{ c.provider.first_name }} {{ c.provider.last_name }}
+    {% else %}
+      with {{ c.client.first_name }} {{ c.client.last_name }}
+    {% endif %}
+  </span>
+</div>
+              </div>
+
+              <div class="text-muted small" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                {% if last %}
+                  {% if last.sender_id == current_user.id %}You: {% endif %}
+                  {{ last.body }}
+                {% else %}
+                  No messages yet. Say hi 👋
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="text-muted small text-end" style="white-space: nowrap;">
+              {% if last %}
+                {{ last.created_at.strftime("%b %d, %Y %I:%M %p") }}
+              {% else %}
+                {{ c.created_at.strftime("%b %d, %Y") }}
+              {% endif %}
+            </div>
+          </div>
+
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="alert alert-info">
+      No conversations yet. Once you have a booking, you can message from the booking page.
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

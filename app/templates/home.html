@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Home | Service Marketplace{% endblock %}
+
+{% block content %}
+
+<h1>Find the Right Service Provider</h1>
+
+<p>
+    A clean and simple platform where clients can request services
+    and providers can showcase their expertise.
+</p>
+
+<a class="btn btn-primary" href="{{ url_for('main.services') }}">
+  Browse Services
+</a>
+
+{% endblock %}

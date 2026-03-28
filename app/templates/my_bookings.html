@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}My Bookings{% endblock %}
+
+{% block content %}
+  <h1>My Bookings</h1>
+
+  {% if not bookings %}
+    <p>You have no bookings yet.</p>
+  {% else %}
+    <ul>
+      {% for b in bookings %}
+        <li style="margin-bottom: 16px;">
+          <div>
+            <strong>Status:</strong>
+            <span class="badge {{ b.status }}">{{ b.status }}</span>
+
+            {% if b.payment_status == "paid" %}
+              <span class="badge bg-success" style="margin-left: 8px;">paid</span>
+            {% else %}
+              <span class="badge bg-warning text-dark" style="margin-left: 8px;">unpaid</span>
+            {% endif %}
+          </div>
+
+          <div>
+            <strong>Service:</strong>
+            <a href="{{ url_for('main.service_detail', service_id=b.service.id) }}">
+              {{ b.service.title }}
+            </a>
+          </div>
+
+          <div>
+            <strong>Provider:</strong>
+            {{ b.provider.first_name }} {{ b.provider.last_name }}
+          </div>
+
+          <!-- scheduled booking time -->
+          <div>
+            <strong>Scheduled for:</strong>
+            {{ b.booking_datetime.strftime("%a %b %d, %Y %I:%M %p") if b.booking_datetime else "—" }}
+          </div>
+
+          <div>
+            <strong>Requested at:</strong>
+            {{ b.created_at.strftime("%a %b %d, %Y %I:%M %p") if b.created_at else "—" }}
+          </div>
+
+          {% if b.decided_at %}
+            <div>
+              <strong>Decided at:</strong>
+              {{ b.decided_at.strftime("%a %b %d, %Y %I:%M %p") }}
+            </div>
+          {% endif %}
+
+          {% if b.provider_note %}
+            <div><strong>Provider note:</strong> {{ b.provider_note }}</div>
+          {% endif %}
+
+          {% if b.payment_status == "paid" and b.paid_at %}
+            <div class="text-muted" style="margin-top: 6px;">
+              <small>
+                <strong>Paid at:</strong> {{ b.paid_at.strftime("%a %b %d, %Y %I:%M %p") }}
+                {% if b.payment_reference %}
+                  • <strong>Ref:</strong> {{ b.payment_reference }}
+                {% endif %}
+              </small>
+            </div>
+          {% endif %}
+
+          <div style="margin-top: 10px;">
+            {% if b.payment_status == "paid" %}
+  <a class="btn" href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">Messages</a>
+{% else %}
+  <a class="btn" href="{{ url_for('main.checkout', booking_id=b.id) }}">Checkout (Demo)</a>
+  <span class="text-muted" style="margin-left: 8px;">
+    <small>Pay to unlock messaging.</small>
+  </span>
+{% endif %}
+
+            {% if b.status == "pending" %}
+  {% if b.payment_status != "paid" %}
+    <form method="POST" action="{{ url_for('main.cancel_booking', booking_id=b.id) }}" style="display:inline;">
+      <button class="btn" type="submit">Cancel</button>
+    </form>
+  {% else %}
+    <span class="text-muted" style="margin-left: 8px;">
+      <small>Paid bookings can’t be canceled here.</small>
+    </span>
+  {% endif %}
+{% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endblock %}

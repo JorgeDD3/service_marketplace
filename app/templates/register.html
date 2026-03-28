@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+  <body>
+    <h1>Register</h1>
+
+    <form method="POST">
+      <label>First Name</label><br />
+      <input name="first_name" type="text" required /><br /><br />
+
+      <label>Last Name</label><br />
+      <input name="last_name" type="text" required /><br /><br />
+
+      <label>Email</label><br />
+      <input name="email" type="email" required /><br /><br />
+
+      <label>Password</label><br />
+      <input name="password" type="password" required /><br /><br />
+
+      <label>Confirm Password</label><br />
+      <input name="confirm_password" type="password" required /><br /><br />
+
+      <label>Role</label><br />
+      <select name="role" required>
+        <option value="">Select...</option>
+        <option value="client">Client</option>
+        <option value="provider">Provider</option>
+      </select><br /><br />
+
+      <button type="submit">Register</button>
+    </form>
+  </body>
+</html>

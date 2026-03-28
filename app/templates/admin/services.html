@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Admin: Services Moderation</h2>
+
+{% if services %}
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Service</th>
+        <th>Provider</th>
+        <th>Status</th>
+        <th>Moderation Note</th>
+        <th>Moderated At</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for s in services %}
+      <tr>
+        <td>{{ s.id }}</td>
+        <td>
+          <strong>{{ s.title }}</strong><br>
+          <small>{{ s.description }}</small>
+        </td>
+        <td>
+          {% if s.provider_profile and s.provider_profile.user %}
+            {{ s.provider_profile.user.email }}
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>
+          {% if s.is_active %}
+            <span class="badge badge-accepted">active</span>
+          {% else %}
+            <span class="badge badge-cancelled">hidden</span>
+          {% endif %}
+        </td>
+        <td>{{ s.moderation_note or "—" }}</td>
+        <td>{{ s.moderated_at.strftime("%Y-%m-%d %H:%M") if s.moderated_at else "—" }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('admin.toggle_service', service_id=s.id) }}">
+            <input type="text" name="moderation_note" placeholder="Optional note (e.g., spam)" />
+            {% if s.is_active %}
+              <button type="submit">Hide</button>
+            {% else %}
+              <button type="submit">Unhide</button>
+            {% endif %}
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No services found.</p>
+{% endif %}
+
+{% endblock %}

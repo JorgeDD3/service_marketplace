@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}My Services{% endblock %}
+{% block content %}
+  <h1>My Services</h1>
+
+  <p><a class="btn" href="{{ url_for('provider_services.new_service') }}">Add New Service</a></p>
+
+  {% if not services %}
+    <p>No services yet.</p>
+  {% else %}
+    <ul>
+      {% for s in services %}
+        <li style="margin-bottom: 14px;">
+          <div>
+            <strong>{{ s.title }}</strong>
+
+            <span class="badge {% if s.is_active %}badge-accepted{% else %}badge-cancelled{% endif %}">
+              {% if s.is_active %}active{% else %}hidden{% endif %}
+            </span>
+
+            {% if s.price is not none %} — ${{ '%.2f'|format(s.price) }}{% endif %}
+          </div>
+
+          {% if s.description %}
+            <div>{{ s.description }}</div>
+          {% endif %}
+
+          {% if not s.is_active %}
+            {% if s.moderation_note %}
+              <div><small><em>Moderation note: {{ s.moderation_note }}</em></small></div>
+            {% else %}
+              <div><small><em>This service is currently hidden by an admin.</em></small></div>
+            {% endif %}
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endblock %}

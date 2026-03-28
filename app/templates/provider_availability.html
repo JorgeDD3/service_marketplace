@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>My Availability</h2>
+
+<h3>Quick Presets</h3>
+<form method="POST" action="{{ url_for('provider.availability_preset') }}">
+  <input type="hidden" name="preset" value="mon_fri_9_5">
+  <button type="submit">Add Mon–Fri 9am–5pm (30-min)</button>
+</form>
+
+<hr style="margin: 18px 0;">
+
+<h3>Add a Custom Window</h3>
+<form method="POST">
+  <label>Day</label>
+  <select name="day_of_week" required>
+    <option value="0">Mon</option>
+    <option value="1">Tue</option>
+    <option value="2">Wed</option>
+    <option value="3">Thu</option>
+    <option value="4">Fri</option>
+    <option value="5">Sat</option>
+    <option value="6">Sun</option>
+  </select>
+
+  <label>Start</label>
+  <input type="time" name="start_time" required>
+
+  <label>End</label>
+  <input type="time" name="end_time" required>
+
+  <label>Slot Minutes</label>
+  <input type="number" name="slot_minutes" value="30" min="15" step="15" required>
+
+  <button type="submit">Add Window</button>
+</form>
+
+<hr style="margin: 18px 0;">
+
+<h3>Saved Windows</h3>
+{% if rules %}
+  <table>
+    <thead>
+      <tr>
+        <th>Day</th>
+        <th>Window</th>
+        <th>Slot</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in rules %}
+      <tr>
+        <td>
+          {% set days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] %}
+          {{ days[r.day_of_week] }}
+        </td>
+        <td>{{ r.start_time }} – {{ r.end_time }}</td>
+        <td>{{ r.slot_minutes }} min</td>
+        <td>
+          {% if r.is_active %}
+            <span class="badge badge-accepted">active</span>
+          {% else %}
+            <span class="badge badge-cancelled">inactive</span>
+          {% endif %}
+        </td>
+        <td>
+          <form method="POST" action="{{ url_for('provider.toggle_availability', rule_id=r.id) }}" style="display:inline;">
+            <button type="submit">{% if r.is_active %}Disable{% else %}Enable{% endif %}</button>
+          </form>
+
+          <form method="POST" action="{{ url_for('provider.delete_availability', rule_id=r.id) }}" style="display:inline; margin-left: 6px;">
+            <button type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No availability windows yet.</p>
+{% endif %}
+{% endblock %}

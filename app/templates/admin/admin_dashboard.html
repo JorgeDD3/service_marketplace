@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Admin Dashboard</h2>
+
+<ul>
+  <li><strong>Total Users:</strong> {{ counts.users }}</li>
+  <li><strong>Total Services:</strong> {{ counts.services }}</li>
+  <li><strong>Total Bookings:</strong> {{ counts.bookings }}</li>
+  <li><strong>Total Service Requests:</strong> {{ counts.service_requests }}</li>
+</ul>
+
+<hr style="margin: 18px 0;">
+
+<h3>Admin Tools</h3>
+<ul>
+  <li><a href="{{ url_for('admin.services') }}">Moderate Services</a></li>
+  <li><a href="{{ url_for('service_requests.admin_requests') }}">Moderate Service Requests</a></li>
+  <li><a href="{{ url_for('admin.bookings') }}">Moderate Bookings</a></li>
+  <li><a href="{{ url_for('admin.users') }}">Moderate Users</a></li>
+  <li><a href="{{ url_for('admin.verifications') }}">Provider Verifications</a></li>
+</ul>
+{% endblock %}
