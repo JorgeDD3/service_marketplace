@@ -1,1 +1,1 @@
-web: sh -c "python bootstrap_db.py && gunicorn -w 2 -b 0.0.0.0:$PORT wsgi:app"
+web: gunicorn -w 2 -b 0.0.0.0:$PORT wsgi:app
