@@ -1,25 +1,24 @@
-{# app/templates/register.html #}
 {% extends "base.html" %}
 
 {% block title %}Create Account{% endblock %}
 
 {% block content %}
-<div class="container py-5" style="max-width: 920px;">
+<div class="container py-3 py-md-4" style="max-width: 920px;">
   <div class="row justify-content-center">
     <div class="col-12 col-lg-7">
 
-      <div class="text-center mb-4">
-        <h1 class="h3 mb-1">Create your account</h1>
-        <p class="text-muted mb-0">Join as a client or provider. It only takes a minute.</p>
+      <div class="text-center mb-3">
+        <h1 class="h4 mb-1">Create your account</h1>
+        <p class="text-muted mb-0">Join as a client or provider.</p>
       </div>
 
       <div class="card shadow-sm border-0 rounded-4">
-        <div class="card-body p-4 p-md-5">
+        <div class="card-body p-3 p-md-4">
 
           <form method="POST" action="{{ url_for('auth.register') }}" novalidate>
-            <div class="row g-3">
+            <div class="row g-2">
               <div class="col-md-6">
-                <label class="form-label">First name</label>
+                <label class="form-label mb-1">First name</label>
                 <input
                   type="text"
                   class="form-control"
@@ -31,7 +30,7 @@
               </div>
 
               <div class="col-md-6">
-                <label class="form-label">Last name</label>
+                <label class="form-label mb-1">Last name</label>
                 <input
                   type="text"
                   class="form-control"
@@ -41,8 +40,8 @@
                 >
               </div>
 
-              <div class="col-12">
-                <label class="form-label">Email</label>
+              <div class="col-12 mt-2">
+                <label class="form-label mb-1">Email</label>
                 <input
                   type="email"
                   class="form-control"
@@ -53,8 +52,8 @@
                 >
               </div>
 
-              <div class="col-md-6">
-                <label class="form-label">Password</label>
+              <div class="col-md-6 mt-2">
+                <label class="form-label mb-1">Password</label>
                 <input
                   type="password"
                   class="form-control"
@@ -63,11 +62,10 @@
                   minlength="8"
                   required
                 >
-                <div class="form-text">At least 8 characters.</div>
               </div>
 
-              <div class="col-md-6">
-                <label class="form-label">Confirm password</label>
+              <div class="col-md-6 mt-2">
+                <label class="form-label mb-1">Confirm password</label>
                 <input
                   type="password"
                   class="form-control"
@@ -78,14 +76,14 @@
                 >
               </div>
 
-              <div class="col-12">
-                <label class="form-label">Account type</label>
+              <div class="col-12 mt-2">
+                <label class="form-label mb-1">Account type</label>
                 <select class="form-select" name="role" required>
                   <option value="" selected disabled>Select…</option>
                   <option value="client">Client (book services)</option>
                   <option value="provider">Provider (offer services)</option>
                 </select>
-                <div class="form-text">
+                <div class="form-text mt-1">
                   Providers can create a profile, list services, and manage availability.
                 </div>
               </div>
@@ -96,7 +94,7 @@
                 </button>
               </div>
 
-              <div class="col-12 text-center">
+              <div class="col-12 text-center mt-2">
                 <span class="text-muted">Already have an account?</span>
                 <a href="{{ url_for('auth.login') }}" class="text-decoration-none ms-1">Log in</a>
               </div>
@@ -105,10 +103,6 @@
 
         </div>
       </div>
-
-      <p class="text-center text-muted small mt-4 mb-0">
-        By creating an account, you agree to use the platform responsibly.
-      </p>
 
     </div>
   </div>
