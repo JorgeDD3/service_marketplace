@@ -1,1 +1,1 @@
-web: gunicorn -w 2 -b 0.0.0.0:$PORT wsgi:app
+web: sh -c "python check_db.py && gunicorn -w 2 -b 0.0.0.0:$PORT wsgi:app"
