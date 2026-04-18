@@ -1,1 +1,1 @@
-web: gunicorn -w 2 -b 0.0.0.0:$PORT wsgi:app
+web: sh -c "flask --app wsgi create-demo && gunicorn -w 2 -b 0.0.0.0:$PORT wsgi:app"
