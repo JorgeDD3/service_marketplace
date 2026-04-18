@@ -1,84 +1,543 @@
 {% extends "base.html" %}
+{% block title %}Availability{% endblock %}
+
 {% block content %}
-<h2>My Availability</h2>
+<style>
+  :root { --panel-h: 620px; } /* adjust if you want tighter/looser */
 
-<h3>Quick Presets</h3>
-<form method="POST" action="{{ url_for('provider.availability_preset') }}">
-  <input type="hidden" name="preset" value="mon_fri_9_5">
-  <button type="submit">Add Mon–Fri 9am–5pm (30-min)</button>
-</form>
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  .cardx { border-radius: 18px; }
+  .h1x { font-size: 34px; font-weight: 800; line-height: 1.1; margin: 0; }
+  .muted { color: #6b7280; }
+  .btn-mini { padding: 6px 10px; font-size: 13px; }
+  .chip { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border:1px solid #e5e7eb; border-radius:999px; background:#fff; font-size:13px; }
 
-<hr style="margin: 18px 0;">
+  /* One-screen layout */
+  .screen {
+    height: calc(100vh - 86px); /* navbar + padding */
+    min-height: 680px;
+    max-height: 820px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
 
-<h3>Add a Custom Window</h3>
-<form method="POST">
-  <label>Day</label>
-  <select name="day_of_week" required>
-    <option value="0">Mon</option>
-    <option value="1">Tue</option>
-    <option value="2">Wed</option>
-    <option value="3">Thu</option>
-    <option value="4">Fri</option>
-    <option value="5">Sat</option>
-    <option value="6">Sun</option>
-  </select>
+  .panes {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 10px;
+    min-height: 0; /* allow internal scroll areas */
+  }
+  @media (max-width: 1100px) {
+    .panes { grid-template-columns: 1fr; }
+    .screen { height: auto; max-height: none; }
+  }
 
-  <label>Start</label>
-  <input type="time" name="start_time" required>
+  .pane {
+    height: 100%;
+    min-height: 0;
+  }
 
-  <label>End</label>
-  <input type="time" name="end_time" required>
+  .pane-body {
+    height: var(--panel-h);
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
 
-  <label>Slot Minutes</label>
-  <input type="number" name="slot_minutes" value="30" min="15" step="15" required>
+  /* Left tabs */
+  .tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .tabbtn {
+    border:1px solid #e5e7eb;
+    background:#fff;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .tabbtn.active {
+    border-color: rgba(37,99,235,.45);
+    background: rgba(37,99,235,.08);
+    color:#2563eb;
+  }
 
-  <button type="submit">Add Window</button>
-</form>
+  .tabpanel { display:none; }
+  .tabpanel.active { display:block; }
 
-<hr style="margin: 18px 0;">
+  /* Day picker */
+  .daypick { display:flex; gap:8px; flex-wrap:wrap; }
+  .daybtn {
+    border:1px solid #e5e7eb; border-radius:999px; padding:6px 10px;
+    background:#fff; cursor:pointer; user-select:none; font-size:13px; font-weight:600;
+  }
+  .daybtn.active { border-color: rgba(37,99,235,.45); background: rgba(37,99,235,.08); color:#2563eb; }
 
-<h3>Saved Windows</h3>
-{% if rules %}
-  <table>
-    <thead>
-      <tr>
-        <th>Day</th>
-        <th>Window</th>
-        <th>Slot</th>
-        <th>Status</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
+  .tiny { font-size:12px; color:#6b7280; }
+
+  /* Weekly schedule grid (fixed to 4 cols then 3 cols) */
+  .weekwrap {
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .weekgrid {
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap:10px;
+  }
+  .weekgrid2 {
+    margin-top: 10px;
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap:10px;
+  }
+  @media (max-width: 992px) {
+    .weekgrid { grid-template-columns: repeat(2, 1fr); }
+    .weekgrid2 { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .weekgrid, .weekgrid2 { grid-template-columns: 1fr; }
+  }
+
+  .daycard {
+    border:1px solid #e5e7eb; border-radius:14px; background:#fff; padding:10px;
+    min-height: 128px;
+  }
+  .daycard h4 { margin:0; font-size:14px; }
+  .win {
+    border:1px solid #eef2f7; border-radius:12px; padding:8px; margin-top:8px;
+    background:#fafbfc;
+  }
+  .winline { display:flex; justify-content:space-between; gap:8px; align-items:center; flex-wrap:wrap; }
+
+  /* Scroll only inside the right pane if there are tons of windows */
+  .week-scroll {
+    overflow: auto;
+    min-height: 0;
+    padding-right: 4px;
+  }
+</style>
+
+<div class="container" style="padding-top: 14px; padding-bottom: 14px;">
+  <div class="wrap screen">
+
+    <!-- Header -->
+    <div class="card shadow-sm cardx">
+      <div class="card-body" style="padding: 12px 14px;">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+          <div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <div class="h1x">Availability</div>
+              <span class="badge text-bg-light">Provider</span>
+              {% if nav_verification_status == "verified" %}
+                <span class="badge text-bg-success">✓ Verified</span>
+              {% elif nav_verification_status == "pending_review" %}
+                <span class="badge text-bg-warning">⏳ Pending</span>
+              {% else %}
+                <span class="badge text-bg-secondary">Not verified</span>
+              {% endif %}
+              <span class="chip"><strong>Goal:</strong><span class="muted">Set weekly hours</span></span>
+            </div>
+            <div class="muted mt-1">Pick days + time once. Use Time Off for one-time exceptions.</div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary btn-mini" href="{{ url_for('provider.calendar_view') }}">← Calendar</a>
+            <a class="btn btn-outline-secondary btn-mini" href="{{ url_for('provider.time_off') }}">Time Off</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% set day_labels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] %}
+
+    {# Group rules by day #}
+    {% set by_day = {} %}
     {% for r in rules %}
-      <tr>
-        <td>
-          {% set days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] %}
-          {{ days[r.day_of_week] }}
-        </td>
-        <td>{{ r.start_time }} – {{ r.end_time }}</td>
-        <td>{{ r.slot_minutes }} min</td>
-        <td>
-          {% if r.is_active %}
-            <span class="badge badge-accepted">active</span>
-          {% else %}
-            <span class="badge badge-cancelled">inactive</span>
-          {% endif %}
-        </td>
-        <td>
-          <form method="POST" action="{{ url_for('provider.toggle_availability', rule_id=r.id) }}" style="display:inline;">
-            <button type="submit">{% if r.is_active %}Disable{% else %}Enable{% endif %}</button>
-          </form>
-
-          <form method="POST" action="{{ url_for('provider.delete_availability', rule_id=r.id) }}" style="display:inline; margin-left: 6px;">
-            <button type="submit">Delete</button>
-          </form>
-        </td>
-      </tr>
+      {% set _ = by_day.setdefault(r.day_of_week, []).append(r) %}
     {% endfor %}
-    </tbody>
-  </table>
-{% else %}
-  <p>No availability windows yet.</p>
-{% endif %}
+
+    <div class="panes">
+
+      <!-- LEFT: Controls (tabbed) -->
+      <div class="pane">
+        <div class="card shadow-sm cardx h-100">
+          <div class="card-body pane-body" style="padding: 12px 14px;">
+            <div class="fw-semibold mb-1">Set availability</div>
+            <div class="tiny mb-2">Use tabs to keep it simple.</div>
+
+            <div class="tabs">
+              <button class="tabbtn active" type="button" data-tab="tab-weekly">Weekly</button>
+              <button class="tabbtn" type="button" data-tab="tab-preset">Preset</button>
+              <button class="tabbtn" type="button" data-tab="tab-oneoff">One-off</button>
+            </div>
+
+            <!-- WEEKLY -->
+            <div class="tabpanel active" id="tab-weekly">
+              <div class="tiny mb-2">1) Choose days → 2) Set time → 3) Save.</div>
+
+              <div class="d-flex gap-2 flex-wrap mb-2">
+                <button class="btn btn-outline-secondary btn-mini" type="button" id="selWeekdays">Weekdays</button>
+                <button class="btn btn-outline-secondary btn-mini" type="button" id="selWeekends">Weekends</button>
+                <button class="btn btn-outline-secondary btn-mini" type="button" id="selAll">Everyday</button>
+                <button class="btn btn-outline-secondary btn-mini" type="button" id="selNone">Clear</button>
+              </div>
+
+              <div class="daypick mb-2" id="dayPick">
+                {% for i in range(0,7) %}
+                  <div class="daybtn" data-day="{{ i }}">{{ day_labels[i] }}</div>
+                {% endfor %}
+              </div>
+
+              <div class="row g-2 align-items-end">
+                <div class="col-4">
+                  <label class="form-label fw-semibold mb-1">Start</label>
+                  <input class="form-control" type="time" id="multiStart" value="09:00">
+                </div>
+                <div class="col-4">
+                  <label class="form-label fw-semibold mb-1">End</label>
+                  <input class="form-control" type="time" id="multiEnd" value="17:00">
+                </div>
+                <div class="col-4">
+                  <label class="form-label fw-semibold mb-1">Slot</label>
+                  <input class="form-control" type="number" id="multiSlot" value="30" min="5" step="5">
+                </div>
+
+                <div class="col-12 d-flex gap-2 align-items-center mt-1">
+                  <button class="btn btn-primary" type="button" id="multiSave">Save</button>
+                  <span class="tiny" id="multiStatus"></span>
+                </div>
+              </div>
+
+              <div class="tiny mt-2">
+                This creates <strong>one window per selected day</strong>.
+              </div>
+            </div>
+
+            <!-- PRESET -->
+            <div class="tabpanel" id="tab-preset">
+              <div class="fw-semibold">Fast preset</div>
+              <div class="tiny mb-2">Adds Mon–Fri 9–5 with 30-min slots.</div>
+              <form method="POST" action="{{ url_for('provider.availability_preset') }}">
+                <input type="hidden" name="preset" value="weekday_9_5_30">
+                <button class="btn btn-outline-primary btn-mini" type="submit">Add weekday 9–5</button>
+              </form>
+            </div>
+
+            <!-- ONE-OFF -->
+            <div class="tabpanel" id="tab-oneoff">
+              <div class="fw-semibold">Add a one-off day</div>
+              <div class="tiny mb-2">If you just want one specific day window.</div>
+
+              <form method="POST" action="{{ url_for('provider.availability') }}">
+                <div class="row g-2 align-items-end">
+                  <div class="col-4">
+                    <label class="form-label fw-semibold mb-1">Day</label>
+                    <select class="form-select" name="day_of_week" required>
+                      {% for i in range(0,7) %}
+                        <option value="{{ i }}">{{ day_labels[i] }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-4">
+                    <label class="form-label fw-semibold mb-1">Start</label>
+                    <input class="form-control" type="time" name="start_time" required>
+                  </div>
+                  <div class="col-4">
+                    <label class="form-label fw-semibold mb-1">End</label>
+                    <input class="form-control" type="time" name="end_time" required>
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label fw-semibold mb-1">Slot minutes</label>
+                    <input class="form-control" type="number" name="slot_minutes" value="30" min="5" step="5" required>
+                  </div>
+                  <div class="col-6 d-grid">
+                    <button class="btn btn-outline-primary" type="submit">Add</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            <div class="mt-auto tiny pt-2">
+              Tip: Use <strong>Time Off</strong> to block a specific date without changing weekly hours.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Weekly schedule -->
+      <div class="pane">
+        <div class="card shadow-sm cardx h-100">
+          <div class="card-body pane-body" style="padding: 12px 14px;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="fw-semibold">Your weekly schedule</div>
+              <div class="tiny">Toggle or delete windows</div>
+            </div>
+
+            <div class="weekwrap">
+              <div class="week-scroll">
+                <!-- Row 1: Mon–Thu -->
+                <div class="weekgrid">
+                  {% for d in range(0,4) %}
+                    <div class="daycard">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <h4>{{ day_labels[d] }}</h4>
+                        <span class="tiny">{% if by_day.get(d) %}{{ by_day[d]|length }}{% else %}0{% endif %}</span>
+                      </div>
+
+                      {% if not by_day.get(d) %}
+                        <div class="tiny mt-2">No windows</div>
+                      {% else %}
+                        {% set wins = by_day[d] %}
+                        {% set visible = wins[:1] %}
+                        {% set hidden = wins[1:] %}
+
+                        {% for r in visible %}
+                          <div class="win">
+                            <div class="winline">
+                              <div>
+                                <div class="fw-semibold">{{ r.start_time }}–{{ r.end_time }}</div>
+                                <div class="tiny">
+                                  {{ r.slot_minutes }} min •
+                                  {% if r.is_active %}<span class="badge text-bg-success">active</span>{% else %}<span class="badge text-bg-secondary">off</span>{% endif %}
+                                </div>
+                              </div>
+                              <div class="d-flex gap-2">
+                                <form method="POST" action="{{ url_for('provider.toggle_availability', rule_id=r.id) }}">
+                                  <button class="btn btn-outline-secondary btn-mini" type="submit">
+                                    {% if r.is_active %}Disable{% else %}Enable{% endif %}
+                                  </button>
+                                </form>
+                                <form method="POST" action="{{ url_for('provider.delete_availability', rule_id=r.id) }}"
+                                      onsubmit="return confirm('Delete this availability window?');">
+                                  <button class="btn btn-outline-danger btn-mini" type="submit">Delete</button>
+                                </form>
+                              </div>
+                            </div>
+                          </div>
+                        {% endfor %}
+
+                        {% if hidden|length > 0 %}
+                          <button class="btn btn-outline-secondary btn-mini mt-2"
+                                  type="button"
+                                  data-bs-toggle="collapse"
+                                  data-bs-target="#more-{{ d }}"
+                                  aria-expanded="false"
+                                  aria-controls="more-{{ d }}">
+                            Show {{ hidden|length }} more
+                          </button>
+                          <div class="collapse mt-2" id="more-{{ d }}">
+                            {% for r in hidden %}
+                              <div class="win">
+                                <div class="winline">
+                                  <div>
+                                    <div class="fw-semibold">{{ r.start_time }}–{{ r.end_time }}</div>
+                                    <div class="tiny">
+                                      {{ r.slot_minutes }} min •
+                                      {% if r.is_active %}<span class="badge text-bg-success">active</span>{% else %}<span class="badge text-bg-secondary">off</span>{% endif %}
+                                    </div>
+                                  </div>
+                                  <div class="d-flex gap-2">
+                                    <form method="POST" action="{{ url_for('provider.toggle_availability', rule_id=r.id) }}">
+                                      <button class="btn btn-outline-secondary btn-mini" type="submit">
+                                        {% if r.is_active %}Disable{% else %}Enable{% endif %}
+                                      </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('provider.delete_availability', rule_id=r.id) }}"
+                                          onsubmit="return confirm('Delete this availability window?');">
+                                      <button class="btn btn-outline-danger btn-mini" type="submit">Delete</button>
+                                    </form>
+                                  </div>
+                                </div>
+                              </div>
+                            {% endfor %}
+                          </div>
+                        {% endif %}
+                      {% endif %}
+                    </div>
+                  {% endfor %}
+                </div>
+
+                <!-- Row 2: Fri–Sun -->
+                <div class="weekgrid2">
+                  {% for d in range(4,7) %}
+                    <div class="daycard">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <h4>{{ day_labels[d] }}</h4>
+                        <span class="tiny">{% if by_day.get(d) %}{{ by_day[d]|length }}{% else %}0{% endif %}</span>
+                      </div>
+
+                      {% if not by_day.get(d) %}
+                        <div class="tiny mt-2">No windows</div>
+                      {% else %}
+                        {% set wins = by_day[d] %}
+                        {% set visible = wins[:1] %}
+                        {% set hidden = wins[1:] %}
+
+                        {% for r in visible %}
+                          <div class="win">
+                            <div class="winline">
+                              <div>
+                                <div class="fw-semibold">{{ r.start_time }}–{{ r.end_time }}</div>
+                                <div class="tiny">
+                                  {{ r.slot_minutes }} min •
+                                  {% if r.is_active %}<span class="badge text-bg-success">active</span>{% else %}<span class="badge text-bg-secondary">off</span>{% endif %}
+                                </div>
+                              </div>
+                              <div class="d-flex gap-2">
+                                <form method="POST" action="{{ url_for('provider.toggle_availability', rule_id=r.id) }}">
+                                  <button class="btn btn-outline-secondary btn-mini" type="submit">
+                                    {% if r.is_active %}Disable{% else %}Enable{% endif %}
+                                  </button>
+                                </form>
+                                <form method="POST" action="{{ url_for('provider.delete_availability', rule_id=r.id) }}"
+                                      onsubmit="return confirm('Delete this availability window?');">
+                                  <button class="btn btn-outline-danger btn-mini" type="submit">Delete</button>
+                                </form>
+                              </div>
+                            </div>
+                          </div>
+                        {% endfor %}
+
+                        {% if hidden|length > 0 %}
+                          <button class="btn btn-outline-secondary btn-mini mt-2"
+                                  type="button"
+                                  data-bs-toggle="collapse"
+                                  data-bs-target="#more-{{ d }}"
+                                  aria-expanded="false"
+                                  aria-controls="more-{{ d }}">
+                            Show {{ hidden|length }} more
+                          </button>
+                          <div class="collapse mt-2" id="more-{{ d }}">
+                            {% for r in hidden %}
+                              <div class="win">
+                                <div class="winline">
+                                  <div>
+                                    <div class="fw-semibold">{{ r.start_time }}–{{ r.end_time }}</div>
+                                    <div class="tiny">
+                                      {{ r.slot_minutes }} min •
+                                      {% if r.is_active %}<span class="badge text-bg-success">active</span>{% else %}<span class="badge text-bg-secondary">off</span>{% endif %}
+                                    </div>
+                                  </div>
+                                  <div class="d-flex gap-2">
+                                    <form method="POST" action="{{ url_for('provider.toggle_availability', rule_id=r.id) }}">
+                                      <button class="btn btn-outline-secondary btn-mini" type="submit">
+                                        {% if r.is_active %}Disable{% else %}Enable{% endif %}
+                                      </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('provider.delete_availability', rule_id=r.id) }}"
+                                          onsubmit="return confirm('Delete this availability window?');">
+                                      <button class="btn btn-outline-danger btn-mini" type="submit">Delete</button>
+                                    </form>
+                                  </div>
+                                </div>
+                              </div>
+                            {% endfor %}
+                          </div>
+                        {% endif %}
+                      {% endif %}
+                    </div>
+                  {% endfor %}
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  // Tabs
+  const tabBtns = document.querySelectorAll(".tabbtn");
+  const panels = document.querySelectorAll(".tabpanel");
+  tabBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      tabBtns.forEach(b => b.classList.remove("active"));
+      panels.forEach(p => p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById(btn.dataset.tab).classList.add("active");
+    });
+  });
+
+  // Day selection
+  const selected = new Set();
+  function render() {
+    document.querySelectorAll("#dayPick .daybtn").forEach((el) => {
+      const d = parseInt(el.dataset.day, 10);
+      el.classList.toggle("active", selected.has(d));
+    });
+  }
+  function setDays(predicate) {
+    selected.clear();
+    for (let d = 0; d < 7; d++) if (predicate(d)) selected.add(d);
+    render();
+  }
+  document.getElementById("selWeekdays")?.addEventListener("click", () => setDays(d => d >= 0 && d <= 4));
+  document.getElementById("selWeekends")?.addEventListener("click", () => setDays(d => d === 5 || d === 6));
+  document.getElementById("selAll")?.addEventListener("click", () => setDays(_ => true));
+  document.getElementById("selNone")?.addEventListener("click", () => setDays(_ => false));
+  document.querySelectorAll("#dayPick .daybtn").forEach((el) => {
+    el.addEventListener("click", () => {
+      const d = parseInt(el.dataset.day, 10);
+      if (selected.has(d)) selected.delete(d); else selected.add(d);
+      render();
+    });
+  });
+
+  async function postWindow(day, start, end, slot) {
+    const body = new URLSearchParams();
+    body.set("day_of_week", day);
+    body.set("start_time", start);
+    body.set("end_time", end);
+    body.set("slot_minutes", slot);
+
+    const res = await fetch("{{ url_for('provider.availability') }}", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+      credentials: "same-origin",
+    });
+    return res.ok;
+  }
+
+  document.getElementById("multiSave")?.addEventListener("click", async () => {
+    const statusEl = document.getElementById("multiStatus");
+    const start = document.getElementById("multiStart").value;
+    const end = document.getElementById("multiEnd").value;
+    const slot = document.getElementById("multiSlot").value;
+    const days = Array.from(selected);
+
+    if (!days.length) { statusEl.textContent = "Pick at least one day."; return; }
+    if (!start || !end || !slot) { statusEl.textContent = "Fill start/end/slot."; return; }
+
+    statusEl.textContent = "Saving…";
+    let okCount = 0;
+    for (const d of days) {
+      const ok = await postWindow(String(d), start, end, slot);
+      if (ok) okCount++;
+    }
+    statusEl.textContent = `Saved ${okCount}/${days.length}. Reloading…`;
+    window.location.reload();
+  });
+
+  render();
+})();
+</script>
 {% endblock %}

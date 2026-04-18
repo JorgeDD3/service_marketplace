@@ -2,94 +2,334 @@
 {% block title %}My Bookings{% endblock %}
 
 {% block content %}
+<style>
+  /* Page-specific layout */
+  .container{
+    padding-top: 28px;
+    padding-bottom: 28px;
+    max-width: 1400px;
+  }
+
+  .page-header{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:18px;
+  }
+
+    .tabs{
+    display:flex;
+    gap:10px;
+    margin: 10px 0 16px 0;
+    flex-wrap: wrap;
+  }
+
+    .empty-state{
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 14px 16px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
+
+  .tab{
+    border:1px solid #e5e7eb;
+    background:#ffffff;
+    color:#0f172a;
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .tab.active{
+    border-color:#2563eb;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
+  .tab-count{
+    margin-left:8px;
+    font-weight:800;
+    color:#64748b;
+  }
+
+  .page-header h1{
+    margin:0;
+  }
+
+  .muted{
+    color:#64748b;
+  }
+
+  .bookings-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .booking-card{
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
+
+  .booking-top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:10px;
+  }
+
+  .booking-title{
+    margin:0;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .booking-title a{
+    text-decoration:none;
+  }
+
+  .badge-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    justify-content:flex-end;
+  }
+
+  .pill{
+    display:inline-block;
+    padding:4px 10px;
+    border-radius:999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border:1px solid #e5e7eb;
+    background:#ffffff;
+  }
+
+  .pill.paid{ border-left: 6px solid #16a34a; }
+  .pill.unpaid{ border-left: 6px solid #f59e0b; }
+
+  .booking-meta{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 14px;
+    margin-top: 10px;
+  }
+
+  .meta-item{
+    font-size: 0.95rem;
+  }
+
+  .meta-item strong{
+    font-weight:700;
+  }
+
+  .booking-actions{
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top: 12px;
+  }
+
+  .btn{
+    background:#2563eb;
+    color:#fff;
+    border-radius:10px;
+    padding:10px 14px;
+    font-weight:700;
+    text-decoration:none;
+    border:none;
+    display:inline-block;
+  }
+
+  .btn:hover{ background:#1d4ed8; }
+
+  .btn.secondary{
+    background:#0f172a;
+  }
+
+  .btn.secondary:hover{
+    background:#111827;
+  }
+
+  .btn.ghost{
+    background:#f1f5f9;
+    color:#0f172a;
+  }
+
+  .btn.ghost:hover{
+    background:#e2e8f0;
+  }
+
+  @media (max-width: 520px){
+    .bookings-grid{
+      grid-template-columns: 1fr;
+    }
+    .booking-meta{
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="page-header">
   <h1>My Bookings</h1>
+  <div class="muted">Track status, checkout, and messages.</div>
+</div>
 
-  {% if not bookings %}
-    <p>You have no bookings yet.</p>
-  {% else %}
-    <ul>
-      {% for b in bookings %}
-        <li style="margin-bottom: 16px;">
+<div class="tabs" id="bookingTabs">
+  <button class="tab active" type="button" data-filter="active">
+    Active <span class="tab-count" id="countActive"></span>
+  </button>
+  <button class="tab" type="button" data-filter="past">
+    Past <span class="tab-count" id="countPast"></span>
+  </button>
+  <button class="tab" type="button" data-filter="all">
+    All <span class="tab-count" id="countAll"></span>
+  </button>
+</div>
+
+<div id="bookingEmptyState" class="muted empty-state" style="display:none; margin: 10px 0 14px 0;">
+  No bookings to show in this view.
+</div>
+
+{% if not bookings %}
+  <p>You have no bookings yet.</p>
+{% else %}
+  <div class="bookings-grid">
+    {% for b in bookings %}
+      <div class="booking-card" id="booking-{{ b.id }}" data-status="{{ b.status }}">
+        <div class="booking-top">
           <div>
-            <strong>Status:</strong>
-            <span class="badge {{ b.status }}">{{ b.status }}</span>
+            <div class="booking-title">
+              <a href="{{ url_for('main.service_detail', service_id=b.service.id) }}">
+                {{ b.service.title }}
+              </a>
+            </div>
+            <div class="muted" style="margin-top:4px;">
+              Provider: {{ b.provider.first_name }} {{ b.provider.last_name }}
+            </div>
+          </div>
 
+          <div class="badge-row">
+            <span class="status-badge {{ b.status }}">{{ b.status }}</span>
             {% if b.payment_status == "paid" %}
-              <span class="badge bg-success" style="margin-left: 8px;">paid</span>
+              <span class="pill paid">paid</span>
             {% else %}
-              <span class="badge bg-warning text-dark" style="margin-left: 8px;">unpaid</span>
+              <span class="pill unpaid">unpaid</span>
             {% endif %}
           </div>
+        </div>
 
-          <div>
-            <strong>Service:</strong>
-            <a href="{{ url_for('main.service_detail', service_id=b.service.id) }}">
-              {{ b.service.title }}
-            </a>
-          </div>
-
-          <div>
-            <strong>Provider:</strong>
-            {{ b.provider.first_name }} {{ b.provider.last_name }}
-          </div>
-
-          <!-- scheduled booking time -->
-          <div>
-            <strong>Scheduled for:</strong>
+        <div class="booking-meta">
+          <div class="meta-item">
+            <strong>Scheduled:</strong>
             {{ b.booking_datetime.strftime("%a %b %d, %Y %I:%M %p") if b.booking_datetime else "—" }}
           </div>
 
-          <div>
-            <strong>Requested at:</strong>
+          <div class="meta-item">
+            <strong>Requested:</strong>
             {{ b.created_at.strftime("%a %b %d, %Y %I:%M %p") if b.created_at else "—" }}
           </div>
 
-          {% if b.decided_at %}
-            <div>
-              <strong>Decided at:</strong>
-              {{ b.decided_at.strftime("%a %b %d, %Y %I:%M %p") }}
-            </div>
-          {% endif %}
+          <div class="meta-item">
+            <strong>Decided:</strong>
+            {{ b.decided_at.strftime("%a %b %d, %Y %I:%M %p") if b.decided_at else "—" }}
+          </div>
+
+          <div class="meta-item">
+            <strong>Paid at:</strong>
+            {% if b.payment_status == "paid" and b.paid_at %}
+              {{ b.paid_at.strftime("%a %b %d, %Y %I:%M %p") }}
+              {% if b.payment_reference %}
+                <span class="muted">• Ref: {{ b.payment_reference }}</span>
+              {% endif %}
+            {% else %}
+              —
+            {% endif %}
+          </div>
 
           {% if b.provider_note %}
-            <div><strong>Provider note:</strong> {{ b.provider_note }}</div>
-          {% endif %}
-
-          {% if b.payment_status == "paid" and b.paid_at %}
-            <div class="text-muted" style="margin-top: 6px;">
-              <small>
-                <strong>Paid at:</strong> {{ b.paid_at.strftime("%a %b %d, %Y %I:%M %p") }}
-                {% if b.payment_reference %}
-                  • <strong>Ref:</strong> {{ b.payment_reference }}
-                {% endif %}
-              </small>
+            <div class="meta-item" style="grid-column: 1 / -1;">
+              <strong>Provider note:</strong> {{ b.provider_note }}
             </div>
           {% endif %}
+        </div>
 
-          <div style="margin-top: 10px;">
-            {% if b.payment_status == "paid" %}
-  <a class="btn" href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">Messages</a>
-{% else %}
-  <a class="btn" href="{{ url_for('main.checkout', booking_id=b.id) }}">Checkout (Demo)</a>
-  <span class="text-muted" style="margin-left: 8px;">
-    <small>Pay to unlock messaging.</small>
-  </span>
-{% endif %}
+        <div class="booking-actions">
+          {% if b.payment_status == "paid" %}
+            <a class="btn secondary" href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">Messages</a>
+          {% else %}
+            <a class="btn" href="{{ url_for('main.checkout', booking_id=b.id) }}">Checkout (Demo)</a>
+            <span class="muted"><small>Pay to unlock messaging.</small></span>
+          {% endif %}
 
-            {% if b.status == "pending" %}
-  {% if b.payment_status != "paid" %}
-    <form method="POST" action="{{ url_for('main.cancel_booking', booking_id=b.id) }}" style="display:inline;">
-      <button class="btn" type="submit">Cancel</button>
-    </form>
-  {% else %}
-    <span class="text-muted" style="margin-left: 8px;">
-      <small>Paid bookings can’t be canceled here.</small>
-    </span>
-  {% endif %}
+          {% if b.status == "pending" %}
+            {% if b.payment_status != "paid" %}
+              <form method="POST" action="{{ url_for('main.cancel_booking', booking_id=b.id) }}" style="display:inline;">
+                <button class="btn ghost" type="submit">Cancel</button>
+              </form>
+            {% else %}
+              <span class="muted"><small>Paid bookings can’t be canceled here.</small></span>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
 {% endif %}
-          </div>
-        </li>
-      {% endfor %}
-    </ul>
-  {% endif %}
+<script>
+  (function () {
+    const cards = Array.from(document.querySelectorAll(".booking-card"));
+    const tabs = Array.from(document.querySelectorAll("#bookingTabs .tab"));
+
+    const isActive = (status) => ["pending", "accepted"].includes((status || "").toLowerCase());
+    const isPast = (status) => ["declined", "cancelled"].includes((status || "").toLowerCase());
+
+    function applyFilter(filter) {
+      let shown = 0;
+      cards.forEach((card) => {
+        const status = (card.dataset.status || "").toLowerCase();
+        let show = true;
+
+        if (filter === "active") show = isActive(status);
+        if (filter === "past") show = isPast(status);
+        if (filter === "all") show = true;
+
+        card.style.display = show ? "" : "none";
+        if (show) shown += 1;
+      });
+      const emptyEl = document.getElementById("bookingEmptyState");
+      if (emptyEl) emptyEl.style.display = (shown === 0) ? "" : "none";
+
+      return shown;
+    }
+
+    function updateCounts() {
+      const total = cards.length;
+      const activeCount = cards.filter(c => isActive((c.dataset.status||"").toLowerCase())).length;
+      const pastCount = cards.filter(c => isPast((c.dataset.status||"").toLowerCase())).length;
+
+      document.getElementById("countAll").textContent = `(${total})`;
+      document.getElementById("countActive").textContent = `(${activeCount})`;
+      document.getElementById("countPast").textContent = `(${pastCount})`;
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        tabs.forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        applyFilter(tab.dataset.filter);
+      });
+    });
+
+    updateCounts();
+    applyFilter("active"); // default view
+  })();
+</script>
 {% endblock %}

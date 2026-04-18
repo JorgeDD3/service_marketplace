@@ -1,50 +1,148 @@
 {% extends "base.html" %}
+{% block title %}Admin: Service Requests{% endblock %}
+
 {% block content %}
-<h2>Admin: Service Requests</h2>
+<div class="container" style="max-width: 1100px;">
 
-{% if requests %}
-  <table>
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Client</th>
-        <th>Subject</th>
-        <th>Status</th>
-        <th>Created</th>
-        <th>Claimed By</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody>
-    {% for r in requests %}
-      <tr>
-        <td>{{ r.id }}</td>
-        <td>{{ r.client.email }}</td>
-        <td>{{ r.subject }}</td>
-        <td><span class="badge badge-{{ r.status }}">{{ r.status }}</span></td>
-        <td>{{ r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "" }}</td>
-        <td>
-          {% if r.claimed_by_provider %}
-            {{ r.claimed_by_provider.email }}
-          {% else %}
-            —
-          {% endif %}
-        </td>
-        <td>
-          {% if r.status not in ["closed", "fulfilled"] %}
-            <form method="POST" action="{{ url_for('service_requests.admin_close_request', request_id=r.id) }}">
-              <button type="submit">Close</button>
-            </form>
-          {% else %}
-            —
-          {% endif %}
-        </td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-{% else %}
-  <p>No requests found.</p>
-{% endif %}
+  <!-- Header card -->
+  <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
+    <div class="card-body py-3">
+      <div class="d-flex align-items-start justify-content-between gap-3">
+        <div>
+          <h1 class="h3 mb-1">Service Requests</h1>
+          <div class="text-muted small">
+            Review client requests for services not yet offered. Close items once resolved.
+          </div>
+        </div>
 
+        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.moderation') }}">
+            Back to Moderation
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if not requests %}
+    <div class="card border-0 shadow-sm" style="border-radius: 18px;">
+      <div class="card-body py-3">
+        <div class="d-flex align-items-center justify-content-between gap-3">
+          <div>
+            <div class="fw-semibold">No service requests found</div>
+            <div class="text-muted small">
+              When clients submit requests, they’ll appear here for admin review and closure.
+            </div>
+          </div>
+          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.moderation') }}">
+            Go to moderation hub
+          </a>
+        </div>
+      </div>
+    </div>
+  {% else %}
+
+    <div class="d-flex flex-column gap-2">
+      {% for r in requests %}
+        <div class="card shadow-sm border-0" style="border-radius: 18px;">
+          <div class="card-body py-3">
+            <div class="d-flex align-items-start justify-content-between gap-3">
+
+              <!-- Left: request info -->
+              <div class="flex-grow-1">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <div class="fw-semibold">{{ r.title }}</div>
+
+                  {% if r.status %}
+                    <span class="badge bg-light text-dark">{{ r.status }}</span>
+                  {% endif %}
+
+                  <span class="text-muted small">#{{ r.id }}</span>
+                </div>
+
+                <div class="text-muted small mt-1">
+                  <span class="me-2">
+                    <span class="text-muted">Requested by:</span>
+                    {% if r.user and r.user.email %}
+                      <span class="fw-semibold">{{ r.user.email }}</span>
+                    {% else %}
+                      —
+                    {% endif %}
+                  </span>
+
+                  <span class="me-2">
+                    <span class="text-muted">Created:</span>
+                    {% if r.created_at %}
+                      {{ r.created_at.strftime("%Y-%m-%d %H:%M") }}
+                    {% else %}
+                      —
+                    {% endif %}
+                  </span>
+                </div>
+
+                {% if r.description %}
+                  {% set desc = r.description %}
+                  {% set is_long = desc|length > 220 %}
+                  <div class="text-muted small mt-2">
+                    {{ desc[:220] }}{% if is_long %}…{% endif %}
+                    {% if is_long %}
+                      <button class="btn btn-sm btn-link p-0 ms-1 align-baseline"
+                              type="button"
+                              data-bs-toggle="collapse"
+                              data-bs-target="#reqDesc{{ r.id }}"
+                              aria-expanded="false"
+                              aria-controls="reqDesc{{ r.id }}"
+                              onclick="
+                                const el=document.getElementById('reqDesc{{ r.id }}');
+                                const btn=this;
+                                setTimeout(()=>{ btn.textContent = el.classList.contains('show') ? 'Show less' : 'Show more'; }, 10);
+                              ">
+                        Show more
+                      </button>
+                    {% endif %}
+                  </div>
+
+                  {% if is_long %}
+                    <div class="collapse mt-2" id="reqDesc{{ r.id }}">
+                      <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
+                        <div class="card-body py-2">
+                          <div class="small" style="white-space: pre-wrap;">{{ desc }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  {% endif %}
+                {% endif %}
+              </div>
+
+              <!-- Right: actions -->
+              <div class="flex-shrink-0" style="min-width: 260px;">
+                <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
+                  <div class="card-body py-2">
+                    <div class="text-muted small mb-2">Actions</div>
+
+                    {# Matches your routes: service_requests.admin_close_request POST /admin/requests/<id>/close #}
+                    <form method="POST"
+                          action="{{ url_for('service_requests.admin_close_request', request_id=r.id) }}"
+                          class="m-0"
+                          onsubmit="return confirm('Close this request?');">
+                      <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
+                        Close request
+                      </button>
+                    </form>
+
+                    <div class="form-text small mt-2">
+                      Closing removes it from the active queue (use when resolved).
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+  {% endif %}
+</div>
 {% endblock %}

@@ -1,39 +1,150 @@
 {% extends "base.html" %}
 {% block title %}My Services{% endblock %}
-{% block content %}
-  <h1>My Services</h1>
 
-  <p><a class="btn" href="{{ url_for('provider_services.new_service') }}">Add New Service</a></p>
+{% block content %}
+<div class="container" style="max-width: 1100px;">
+  <!-- Header card -->
+  <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
+    <div class="card-body py-3">
+      <div class="d-flex align-items-start justify-content-between gap-3">
+        <div>
+          <h1 class="h3 mb-1">My Services</h1>
+          <div class="text-muted small">
+            Manage what clients can book. Hidden services may be under moderation.
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+          <a class="btn btn-sm btn-primary"
+             href="{{ url_for('provider_services.new_service') }}">
+            Add New Service
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
 
   {% if not services %}
-    <p>No services yet.</p>
-  {% else %}
-    <ul>
-      {% for s in services %}
-        <li style="margin-bottom: 14px;">
+    <div class="card border-0 shadow-sm" style="border-radius: 18px;">
+      <div class="card-body py-3">
+        <div class="d-flex align-items-center justify-content-between gap-3">
           <div>
-            <strong>{{ s.title }}</strong>
-
-            <span class="badge {% if s.is_active %}badge-accepted{% else %}badge-cancelled{% endif %}">
-              {% if s.is_active %}active{% else %}hidden{% endif %}
-            </span>
-
-            {% if s.price is not none %} — ${{ '%.2f'|format(s.price) }}{% endif %}
+            <div class="fw-semibold">No services yet</div>
+            <div class="text-muted small">Create your first service to start receiving bookings.</div>
           </div>
+          <a class="btn btn-sm btn-primary" href="{{ url_for('provider_services.new_service') }}">
+            Create service
+          </a>
+        </div>
+      </div>
+    </div>
+  {% else %}
 
-          {% if s.description %}
-            <div>{{ s.description }}</div>
-          {% endif %}
+    <!-- Services list -->
+    <div class="d-flex flex-column gap-2">
+      {% for s in services %}
+        <div class="card border-0 shadow-sm" style="border-radius: 18px;">
+          <div class="card-body py-3">
+            <div class="d-flex align-items-start justify-content-between gap-3">
+              <div class="flex-grow-1">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <div class="fw-semibold">{{ s.title }}</div>
 
-          {% if not s.is_active %}
-            {% if s.moderation_note %}
-              <div><small><em>Moderation note: {{ s.moderation_note }}</em></small></div>
-            {% else %}
-              <div><small><em>This service is currently hidden by an admin.</em></small></div>
-            {% endif %}
-          {% endif %}
-        </li>
+                  <span class="badge {% if s.is_active %}badge-accepted{% else %}badge-cancelled{% endif %}">
+                    {% if s.is_active %}active{% else %}hidden{% endif %}
+                  </span>
+
+                  {% if s.price is not none %}
+                    <span class="text-muted small">— ${{ '%.2f'|format(s.price) }}</span>
+                  {% endif %}
+                </div>
+
+                {% if s.description %}
+                  {% set desc = s.description %}
+                  {% set is_long = desc|length > 160 %}
+
+                  <div class="text-muted small mt-1">
+                    {{ desc[:160] }}{% if is_long %}…{% endif %}
+
+                    {% if is_long %}
+                      <button class="btn btn-sm btn-link p-0 ms-1 align-baseline"
+                              type="button"
+                              data-bs-toggle="collapse"
+                              data-bs-target="#svcDesc{{ s.id }}"
+                              aria-expanded="false"
+                              aria-controls="svcDesc{{ s.id }}"
+                              onclick="
+                                const el=document.getElementById('svcDesc{{ s.id }}');
+                                const btn=this;
+                                setTimeout(()=>{ btn.textContent = el.classList.contains('show') ? 'Show less' : 'Show more'; }, 10);
+                              ">
+                        Show more
+                      </button>
+                    {% endif %}
+                  </div>
+
+                  {% if is_long %}
+                    <div class="collapse mt-2" id="svcDesc{{ s.id }}">
+                      <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
+                        <div class="card-body py-2">
+                          <div class="small" style="white-space: pre-wrap;">{{ desc }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  {% endif %}
+                {% endif %}
+
+                {% if not s.is_active %}
+                  <div class="mt-2">
+                    {% if s.moderation_note %}
+                      <div class="small"><em>Moderation note: {{ s.moderation_note }}</em></div>
+                    {% else %}
+                      <div class="small"><em>This service is currently hidden by an admin.</em></div>
+                    {% endif %}
+                  </div>
+                {% endif %}
+              </div>
+
+              <!-- Actions -->
+              <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                {# If admin hidden, do not show Unhide #}
+                {% if (not s.is_active) and s.moderation_note %}
+                  <button type="button"
+                          class="btn btn-sm btn-outline-secondary"
+                          disabled
+                          title="Hidden by an admin">
+                    Hidden by admin
+                  </button>
+                {% else %}
+                  <form method="POST"
+                        action="{{ url_for('main.provider_toggle_service', service_id=s.id) }}"
+                        class="m-0">
+                    <button type="submit"
+                            class="btn btn-sm {% if s.is_active %}btn-outline-secondary{% else %}btn-outline-success{% endif %}">
+                      {% if s.is_active %}Hide{% else %}Unhide{% endif %}
+                    </button>
+                  </form>
+                {% endif %}
+
+                <form method="POST"
+                      action="{{ url_for('main.provider_delete_service', service_id=s.id) }}"
+                      class="m-0"
+                      onsubmit="return confirm('Delete this service? This cannot be undone.');">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">
+                    Delete
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
       {% endfor %}
-    </ul>
+    </div>
+
+    <div class="text-muted small mt-3">
+      Tip: If a service has booking history, use <span class="fw-semibold">Hide</span> instead of deleting.
+    </div>
+
   {% endif %}
+</div>
 {% endblock %}

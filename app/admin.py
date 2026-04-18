@@ -1,9 +1,19 @@
 # app/admin.py
 from datetime import datetime
-
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, send_from_directory, abort
-from flask_login import login_required, current_user
 import os
+
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    current_app,
+    send_from_directory,
+    abort,
+)
+from flask_login import login_required, current_user
 
 from .decorators import role_required
 from .extensions import db
@@ -16,13 +26,19 @@ admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 @login_required
 @role_required("admin")
 def dashboard():
-    counts = {
-        "users": User.query.count(),
-        "services": Service.query.count(),
-        "bookings": Booking.query.count(),
-        "service_requests": ServiceRequest.query.count(),
-    }
-    return render_template("admin/admin_dashboard.html", counts=counts)
+    # Admin moderation hub is the primary "dashboard" now
+    return redirect(url_for("admin.moderation"))
+
+
+@admin_bp.route("/moderation")
+@login_required
+@role_required("admin")
+def moderation():
+    """
+    Admin moderation hub (single entry point).
+    Uses existing admin pages; no schema changes.
+    """
+    return render_template("admin/admin_moderation.html")
 
 
 # --------------------
@@ -95,7 +111,7 @@ def services():
 @admin_bp.route("/services/<int:service_id>/toggle", methods=["POST"])
 @login_required
 @role_required("admin")
-def toggle_service(service_id):
+def toggle_service(service_id: int):
     svc = Service.query.get_or_404(service_id)
 
     svc.is_active = not bool(svc.is_active)
@@ -126,7 +142,7 @@ def bookings():
 @admin_bp.route("/bookings/<int:booking_id>/force-cancel", methods=["POST"])
 @login_required
 @role_required("admin")
-def force_cancel_booking(booking_id):
+def force_cancel_booking(booking_id: int):
     booking = Booking.query.get_or_404(booking_id)
 
     if booking.status not in ["pending", "accepted"]:
@@ -142,6 +158,7 @@ def force_cancel_booking(booking_id):
     flash("Booking force-cancelled by admin.", "success")
     return redirect(url_for("admin.bookings"))
 
+
 # --------------------
 # Provider Verifications (Admin Review Queue)
 # --------------------
@@ -153,17 +170,24 @@ def verifications():
     pending = (
         ProviderVerification.query
         .filter_by(status="pending_review")
-        .order_by(ProviderVerification.submitted_at.asc().nullslast(), ProviderVerification.created_at.asc())
+        .order_by(
+            ProviderVerification.submitted_at.asc().nullslast(),
+            ProviderVerification.created_at.asc()
+        )
         .all()
     )
-    # Optional: show recent reviewed items too (small list)
+
     reviewed = (
         ProviderVerification.query
         .filter(ProviderVerification.status.in_(["verified", "rejected"]))
-        .order_by(ProviderVerification.reviewed_at.desc().nullslast(), ProviderVerification.updated_at.desc())
+        .order_by(
+            ProviderVerification.reviewed_at.desc().nullslast(),
+            ProviderVerification.updated_at.desc()
+        )
         .limit(20)
         .all()
     )
+
     return render_template("admin/verifications.html", pending=pending, reviewed=reviewed)
 
 
@@ -210,6 +234,7 @@ def reject_verification(verification_id: int):
     db.session.commit()
     flash("Provider verification rejected.", "success")
     return redirect(url_for("admin.verifications"))
+
 
 # --------------------
 # Provider Verification Document Download (Admin-only)

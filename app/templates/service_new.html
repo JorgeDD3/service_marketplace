@@ -1,18 +1,189 @@
 {% extends "base.html" %}
 {% block title %}New Service{% endblock %}
+
 {% block content %}
-  <h1>Create a Service</h1>
+<div class="container" style="max-width: 1100px;">
 
-  <form method="POST">
-    <label>Title</label><br />
-    <input name="title" type="text" required /><br /><br />
+  <!-- Single compact card (header + form) -->
+  <div class="card shadow-sm border-0" style="border-radius: 18px;">
+    <div class="card-body py-3">
+      <div class="d-flex align-items-start justify-content-between gap-3 mb-2">
+        <div>
+          <h1 class="h4 mb-1">Create a Service</h1>
+          <div class="text-muted small">
+            Title + short description + optional price. Add experience/certifications in the description.
+          </div>
+        </div>
 
-    <label>Description (optional)</label><br />
-    <textarea name="description" rows="5" cols="60"></textarea><br /><br />
+        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+          <a class="btn btn-sm btn-outline-secondary"
+             href="{{ url_for('provider_services.my_services') }}">
+            Back
+          </a>
+        </div>
+      </div>
 
-    <label>Price (optional)</label><br />
-    <input name="price" type="number" step="0.01" min="0" /><br /><br />
+      <form method="POST" class="needs-validation" novalidate>
+        <div class="row g-3">
 
-    <button class="btn" type="submit">Create</button>
-  </form>
+          <div class="col-12">
+            <label class="form-label fw-semibold mb-1" for="title">Title</label>
+            <input id="title"
+                   name="title"
+                   type="text"
+                   class="form-control"
+                   maxlength="80"
+                   placeholder="e.g., Computer Science Tutoring"
+                   required>
+            <div class="invalid-feedback">Title is required.</div>
+          </div>
+
+          <!-- Description + quick inserts -->
+          <div class="col-12">
+            <div class="d-flex align-items-center justify-content-between gap-2">
+              <label class="form-label fw-semibold mb-1" for="description">Description (optional)</label>
+
+              <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnAddExperience">
+                  + Experience
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnAddCert">
+                  + Certification
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnAddTemplate">
+                  + Template
+                </button>
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#descPreviewWrap"
+                        aria-expanded="false"
+                        aria-controls="descPreviewWrap"
+                        id="btnTogglePreview">
+                  Preview
+                </button>
+              </div>
+            </div>
+
+            <textarea id="description"
+                      name="description"
+                      class="form-control"
+                      rows="4"
+                      maxlength="1200"
+                      placeholder="What will the client get? Topics covered? Typical session length?"></textarea>
+
+            <div class="form-text">
+              Tip: Use the quick buttons to add credibility details. Everything is saved in the description (no extra fields).
+            </div>
+
+            <!-- Preview (collapsed by default) -->
+            <div class="collapse mt-2" id="descPreviewWrap">
+              <div class="card border-0" style="background: #f8f9fa; border-radius: 14px;">
+                <div class="card-body py-2">
+                  <div class="small text-muted mb-1">Preview</div>
+                  <div id="descPreview" class="small" style="white-space: pre-wrap;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-md-5">
+            <label class="form-label fw-semibold mb-1" for="price">Price (optional)</label>
+            <div class="input-group">
+              <span class="input-group-text">$</span>
+              <input id="price"
+                     name="price"
+                     type="number"
+                     class="form-control"
+                     step="0.01"
+                     min="0"
+                     placeholder="50.00">
+            </div>
+            <div class="form-text">Leave blank to discuss pricing in messages.</div>
+          </div>
+
+        </div>
+
+        <!-- Sticky action bar INSIDE card -->
+        <div class="pt-3 mt-3 border-top"
+             style="position: sticky; bottom: 0; background: #fff; border-bottom-left-radius: 18px; border-bottom-right-radius: 18px;">
+          <div class="d-flex align-items-center justify-content-between gap-3">
+            <a class="btn btn-sm btn-outline-secondary"
+               href="{{ url_for('provider_services.my_services') }}">
+              Cancel
+            </a>
+
+            <button class="btn btn-sm btn-primary" type="submit">
+              Create Service
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Bootstrap validation
+  (function () {
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(function (form) {
+      form.addEventListener('submit', function (event) {
+        if (!form.checkValidity()) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      }, false);
+    });
+  })();
+
+  // Quick-insert helpers + preview
+  (function () {
+    const ta = document.getElementById('description');
+    const preview = document.getElementById('descPreview');
+
+    const addLine = (line) => {
+      if (!ta) return;
+      const val = ta.value || '';
+      const needsNewline = val.length && !val.endsWith('\n');
+      ta.value = val + (needsNewline ? '\n' : '') + line + '\n';
+      ta.focus();
+      updatePreview();
+    };
+
+    const updatePreview = () => {
+      if (!preview || !ta) return;
+      preview.textContent = ta.value || '';
+    };
+
+    document.getElementById('btnAddExperience')?.addEventListener('click', () => {
+      addLine('• Experience: ');
+    });
+
+    document.getElementById('btnAddCert')?.addEventListener('click', () => {
+      addLine('• Certification: ');
+    });
+
+    document.getElementById('btnAddTemplate')?.addEventListener('click', () => {
+      addLine("What you'll get:");
+      addLine("• ");
+      addLine("Session length: ");
+      addLine("Experience: ");
+      addLine("Certifications (optional): ");
+    });
+
+    // Keep preview in sync when typing
+    ta?.addEventListener('input', updatePreview);
+
+    // If user opens preview, ensure it's current
+    document.getElementById('btnTogglePreview')?.addEventListener('click', () => {
+      updatePreview();
+    });
+
+    // Initialize preview
+    updatePreview();
+  })();
+</script>
 {% endblock %}

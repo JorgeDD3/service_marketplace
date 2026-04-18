@@ -318,9 +318,40 @@ class Booking(db.Model):
 
     booking_datetime = db.Column(db.DateTime, nullable=False)
     duration_minutes = db.Column(db.Integer, default=60, nullable=False)
+
     status = db.Column(db.String(50), default="pending")
 
-        # --- Dummy checkout / payment tracking (demo) ---
+    # --- Booking status rules (single source of truth) ---
+    STATUS_PENDING = "pending"
+    STATUS_ACCEPTED = "accepted"
+    STATUS_DECLINED = "declined"
+    STATUS_CANCELLED = "cancelled"
+
+    VALID_STATUSES = {
+        STATUS_PENDING,
+        STATUS_ACCEPTED,
+        STATUS_DECLINED,
+        STATUS_CANCELLED,
+    }
+
+    # Minimal state machine for core flows
+    ALLOWED_TRANSITIONS = {
+        STATUS_PENDING: {STATUS_ACCEPTED, STATUS_DECLINED, STATUS_CANCELLED},
+        STATUS_ACCEPTED: set(),  # keep strict for now (admin actions can override elsewhere)
+        STATUS_DECLINED: set(),
+        STATUS_CANCELLED: set(),
+    }
+
+    @classmethod
+    def is_valid_status(cls, status: str) -> bool:
+        return (status or "").strip().lower() in cls.VALID_STATUSES
+
+    def can_transition_to(self, new_status: str) -> bool:
+        new_status = (new_status or "").strip().lower()
+        current = (self.status or "").strip().lower()
+        return new_status in self.ALLOWED_TRANSITIONS.get(current, set())
+
+    # --- Dummy checkout / payment tracking (demo) ---
     payment_status = db.Column(
         db.String(32),
         nullable=False,
@@ -342,13 +373,13 @@ class Booking(db.Model):
     provider = db.relationship(
         "User",
         foreign_keys=[provider_id],
-        back_populates="bookings_as_provider"
+        back_populates="bookings_as_provider",
     )
 
     client = db.relationship(
         "User",
         foreign_keys=[client_id],
-        back_populates="bookings_as_client"
+        back_populates="bookings_as_client",
     )
 
     service = db.relationship("Service", back_populates="bookings")
@@ -373,7 +404,6 @@ class Booking(db.Model):
 
     def __repr__(self):
         return f"<Booking {self.id}>"
-
 
 # Service Requests
 class ServiceRequest(db.Model):

@@ -2,95 +2,159 @@
 {% block title %}Provider Dashboard{% endblock %}
 
 {% block content %}
+<style>
+  .pd-wrap { max-width: 1100px; margin: 0 auto; }
+  .pd-card { border-radius: 18px; }
+  .pd-tight { padding-top: 18px !important; padding-bottom: 18px !important; }
+  .pd-h1 { font-size: 34px; line-height: 1.1; margin: 0; }
+  .muted { color: #6b7280; }
 
-<h1 class="mb-4">Provider Dashboard</h1>
+  .kpi {
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 12px;
+    background: #fff;
+    height: 100%;
+  }
+  .kpi .num { font-size: 24px; font-weight: 800; line-height: 1; }
+  .kpi .lbl { color: #6b7280; font-size: 12px; margin-top: 6px; }
 
-<div class="row g-4">
+  .tile {
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 12px;
+    background: #fff;
+    height: 100%;
+  }
+  .tile h3 { font-size: 15px; margin: 0 0 6px 0; }
+  .tile .sub { font-size: 12px; color: #6b7280; margin-bottom: 10px; }
 
-  <div class="col-md-4">
-    <div class="card shadow-sm h-100">
-      <div class="card-body">
-        <h5>Profile</h5>
-        <p class="text-muted">Manage your provider bio and information.</p>
-        <a class="btn btn-primary" href="{{ url_for('provider.profile') }}">
-          Edit Profile
-        </a>
+  .btn-sm { padding: 6px 10px; }
+  .btn-mini { padding: 6px 10px; font-size: 13px; }
+
+  .grid-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .grid-actions-1 { display: grid; grid-template-columns: 1fr; gap: 8px; }
+
+  @media (max-width: 992px) {
+    .grid-actions { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="container pd-tight">
+  <div class="pd-wrap">
+
+    <!-- Header -->
+    <div class="card shadow-sm pd-card mb-3">
+      <div class="card-body" style="padding: 14px 16px;">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+          <div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <div class="pd-h1">Provider Dashboard</div>
+              <span class="badge text-bg-light">Provider</span>
+              {% if nav_verification_status == "verified" %}
+                <span class="badge text-bg-success">✓ Verified</span>
+              {% elif nav_verification_status == "pending_review" %}
+                <span class="badge text-bg-warning">⏳ Pending</span>
+              {% else %}
+                <span class="badge text-bg-secondary">Not verified</span>
+              {% endif %}
+            </div>
+            <div class="muted mt-1">One place for today’s work.</div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <a class="btn btn-primary btn-mini" href="{{ url_for('main.provider_bookings') }}">Bookings</a>
+            <a class="btn btn-outline-secondary btn-mini" href="{{ url_for('provider.calendar_view') }}">Calendar</a>
+            <a class="btn btn-outline-secondary btn-mini" href="{{ url_for('provider.settings') }}">Settings</a>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="col-md-4">
-    <div class="card shadow-sm h-100">
-      <div class="card-body">
-        <h5>Verification</h5>
-        <p class="text-muted">Submit verification details to earn a Verified badge.</p>
-        <a class="btn btn-primary" href="{{ url_for('provider.verification') }}">
-          View Verification
-        </a>
+    <!-- KPI Row (kept compact; numbers can be wired later) -->
+    <div class="row g-2 mb-2">
+      <div class="col-md-4">
+        <div class="kpi">
+          <div class="num">—</div>
+          <div class="lbl">Pending paid requests</div>
+          <div class="mt-2">
+            <a class="btn btn-outline-primary btn-sm" href="{{ url_for('main.provider_bookings') }}">Review</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="kpi">
+          <div class="num">—</div>
+          <div class="lbl">Upcoming bookings</div>
+          <div class="mt-2">
+            <a class="btn btn-outline-primary btn-sm" href="{{ url_for('provider.calendar_view') }}">Open</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="kpi">
+          <div class="num">—</div>
+          <div class="lbl">Services listed</div>
+          <div class="mt-2">
+            <a class="btn btn-outline-primary btn-sm" href="{{ url_for('provider_services.my_services') }}">Manage</a>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="col-md-4">
-    <div class="card shadow-sm h-100">
-      <div class="card-body">
-        <h5>Availability</h5>
-        <p class="text-muted">Set your weekly working hours.</p>
-        <a class="btn btn-primary" href="{{ url_for('provider.availability') }}">
-          Manage Availability
-        </a>
+    <!-- Main grid: left (work) + right (tools) -->
+    <div class="row g-2">
+      <div class="col-lg-7">
+        <div class="tile">
+          <h3>Needs attention</h3>
+          <div class="sub">Fast actions you’ll use most.</div>
+
+          <div class="grid-actions">
+            <a class="btn btn-outline-primary btn-mini" href="{{ url_for('main.provider_bookings') }}">Review bookings</a>
+            <a class="btn btn-outline-primary btn-mini" href="{{ url_for('messages.inbox') }}">Messages</a>
+            <a class="btn btn-outline-primary btn-mini" href="{{ url_for('provider.availability') }}">Availability</a>
+            <a class="btn btn-outline-primary btn-mini" href="{{ url_for('provider_services.my_services') }}">Services</a>
+          </div>
+
+          {% if nav_verification_status != "verified" %}
+            <div class="alert alert-light border mt-2 mb-0 p-2">
+              <div class="fw-semibold small mb-1">Boost trust</div>
+              <div class="muted small">Complete verification to earn the badge.</div>
+              <a class="btn btn-sm btn-outline-primary mt-2" href="{{ url_for('provider.verification') }}">Verify</a>
+            </div>
+          {% endif %}
+        </div>
       </div>
-    </div>
-  </div>
 
-  <div class="col-md-4">
-    <div class="card shadow-sm h-100">
-      <div class="card-body">
-        <h5>Calendar</h5>
-        <p class="text-muted">View bookings and schedule blocks.</p>
-        <a class="btn btn-primary" href="{{ url_for('provider.calendar_view') }}">
-          Open Calendar
-        </a>
+      <div class="col-lg-5">
+        <div class="row g-2">
+          <div class="col-12">
+            <div class="tile">
+              <h3>Scheduling</h3>
+              <div class="sub">Calendar + working hours.</div>
+              <div class="grid-actions">
+                <a class="btn btn-outline-secondary btn-mini" href="{{ url_for('provider.calendar_view') }}">Calendar</a>
+                <a class="btn btn-outline-secondary btn-mini" href="{{ url_for('provider.availability') }}">Hours</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="tile">
+              <h3>Profile</h3>
+              <div class="sub">Client-facing info and account tools.</div>
+              <div class="grid-actions-1">
+                <a class="btn btn-outline-secondary btn-mini" href="{{ url_for('provider.profile') }}">Edit profile</a>
+                <a class="btn btn-outline-secondary btn-mini" href="{{ url_for('provider.verification') }}">Verification</a>
+                <a class="btn btn-outline-secondary btn-mini" href="{{ url_for('provider.settings') }}">Settings</a>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
 
-  <div class="col-md-4">
-    <div class="card shadow-sm h-100">
-      <div class="card-body">
-        <h5>My Services</h5>
-        <p class="text-muted">Manage services you offer.</p>
-        <a class="btn btn-primary" href="{{ url_for('provider_services.my_services') }}">
-          View Services
-        </a>
-      </div>
     </div>
-  </div>
 
-  <div class="col-md-4">
-    <div class="card shadow-sm h-100">
-      <div class="card-body">
-        <h5>Add Service</h5>
-        <p class="text-muted">Create a new service listing.</p>
-        <a class="btn btn-primary" href="{{ url_for('provider_services.new_service') }}">
-          Add Service
-        </a>
-      </div>
-    </div>
   </div>
-
-  <div class="col-md-4">
-    <div class="card shadow-sm h-100">
-      <div class="card-body">
-        <h5>Booking Requests</h5>
-        <p class="text-muted">Accept or decline booking requests.</p>
-        <a class="btn btn-primary" href="{{ url_for('main.provider_bookings') }}">
-          View Bookings
-        </a>
-      </div>
-    </div>
-  </div>
-
 </div>
-
 {% endblock %}

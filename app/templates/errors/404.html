@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+  <h1 class="mb-3">404 — Not Found</h1>
+  <p>The page you’re looking for doesn’t exist.</p>
+<a class="btn btn-primary" href="{{ url_for('main.favicon') | replace('favicon.ico','') }}">Go home</a>
+</div>
+{% endblock %}

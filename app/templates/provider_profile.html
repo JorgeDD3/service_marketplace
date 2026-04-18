@@ -2,44 +2,166 @@
 {% block title %}Provider Profile{% endblock %}
 
 {% block content %}
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">Provider Profile</h1>
+<style>
+  /* Page-specific density tweaks (kept local to this template) */
+  .pp-wrap { max-width: 1100px; margin: 0 auto; }
+  .pp-card { border-radius: 18px; }
+  .pp-tight .card-body { padding: 16px !important; }
+  .pp-tight h1 { font-size: 34px; line-height: 1.1; margin: 0; }
+  .pp-tight .muted { color: #6b7280; }
+  .pp-tight .form-text { margin-top: 6px; }
+  .pp-tight textarea { resize: vertical; }
+  .pp-tight .btn { padding: 8px 12px; }
+  .pp-tight .btn-sm { padding: 6px 10px; }
+  .pp-tight .list-group-item { padding: 10px 12px; }
+</style>
 
-    {% if profile and profile.verification %}
-      <span class="badge
-        {% if profile.verification.status == 'verified' %} text-bg-success
-        {% elif profile.verification.status == 'pending_review' %} text-bg-warning
-        {% elif profile.verification.status == 'rejected' %} text-bg-danger
-        {% else %} text-bg-secondary
-        {% endif %}
-      ">
-        {{ profile.verification.status.replace('_', ' ') }}
-      </span>
-    {% else %}
-      <span class="badge text-bg-secondary">unverified</span>
-    {% endif %}
+<div class="container pp-tight" style="padding-top: 24px; padding-bottom: 24px;">
+  <div class="pp-wrap">
+
+    <!-- Header -->
+    <div class="card shadow-sm pp-card mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+          <div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <h1>Provider Profile</h1>
+              {% if nav_verification_status == "verified" %}
+                <span class="badge text-bg-success">✓ Verified</span>
+              {% elif nav_verification_status == "pending_review" %}
+                <span class="badge text-bg-warning">⏳ Pending</span>
+              {% else %}
+                <span class="badge text-bg-secondary">Not verified</span>
+              {% endif %}
+            </div>
+            <div class="muted mt-1">
+              Signed in as <strong>{{ current_user.email }}</strong>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('provider.verification') }}">
+              Verification
+            </a>
+            {% if profile %}
+              <a class="btn btn-primary btn-sm" href="{{ url_for('main.provider_public_profile', provider_id=profile.id) }}">
+                Public Profile
+              </a>
+            {% endif %}
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('provider.dashboard') }}">
+              Dashboard
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <!-- Left: form -->
+      <div class="col-lg-8">
+        <div class="card shadow-sm pp-card">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+              <div>
+                <div class="fw-semibold">Public information</div>
+                <div class="muted small">This appears on your public provider page.</div>
+              </div>
+            </div>
+
+            <form method="POST">
+              <div class="mb-2">
+                <label class="form-label fw-semibold mb-1">Bio</label>
+                <textarea class="form-control" name="bio" rows="3" required
+                  placeholder="What you offer, experience, what clients can expect...">{{ profile.bio if profile else "" }}</textarea>
+                <div class="form-text small muted">
+                  Include specialties + what a “great booking” looks like.
+                </div>
+              </div>
+
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold mb-1">Hourly Rate (optional)</label>
+                  <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    <input class="form-control" name="hourly_rate" inputmode="decimal"
+                           value="{{ profile.hourly_rate if profile and profile.hourly_rate is not none else '' }}"
+                           placeholder="e.g., 50">
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold mb-1">Availability Notes (optional)</label>
+                  <input class="form-control" name="availability_notes"
+                         value="{{ profile.availability_notes if profile and profile.availability_notes else '' }}"
+                         placeholder="Weekdays after 5pm, weekends flexible...">
+                </div>
+              </div>
+
+              <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-primary" type="submit">Save</button>
+                {% if profile %}
+                  <a class="btn btn-outline-secondary" href="{{ url_for('main.provider_public_profile', provider_id=profile.id) }}">
+                    Preview
+                  </a>
+                {% endif %}
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: compact tiles -->
+      <div class="col-lg-4">
+        <div class="card shadow-sm pp-card mb-3">
+          <div class="card-body">
+            <div class="fw-semibold mb-2">Quick actions</div>
+            <div class="d-grid gap-2">
+              <a class="btn btn-outline-primary btn-sm" href="{{ url_for('provider.calendar_view') }}">Calendar</a>
+              <a class="btn btn-outline-primary btn-sm" href="{{ url_for('provider.availability') }}">Availability</a>
+              <a class="btn btn-outline-primary btn-sm" href="{{ url_for('provider_services.my_services') }}">Services</a>
+              <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('main.provider_bookings') }}">Bookings</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card shadow-sm pp-card">
+          <div class="card-body">
+            <div class="fw-semibold mb-2">Checklist</div>
+            <div class="list-group">
+              <div class="list-group-item d-flex justify-content-between align-items-center">
+                Bio
+                <span class="badge text-bg-{{ 'success' if profile and profile.bio else 'secondary' }}">
+                  {{ 'Yes' if profile and profile.bio else 'No' }}
+                </span>
+              </div>
+              <div class="list-group-item d-flex justify-content-between align-items-center">
+                Rate
+                <span class="badge text-bg-{{ 'success' if profile and profile.hourly_rate is not none else 'secondary' }}">
+                  {{ 'Yes' if profile and profile.hourly_rate is not none else 'No' }}
+                </span>
+              </div>
+              <div class="list-group-item d-flex justify-content-between align-items-center">
+                Verified
+                <span class="badge text-bg-{{ 'success' if nav_verification_status == 'verified' else 'secondary' }}">
+                  {{ 'Yes' if nav_verification_status == 'verified' else 'No' }}
+                </span>
+              </div>
+            </div>
+
+            {% if nav_verification_status != "verified" %}
+              <div class="alert alert-light border mt-3 mb-0 p-2">
+                <div class="fw-semibold small mb-1">Boost trust</div>
+                <div class="muted small">Verified providers convert better.</div>
+                <a class="btn btn-sm btn-outline-primary mt-2" href="{{ url_for('provider.verification') }}">
+                  Submit verification
+                </a>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+    </div>
   </div>
-
-  <div class="mb-4">
-    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('provider.verification') }}">
-      Manage Verification
-    </a>
-  </div>
-
-  <form method="POST">
-    <label class="form-label">Bio</label><br />
-    <textarea class="form-control" name="bio" rows="5" required>{{ profile.bio if profile else "" }}</textarea>
-    <br />
-
-    <label class="form-label">Hourly Rate (optional)</label><br />
-    <input class="form-control" name="hourly_rate" type="number" step="0.01" min="0"
-           value="{{ profile.hourly_rate if profile and profile.hourly_rate is not none else '' }}" />
-    <br />
-
-    <label class="form-label">Availability Notes (optional)</label><br />
-    <textarea class="form-control" name="availability_notes" rows="4">{{ profile.availability_notes if profile and profile.availability_notes else "" }}</textarea>
-    <br />
-
-    <button class="btn btn-primary" type="submit">Save</button>
-  </form>
+</div>
 {% endblock %}

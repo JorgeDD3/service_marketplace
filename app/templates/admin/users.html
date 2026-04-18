@@ -1,57 +1,144 @@
 {% extends "base.html" %}
+{% block title %}Admin: Users{% endblock %}
+
 {% block content %}
-<h2>Admin: Users</h2>
+<div class="container" style="max-width: 1100px;">
 
-{% if users %}
-  <table>
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Email</th>
-        <th>Name</th>
-        <th>Role</th>
-        <th>Status</th>
-        <th>Disabled Reason</th>
-        <th>Disabled At</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody>
-    {% for u in users %}
-      <tr>
-        <td>{{ u.id }}</td>
-        <td>{{ u.email }}</td>
-        <td>{{ u.first_name }} {{ u.last_name }}</td>
-        <td>{{ u.role_display or "—" }}</td>
-        <td>
-          {% if u.is_active %}
-            <span class="badge badge-accepted">active</span>
-          {% else %}
-            <span class="badge badge-cancelled">disabled</span>
-          {% endif %}
-        </td>
-        <td>{{ u.disabled_reason or "—" }}</td>
-        <td>{{ u.disabled_at.strftime("%Y-%m-%d %H:%M") if u.disabled_at else "—" }}</td>
-        <td>
-          {% if u.id == current_user.id %}
-            —
-          {% else %}
-            <form method="POST" action="{{ url_for('admin.toggle_user_active', user_id=u.id) }}">
-              {% if u.is_active %}
-                <input type="text" name="disabled_reason" placeholder="Reason (optional)" />
-                <button type="submit">Disable</button>
-              {% else %}
-                <button type="submit">Enable</button>
-              {% endif %}
-            </form>
-          {% endif %}
-        </td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-{% else %}
-  <p>No users found.</p>
-{% endif %}
+  <!-- Header card -->
+  <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
+    <div class="card-body py-3">
+      <div class="d-flex align-items-start justify-content-between gap-3">
+        <div>
+          <h1 class="h3 mb-1">Users</h1>
+          <div class="text-muted small">
+            Enable/disable accounts. You cannot disable yourself, and the last active admin is protected.
+          </div>
+        </div>
 
+        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.moderation') }}">
+            Back to Moderation
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if users %}
+    <div class="d-flex flex-column gap-2">
+      {% for u in users %}
+        <div class="card shadow-sm border-0" style="border-radius: 18px;">
+          <div class="card-body py-3">
+            <div class="d-flex align-items-start justify-content-between gap-3">
+
+              <!-- Left: user info -->
+              <div class="flex-grow-1">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <div class="fw-semibold">{{ u.first_name }} {{ u.last_name }}</div>
+
+                  <span class="badge {% if u.is_active %}badge-accepted{% else %}badge-cancelled{% endif %}">
+                    {% if u.is_active %}active{% else %}disabled{% endif %}
+                  </span>
+
+                  <span class="text-muted small">#{{ u.id }}</span>
+                </div>
+
+                <div class="text-muted small mt-1">
+                  <span class="me-3">
+                    <span class="text-muted">Email:</span>
+                    <span class="fw-semibold">{{ u.email }}</span>
+                  </span>
+
+                  <span class="me-3">
+                    <span class="text-muted">Role:</span>
+                    <span class="fw-semibold">{{ u.role_display or "—" }}</span>
+                  </span>
+                </div>
+
+                <div class="mt-2">
+                  <div class="text-muted small">Disabled reason</div>
+                  <div class="small">
+                    {% if u.disabled_reason %}
+                      <span style="white-space: pre-wrap;">{{ u.disabled_reason }}</span>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <div class="mt-2">
+                  <div class="text-muted small">Disabled at</div>
+                  <div class="small">
+                    {% if u.disabled_at %}
+                      {{ u.disabled_at.strftime("%Y-%m-%d %H:%M") }}
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right: actions -->
+              <div class="flex-shrink-0" style="min-width: 280px;">
+                <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
+                  <div class="card-body py-2">
+                    <div class="d-flex align-items-center justify-content-between">
+                      <div class="fw-semibold">Account controls</div>
+                      <span class="badge bg-light text-dark">User</span>
+                    </div>
+
+                    {% if u.id == current_user.id %}
+                      <div class="text-muted small mt-2">
+                        You can’t disable your own account.
+                      </div>
+                    {% else %}
+                      <form method="POST"
+                            action="{{ url_for('admin.toggle_user_active', user_id=u.id) }}"
+                            class="mt-2 m-0"
+                            {% if u.is_active %}onsubmit="return confirm('Disable this user?');"{% else %}onsubmit="return confirm('Enable this user?');"{% endif %}>
+                        {% if u.is_active %}
+                          <label class="form-label small text-muted mb-1" for="reason{{ u.id }}">
+                            Reason (optional)
+                          </label>
+                          <input id="reason{{ u.id }}"
+                                 type="text"
+                                 name="disabled_reason"
+                                 class="form-control form-control-sm"
+                                 placeholder="e.g., spam, abuse, policy violation">
+                          <div class="d-flex justify-content-end mt-2">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                              Disable
+                            </button>
+                          </div>
+                        {% else %}
+                          <div class="text-muted small">
+                            This user is currently disabled.
+                          </div>
+                          <div class="d-flex justify-content-end mt-2">
+                            <button type="submit" class="btn btn-sm btn-outline-success">
+                              Enable
+                            </button>
+                          </div>
+                        {% endif %}
+                      </form>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card border-0 shadow-sm" style="border-radius: 18px;">
+      <div class="card-body py-3">
+        <div class="fw-semibold">No users found.</div>
+        <div class="text-muted small">Nothing to manage right now.</div>
+      </div>
+    </div>
+  {% endif %}
+
+</div>
 {% endblock %}

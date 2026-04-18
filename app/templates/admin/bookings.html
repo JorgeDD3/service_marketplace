@@ -1,64 +1,157 @@
 {% extends "base.html" %}
+{% block title %}Admin: Bookings{% endblock %}
+
 {% block content %}
-<h2>Admin: Bookings</h2>
+<div class="container" style="max-width: 1100px;">
 
-{% if bookings %}
-  <table>
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Service</th>
-        <th>Client</th>
-        <th>Provider</th>
-        <th>Status</th>
-        <th>Created</th>
-        <th>Provider Note</th>
-        <th>Admin Action</th>
-        <th>Messages</th>
-      </tr>
-    </thead>
-    <tbody>
-    {% for b in bookings %}
-      <tr>
-        <td>{{ b.id }}</td>
-        <td>
-          {% if b.service %}
-            {{ b.service.title }}
-          {% else %}
-            —
-          {% endif %}
-        </td>
-        <td>{{ b.client.email if b.client else "—" }}</td>
-        <td>{{ b.provider.email if b.provider else "—" }}</td>
-        <td><span class="badge badge-{{ b.status }}">{{ b.status }}</span></td>
-        <td>{{ b.created_at.strftime("%Y-%m-%d %H:%M") if b.created_at else "" }}</td>
-        <td>{{ b.provider_note or "—" }}</td>
-        <td>
-          {% if b.status in ["pending", "accepted"] %}
-            <form method="POST" action="{{ url_for('admin.force_cancel_booking', booking_id=b.id) }}">
-              <input type="text" name="admin_note" placeholder="Reason (optional)" />
-              <button type="submit">Force Cancel</button>
-            </form>
-          {% else %}
-            <div>
-              {{ b.admin_note or "—" }}
-              {% if b.admin_action_at %}
-                <br><small>{{ b.admin_action_at.strftime("%Y-%m-%d %H:%M") }}</small>
-              {% endif %}
+  <!-- Header card -->
+  <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
+    <div class="card-body py-3">
+      <div class="d-flex align-items-start justify-content-between gap-3">
+        <div>
+          <h1 class="h3 mb-1">Bookings</h1>
+          <div class="text-muted small">
+            Review activity, see provider/client context, and force-cancel when necessary.
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.moderation') }}">
+            Back to Moderation
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if bookings %}
+    <div class="d-flex flex-column gap-2">
+      {% for b in bookings %}
+        <div class="card shadow-sm border-0" style="border-radius: 18px;">
+          <div class="card-body py-3">
+            <div class="d-flex align-items-start justify-content-between gap-3">
+
+              <!-- Left: booking info -->
+              <div class="flex-grow-1">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <div class="fw-semibold">
+                    {% if b.service %}
+                      {{ b.service.title }}
+                    {% else %}
+                      —
+                    {% endif %}
+                  </div>
+
+                  <span class="badge badge-{{ b.status }}">{{ b.status }}</span>
+
+                  <span class="text-muted small">#{{ b.id }}</span>
+                </div>
+
+                <div class="text-muted small mt-1">
+                  <span class="me-3">
+                    <span class="text-muted">Client:</span>
+                    <span class="fw-semibold">{{ b.client.email if b.client else "—" }}</span>
+                  </span>
+                  <span class="me-3">
+                    <span class="text-muted">Provider:</span>
+                    <span class="fw-semibold">{{ b.provider.email if b.provider else "—" }}</span>
+                  </span>
+                  <span class="me-3">
+                    <span class="text-muted">Created:</span>
+                    {{ b.created_at.strftime("%Y-%m-%d %H:%M") if b.created_at else "—" }}
+                  </span>
+                </div>
+
+                <div class="mt-2">
+                  <div class="text-muted small">Provider note</div>
+                  <div class="small">
+                    {% if b.provider_note %}
+                      <span style="white-space: pre-wrap;">{{ b.provider_note }}</span>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <div class="mt-2">
+                  <div class="text-muted small">Admin action</div>
+                  <div class="small">
+                    {% if b.admin_note %}
+                      <span style="white-space: pre-wrap;">{{ b.admin_note }}</span>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                    {% if b.admin_action_at %}
+                      <div class="text-muted small mt-1">
+                        {{ b.admin_action_at.strftime("%Y-%m-%d %H:%M") }}
+                      </div>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <div class="mt-3">
+                  <a class="btn btn-sm btn-outline-primary"
+                     href="{{ url_for('messages.booking_thread', booking_id=b.id) }}">
+                    Open messages
+                  </a>
+                </div>
+              </div>
+
+              <!-- Right: actions -->
+              <div class="flex-shrink-0" style="min-width: 280px;">
+                <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
+                  <div class="card-body py-2">
+                    <div class="d-flex align-items-center justify-content-between">
+                      <div class="fw-semibold">Admin controls</div>
+                      <span class="badge bg-light text-dark">Booking</span>
+                    </div>
+
+                    {% if b.status in ["pending", "accepted"] %}
+                      <div class="text-muted small mt-1">
+                        Force-cancel is available for pending/accepted bookings.
+                      </div>
+
+                      <form method="POST"
+                            action="{{ url_for('admin.force_cancel_booking', booking_id=b.id) }}"
+                            class="mt-2"
+                            onsubmit="return confirm('Force-cancel this booking?');">
+                        <label class="form-label small text-muted mb-1" for="adminNote{{ b.id }}">
+                          Reason (optional)
+                        </label>
+                        <input id="adminNote{{ b.id }}"
+                               type="text"
+                               name="admin_note"
+                               class="form-control form-control-sm"
+                               placeholder="e.g., policy violation, spam, dispute">
+
+                        <div class="d-flex justify-content-end mt-2">
+                          <button type="submit" class="btn btn-sm btn-outline-danger">
+                            Force Cancel
+                          </button>
+                        </div>
+                      </form>
+                    {% else %}
+                      <div class="text-muted small mt-2">
+                        No admin action available for this status.
+                      </div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+
             </div>
-          {% endif %}
-      </td>
-      <td>
-        <a href="{{ url_for('messages.booking_thread', booking_id=b.id) }}">
-          Open
-        </a>
-      </td>
-    </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-{% else %}
-  <p>No bookings found.</p>
-{% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card border-0 shadow-sm" style="border-radius: 18px;">
+      <div class="card-body py-3">
+        <div class="fw-semibold">No bookings found.</div>
+        <div class="text-muted small">Nothing to review right now.</div>
+      </div>
+    </div>
+  {% endif %}
 
+</div>
 {% endblock %}

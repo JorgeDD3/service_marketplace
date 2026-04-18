@@ -1,62 +1,303 @@
 {% extends "base.html" %}
+{% block title %}Messages{% endblock %}
+
 {% block content %}
-<div class="container py-4">
-  <div class="d-flex align-items-center justify-content-between mb-3">
-    <h2 class="mb-0">Messages</h2>
+<style>
+
+    .is-old-thread{
+    display:none;
+  }
+  /* Page-specific layout */
+  .container{
+    padding-top: 28px;
+    padding-bottom: 28px;
+    max-width: 1100px;
+  }
+
+  .inbox-header{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom: 14px;
+  }
+
+  .inbox-title{
+    margin:0;
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .inbox-sub{
+    color:#64748b;
+    font-weight:600;
+  }
+
+  .inbox-panel{
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius: 18px;
+    overflow:hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
+
+  .thread{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+    padding: 14px 16px;
+    text-decoration:none;
+    color: inherit;
+    border-bottom: 1px solid #eef2f7;
+    transition: background 0.12s ease;
+  }
+
+  .thread:last-child{
+    border-bottom:none;
+  }
+
+  .thread:hover{
+    background:#f8fafc;
+  }
+
+  .thread-left{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    min-width:0;
+    flex:1;
+  }
+
+  .avatar{
+    width:44px;
+    height:44px;
+    border-radius: 999px;
+    background:#0f172a;
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    flex: 0 0 auto;
+  }
+
+  .thread-main{
+    min-width:0;
+    flex:1;
+  }
+
+  .thread-top{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+    line-height: 1.15;
+  }
+
+  .thread-title{
+    font-weight: 800;
+    font-size: 15.5px;
+  }
+
+  .thread-meta{
+    color:#64748b;
+    font-size: 0.92rem;
+    font-weight: 600;
+  }
+
+  .thread-preview{
+    margin-top: 4px;
+    color:#0f172a;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.9;
+  }
+
+  .thread-right{
+    text-align:right;
+    white-space: nowrap;
+    color:#64748b;
+    font-size: 0.9rem;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    align-items:flex-end;
+  }
+
+  .unread-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    border:1px solid #dbeafe;
+    background:#eff6ff;
+    color:#1d4ed8;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+  }
+
+  .dot{
+    width:8px;
+    height:8px;
+    border-radius: 50%;
+    background:#2563eb;
+    display:inline-block;
+  }
+
+  .empty{
+    padding: 16px;
+    color:#64748b;
+  }
+
+  @media (max-width: 700px){
+    .thread{
+      align-items:flex-start;
+    }
+    .thread-right{
+      align-items:flex-start;
+      text-align:left;
+    }
+  }
+</style>
+
+<div class="inbox-header">
+  <div>
+    <h1 class="inbox-title">Messages</h1>
+    <div class="inbox-sub">Your booking conversations.</div>
   </div>
-
-  {% if conversations %}
-    <div class="list-group">
-      {% for c in conversations %}
-        {% set last = last_by_convo.get(c.id) %}
-        {% set is_unread = c.id in unread_ids %}
-        <a class="list-group-item list-group-item-action"
-           href="{{ url_for('messages.thread', conversation_id=c.id) }}">
-
-          <div class="d-flex justify-content-between align-items-start gap-3">
-            <div style="min-width: 0;">
-              <div class="fw-semibold">
-                <div class="fw-semibold d-flex align-items-center gap-2">
-  {% if is_unread %}
-    <span title="Unread" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#2563eb;"></span>
-  {% endif %}
-  <span>Booking #{{ c.booking_id }}</span>
-  <span class="text-muted fw-normal small ms-2">
-    {% if current_user.id == c.client_id %}
-      with {{ c.provider.first_name }} {{ c.provider.last_name }}
-    {% else %}
-      with {{ c.client.first_name }} {{ c.client.last_name }}
-    {% endif %}
-  </span>
 </div>
-              </div>
 
-              <div class="text-muted small" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                {% if last %}
-                  {% if last.sender_id == current_user.id %}You: {% endif %}
-                  {{ last.body }}
-                {% else %}
-                  No messages yet. Say hi 👋
+{% if not conversations %}
+  <div class="inbox-panel">
+    <div class="empty">
+      No conversations yet. Once you have a booking, you can message from the booking page.
+    </div>
+  </div>
+{% else %}
+<div style="display:flex; gap:10px; align-items:center; margin: 8px 0 12px 0; flex-wrap: wrap;">
+  <input id="threadSearch"
+         type="text"
+         placeholder="Search conversations…"
+         style="flex: 1; min-width: 220px; max-width: 520px; padding:10px 12px; border-radius:12px; border:1px solid #e5e7eb;"
+         aria-label="Search conversations" />
+
+  <button id="toggleThreads" class="btn btn-sm btn-outline-primary" type="button">
+    Show all
+  </button>
+
+  <span class="muted"><small>Showing your 5 most recent by default.</small></span>
+</div>
+  <div class="inbox-panel">
+    {% for c in conversations %}
+  {% set idx = loop.index0 %}
+      {% set last = last_by_convo.get(c.id) %}
+      {% set is_unread = c.id in unread_ids %}
+
+      {# Determine "other" user and initials #}
+      {% if current_user.id == c.client_id %}
+        {% set other = c.provider %}
+      {% else %}
+        {% set other = c.client %}
+      {% endif %}
+      {% set initials = (other.first_name[:1] ~ (other.last_name[:1] if other.last_name else ""))|upper %}
+
+      <a class="thread {% if idx >= 5 %}is-old-thread{% endif %}"
+   data-search="{{ other.first_name }} {{ other.last_name }} Booking #{{ c.booking_id }} {% if c.booking and c.booking.service %}{{ c.booking.service.title }}{% endif %}"
+   href="{{ url_for('messages.thread', conversation_id=c.id) }}">
+        <div class="thread-left">
+          <div class="avatar">{{ initials }}</div>
+
+          <div class="thread-main">
+            <div class="thread-top">
+              <div class="thread-title">
+                {{ other.first_name }} {{ other.last_name }}
+              </div>
+              <div class="thread-meta">
+                • Booking #{{ c.booking_id }}
+                {% if c.booking and c.booking.service %}
+                  • {{ c.booking.service.title }}
                 {% endif %}
               </div>
             </div>
 
-            <div class="text-muted small text-end" style="white-space: nowrap;">
+            <div class="thread-preview">
               {% if last %}
-                {{ last.created_at.strftime("%b %d, %Y %I:%M %p") }}
+                {% if last.sender_id == current_user.id %}You: {% endif %}
+                {{ last.body }}
               {% else %}
-                {{ c.created_at.strftime("%b %d, %Y") }}
+                No messages yet. Say hi 👋
               {% endif %}
             </div>
           </div>
+        </div>
 
-        </a>
-      {% endfor %}
-    </div>
-  {% else %}
-    <div class="alert alert-info">
-      No conversations yet. Once you have a booking, you can message from the booking page.
-    </div>
-  {% endif %}
-</div>
+        <div class="thread-right">
+          <div>
+            {% if last %}
+              {{ last.created_at.strftime("%b %d, %I:%M %p") }}
+            {% else %}
+              {{ c.created_at.strftime("%b %d, %Y") if c.created_at else "" }}
+            {% endif %}
+          </div>
+
+          {% if is_unread %}
+            <div class="unread-pill"><span class="dot"></span>Unread</div>
+          {% endif %}
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+{% endif %}
+<script>
+(function(){
+  const btn = document.getElementById("toggleThreads");
+  const search = document.getElementById("threadSearch");
+  const oldThreads = Array.from(document.querySelectorAll(".is-old-thread"));
+  const allThreads = Array.from(document.querySelectorAll(".thread"));
+
+  let showingAll = false;
+
+  function applyVisibility(){
+    const q = (search?.value || "").trim().toLowerCase();
+
+    allThreads.forEach(el => {
+      const text = (el.dataset.search || "").toLowerCase();
+      const matches = !q || text.includes(q);
+
+      // If searching, show matches regardless of "recent/all"
+      if (q) {
+        el.style.display = matches ? "" : "none";
+        return;
+      }
+
+      // No search: enforce recent/all behavior
+      if (el.classList.contains("is-old-thread")) {
+        el.style.display = showingAll ? "" : "none";
+      } else {
+        el.style.display = "";
+      }
+    });
+  }
+
+  if (btn){
+    btn.addEventListener("click", function(){
+      showingAll = !showingAll;
+      btn.textContent = showingAll ? "Show recent only" : "Show all";
+      applyVisibility();
+    });
+  }
+
+  if (search){
+    search.addEventListener("input", applyVisibility);
+  }
+
+  applyVisibility();
+})();
+</script>
 {% endblock %}

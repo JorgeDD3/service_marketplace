@@ -1,88 +1,260 @@
 {% extends "base.html" %}
-{% block content %}
-<div class="container py-4" style="max-width: 900px;">
-  <div class="d-flex justify-content-between align-items-start mb-3">
-    <div>
-      <h2 class="mb-1">Booking #{{ convo.booking_id }}</h2>
+{% block title %}Messages{% endblock %}
 
-{% if convo.booking %}
-  <div class="small text-muted">
-    <span class="fw-semibold">Service:</span>
-    <a href="{{ url_for('main.service_detail', service_id=convo.booking.service_id) }}">
-      {{ convo.booking.service.title if convo.booking.service else "—" }}
-    </a>
-    <span class="mx-2">•</span>
-    <span class="fw-semibold">When:</span>
-    {{ convo.booking.booking_datetime.strftime("%b %d, %Y %I:%M %p") if convo.booking.booking_datetime else "—" }}
-    <span class="mx-2">•</span>
-    <span class="status-badge {{ convo.booking.status }}">{{ convo.booking.status }}</span>
-  </div>
-{% endif %}
-      <div class="text-muted small">
+{% block content %}
+<style>
+  .container{
+    padding-top: 24px;
+    padding-bottom: 24px;
+    max-width: 980px;
+  }
+
+  .chat-shell{
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius: 18px;
+    overflow:hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+      display: flex;
+  flex-direction: column;
+  height: 75vh;          /* overall chat card height */
+  }
+
+  .chat-header{
+    padding: 14px 16px;
+    border-bottom: 1px solid #eef2f7;
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap: 12px;
+    background:#ffffff;
+  }
+
+  .chat-title{
+    margin:0;
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+  }
+
+  .chat-sub{
+    margin-top: 4px;
+    color:#64748b;
+    font-size: 0.93rem;
+    font-weight: 600;
+  }
+
+  .chat-meta{
+    margin-top: 6px;
+    color:#64748b;
+    font-size: 0.9rem;
+  }
+
+  .back-btn{
+    border:1px solid #e5e7eb;
+    background:#f8fafc;
+    color:#0f172a;
+    border-radius: 12px;
+    padding: 8px 10px;
+    text-decoration:none;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+  .back-btn:hover{ background:#eef2f7; }
+
+  .chat-body{
+  flex: 1;                 /* take remaining height */
+  padding: 14px;
+  overflow-y: auto;        /* internal scrolling */
+  background:#f8fafc;
+}
+
+  .msg-row{
+    display:flex;
+    margin: 10px 0;
+  }
+  .msg-row.me{ justify-content:flex-end; }
+  .msg-row.them{ justify-content:flex-start; }
+
+  .bubble{
+    max-width: 60%;
+    border-radius: 16px;
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.04);
+    background:#ffffff;
+  }
+
+  .me .bubble{
+    background:#2563eb;
+    color:white;
+    border-color:#2563eb;
+  }
+
+  .bubble .who{
+    font-weight: 900;
+    font-size: 0.82rem;
+    opacity: 0.9;
+    margin-bottom: 4px;
+  }
+
+  .bubble .text{
+    white-space: pre-wrap;
+    line-height: 1.35;
+    font-size: 0.98rem;
+  }
+
+  .bubble .time{
+    margin-top: 6px;
+    font-size: 0.78rem;
+    opacity: 0.75;
+    text-align:right;
+  }
+
+  .me .bubble .time{
+    opacity: 0.85;
+  }
+
+  .chat-compose{
+  flex: 0 0 auto;
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid #eef2f7;
+  padding: 12px 14px;
+}
+
+  .compose-row{
+    display:flex;
+    gap:10px;
+    align-items:flex-end;
+  }
+
+  textarea.compose{
+    flex:1;
+    border:1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 10px 12px;
+    resize: none;
+    min-height: 44px;
+    max-height: 140px;
+    outline:none;
+  }
+
+  textarea.compose:focus{
+    border-color:#2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+  }
+
+  .send-btn{
+    background:#2563eb;
+    color:white;
+    border:none;
+    border-radius: 14px;
+    padding: 10px 14px;
+    font-weight: 900;
+  }
+  .send-btn:hover{ background:#1d4ed8; }
+
+  .suggest-wrap{
+    margin-bottom: 10px;
+  }
+  .suggest-title{
+    color:#64748b;
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 6px;
+  }
+  .suggest-btns{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .suggest{
+    border:1px solid #e5e7eb;
+    background:#ffffff;
+    color:#0f172a;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-weight: 800;
+    font-size: 0.85rem;
+    cursor:pointer;
+  }
+  .suggest:hover{ background:#f1f5f9; }
+
+  @media (max-width: 650px){
+    .bubble{ max-width: 92%; }
+    .chat-body{ max-height: 66vh; }
+  }
+</style>
+
+<div class="chat-shell">
+  <div class="chat-header">
+    <div>
+      <h2 class="chat-title">Booking #{{ convo.booking_id }}</h2>
+
+      {% if convo.booking %}
+        <div class="chat-meta">
+          <span class="fw-semibold">Service:</span>
+          <a href="{{ url_for('main.service_detail', service_id=convo.booking.service_id) }}">
+            {{ convo.booking.service.title if convo.booking.service else "—" }}
+          </a>
+          <span class="mx-2">•</span>
+          <span class="fw-semibold">When:</span>
+          {{ convo.booking.booking_datetime.strftime("%b %d, %Y %I:%M %p") if convo.booking.booking_datetime else "—" }}
+          <span class="mx-2">•</span>
+          <span class="status-badge {{ convo.booking.status }}">{{ convo.booking.status }}</span>
+        </div>
+      {% endif %}
+
+      <div class="chat-sub">
         {% if current_user.id == convo.client_id %}
-          Messaging Provider: {{ convo.provider.first_name }} {{ convo.provider.last_name }}
+          Chatting with {{ convo.provider.first_name }} {{ convo.provider.last_name }}
         {% else %}
-          Messaging Client: {{ convo.client.first_name }} {{ convo.client.last_name }}
+          Chatting with {{ convo.client.first_name }} {{ convo.client.last_name }}
         {% endif %}
       </div>
     </div>
-    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('messages.inbox') }}">Back to inbox</a>
+
+    <a class="back-btn" href="{{ url_for('messages.inbox') }}">← Inbox</a>
   </div>
 
-  <div class="card mb-3">
-    <div class="card-body" id="msgScroll" style="max-height: 55vh; overflow-y: auto;">
-      {% if convo.messages %}
-        {% for m in convo.messages %}
-          <div class="mb-3">
-            <div class="d-flex justify-content-between">
-              <div class="fw-semibold">
-                {% if m.sender_id == current_user.id %}
-                  You
-                {% else %}
-                  {{ m.sender.first_name }} {{ m.sender.last_name }}
-                {% endif %}
-              </div>
-              <div class="text-muted small">{{ m.created_at.strftime("%b %d, %Y %I:%M %p") }}</div>
+  <div class="chat-body" id="msgScroll">
+    {% if convo.messages %}
+      {% for m in convo.messages %}
+        <div class="msg-row {% if m.sender_id == current_user.id %}me{% else %}them{% endif %}">
+          <div class="bubble">
+            <div class="who">
+              {% if m.sender_id == current_user.id %}
+                You
+              {% else %}
+                {{ m.sender.first_name }} {{ m.sender.last_name }}
+              {% endif %}
             </div>
-            <div class="border rounded p-2 mt-1" style="white-space: pre-wrap;">{{ m.body }}</div>
+            <div class="text">{{ m.body }}</div>
+            <div class="time">{{ m.created_at.strftime("%b %d, %I:%M %p") }}</div>
           </div>
-        {% endfor %}
-      {% else %}
-        <div class="text-muted">No messages yet. Send the first message below.</div>
-      {% endif %}
-    </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="muted">No messages yet. Send the first message below.</div>
+    {% endif %}
   </div>
 
-  <form method="post" class="card">
-    <div class="card-body">
-        <div class="mb-2">
-  <div class="small text-muted mb-1">Suggested questions (click to add)</div>
-  <div class="d-flex flex-wrap gap-2">
-    <button type="button" class="btn btn-outline-secondary btn-sm msg-suggest" data-text="Hi! Quick question — what should I bring or prepare before our session?">What should I prepare?</button>
-    <button type="button" class="btn btn-outline-secondary btn-sm msg-suggest" data-text="Can you confirm what’s included in this service and what isn’t?">What’s included?</button>
-    <button type="button" class="btn btn-outline-secondary btn-sm msg-suggest" data-text="Do you have any requirements or preferences before we meet?">Any requirements?</button>
-    <button type="button" class="btn btn-outline-secondary btn-sm msg-suggest" data-text="Can we confirm the location / meeting method (in-person vs online) and any details?">Confirm logistics</button>
-  </div>
-</div>
-      <label class="form-label fw-semibold" for="body">New message</label>
-      <textarea class="form-control" id="body" name="body" rows="3" maxlength="5000" required></textarea>
-      <script>
-document.addEventListener("DOMContentLoaded", function () {
-  const textarea = document.getElementById("body");
-  document.querySelectorAll(".msg-suggest").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      if (!textarea) return;
-      const t = btn.getAttribute("data-text") || "";
-      if (!t) return;
-      textarea.value = textarea.value ? (textarea.value + "\n\n" + t) : t;
-      textarea.focus();
-    });
-  });
-});
-</script>
-      <div class="d-flex justify-content-end mt-2">
-        <button class="btn btn-primary" type="submit">Send</button>
+  <form method="post" class="chat-compose">
+    <div class="suggest-wrap">
+      <div class="suggest-title">Suggested questions (click to add)</div>
+      <div class="suggest-btns">
+        <button type="button" class="suggest msg-suggest" data-text="Hi! Quick question — what should I bring or prepare before our session?">What should I prepare?</button>
+        <button type="button" class="suggest msg-suggest" data-text="Can you confirm what’s included in this service and what isn’t?">What’s included?</button>
+        <button type="button" class="suggest msg-suggest" data-text="Do you have any requirements or preferences before we meet?">Any requirements?</button>
+        <button type="button" class="suggest msg-suggest" data-text="Can we confirm the location / meeting method (in-person vs online) and any details?">Confirm logistics</button>
       </div>
+    </div>
+
+    <div class="compose-row">
+      <textarea class="compose" id="body" name="body" maxlength="5000" required
+                placeholder="Write a message…"></textarea>
+      <button class="send-btn" type="submit">Send</button>
     </div>
   </form>
 </div>
@@ -93,9 +265,20 @@ document.addEventListener("DOMContentLoaded", function () {
   const scroller = document.getElementById("msgScroll");
   if (scroller) scroller.scrollTop = scroller.scrollHeight;
 
-  // If URL has #compose, focus the textarea (nice for "Message" buttons later)
+  // Suggested buttons
+  const textarea = document.getElementById("body");
+  document.querySelectorAll(".msg-suggest").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (!textarea) return;
+      const t = btn.getAttribute("data-text") || "";
+      if (!t) return;
+      textarea.value = textarea.value ? (textarea.value + "\n\n" + t) : t;
+      textarea.focus();
+    });
+  });
+
+  // If URL has #compose, focus the textarea
   if (window.location.hash === "#compose") {
-    const textarea = document.getElementById("body");
     if (textarea) textarea.focus();
   }
 });

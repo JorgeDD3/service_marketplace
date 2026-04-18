@@ -1,14 +1,45 @@
 # app/__init__.py
 import os
 from flask import Flask, render_template
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import DevelopmentConfig, ProductionConfig
 from .extensions import db, login_manager
 from .cli import register_cli_commands
 
 
+class URLPrefixMiddleware:
+    """
+    Ensures Flask URL generation works when the app is mounted under a subpath
+    behind Apache, e.g. /~gddelp/service_marketplace/.
+
+    Apache ProxyPass typically strips the prefix before forwarding to gunicorn,
+    so we set SCRIPT_NAME but DO NOT rewrite PATH_INFO.
+    """
+    def __init__(self, app, prefix: str):
+        self.app = app
+        self.prefix = prefix.rstrip("/")
+
+    def __call__(self, environ, start_response):
+        environ["SCRIPT_NAME"] = self.prefix
+        return self.app(environ, start_response)
+
+
 def create_app():
     app = Flask(__name__, instance_relative_config=True, static_folder="static")
+
+    # ---- Reverse proxy support (Apache -> gunicorn) ----
+    # Trust X-Forwarded-* headers from the local Apache proxy.
+    # x_for=1: client IP, x_proto=1: https scheme, x_host=1: host header, x_port=1: port
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+
+    # ---- Subpath mount support (Jeff's config) ----
+    # Example: export URL_PREFIX="/~gddelp/service_marketplace"
+    url_prefix = os.getenv("URL_PREFIX", "").strip()
+    if url_prefix:
+        app.wsgi_app = URLPrefixMiddleware(app.wsgi_app, url_prefix)
+        # Make session cookie valid for the mounted path
+        app.config["SESSION_COOKIE_PATH"] = url_prefix.rstrip("/") + "/"
 
     # Config selection via environment variable
     # Default: development
@@ -52,10 +83,18 @@ def create_app():
     app.register_blueprint(admin_bp)
     app.register_blueprint(messages_bp)
 
-    # error handlers
+    # ---- Global error handlers ----
     @app.errorhandler(403)
     def forbidden(e):
-        return render_template("403.html"), 403
+        return render_template("errors/403.html"), 403
+
+    @app.errorhandler(404)
+    def not_found(e):
+        return render_template("errors/404.html"), 404
+
+    @app.errorhandler(500)
+    def server_error(e):
+        return render_template("errors/500.html"), 500
 
     # user loader (kept here to avoid circular imports)
     from app.models import User
@@ -64,8 +103,33 @@ def create_app():
     def load_user(user_id):
         return User.query.get(int(user_id))
 
-    if app.config.get("DEBUG"):
+    # IMPORTANT:
+    # Do NOT create tables automatically inside create_app().
+    # This causes unwanted DB connections (especially with Postgres on hosted platforms).
+    #
+    # If you ever want an opt-in convenience for local dev only:
+    #   AUTO_CREATE_DB=1 flask --app wsgi run
+    if os.getenv("AUTO_CREATE_DB", "").lower() in {"1", "true", "yes"}:
         with app.app_context():
             db.create_all()
+
+    # --- Navbar verification status for providers (available in all templates) ---
+    from flask_login import current_user
+    from app.models import ProviderProfile, ProviderVerification
+
+    @app.context_processor
+    def inject_nav_verification_status():
+        status = None
+        try:
+            if current_user.is_authenticated and current_user.has_role("provider"):
+                profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
+                if profile:
+                    v = ProviderVerification.query.filter_by(provider_profile_id=profile.id).first()
+                    if v:
+                        status = v.status
+        except Exception:
+            status = None
+
+        return {"nav_verification_status": status}
 
     return app

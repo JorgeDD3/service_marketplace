@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<style>
+  .ps-wrap { max-width: 1100px; margin: 0 auto; }
+  .ps-card { border-radius: 18px; }
+  .ps-tight .card-body { padding: 16px !important; }
+  .ps-tight h1 { font-size: 34px; line-height: 1.1; margin: 0; }
+  .ps-tight .muted { color: #6b7280; }
+  .ps-tight .btn { padding: 8px 12px; }
+  .ps-tight .btn-sm { padding: 6px 10px; }
+</style>
+
+<div class="container ps-tight" style="padding-top: 24px; padding-bottom: 24px;">
+  <div class="ps-wrap">
+
+    <div class="card shadow-sm ps-card mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+          <div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <h1>Settings</h1>
+              <span class="badge text-bg-light">Provider</span>
+            </div>
+            <div class="muted mt-1">
+              Account: <strong>{{ email }}</strong>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('provider.profile') }}">Profile</a>
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('provider.verification') }}">Verification</a>
+            <a class="btn btn-primary btn-sm disabled" aria-disabled="true">Settings</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-lg-5">
+        <div class="card shadow-sm ps-card">
+          <div class="card-body">
+            <div class="fw-semibold mb-2">Account</div>
+
+            <div class="mb-2">
+              <div class="small text-muted">Email</div>
+              <div class="fw-semibold">{{ email }}</div>
+            </div>
+
+            <div class="mb-0">
+              <div class="small text-muted">Verification status</div>
+              {% if verification_status == "verified" %}
+                <span class="badge text-bg-success">✓ Verified</span>
+              {% elif verification_status == "pending_review" %}
+                <span class="badge text-bg-warning">⏳ Pending</span>
+              {% elif verification_status == "rejected" %}
+                <span class="badge text-bg-danger">Rejected</span>
+              {% else %}
+                <span class="badge text-bg-secondary">Not submitted</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-7">
+        <div class="card shadow-sm ps-card">
+          <div class="card-body">
+            <div class="fw-semibold mb-1">Security</div>
+            <div class="muted small mb-3">Change your password (updates immediately).</div>
+
+            <form method="POST">
+              <div class="row g-2">
+                <div class="col-12">
+                  <label class="form-label fw-semibold mb-1">Current password</label>
+                  <input class="form-control" type="password" name="current_password" required>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold mb-1">New password</label>
+                  <input class="form-control" type="password" name="new_password" minlength="8" required>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold mb-1">Confirm new password</label>
+                  <input class="form-control" type="password" name="confirm_password" minlength="8" required>
+                </div>
+
+                <div class="col-12 d-flex gap-2 pt-2">
+                  <button class="btn btn-primary" type="submit">Update password</button>
+                  <a class="btn btn-outline-secondary" href="{{ url_for('provider.dashboard') }}">Back</a>
+                </div>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

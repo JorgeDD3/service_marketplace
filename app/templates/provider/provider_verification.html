@@ -2,75 +2,127 @@
 {% block title %}Verification{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width: 820px;">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Provider Verification</h2>
-    <span class="badge
-      {% if verification.status == 'verified' %} text-bg-success
-      {% elif verification.status == 'pending_review' %} text-bg-warning
-      {% elif verification.status == 'rejected' %} text-bg-danger
-      {% else %} text-bg-secondary
-      {% endif %}
-    ">
-      {{ verification.status.replace('_', ' ') }}
-    </span>
-  </div>
+<style>
+  /* Local density tweaks for this page */
+  .pv-wrap { max-width: 1100px; margin: 0 auto; }
+  .pv-card { border-radius: 18px; }
+  .pv-tight .card-body { padding: 16px !important; }
+  .pv-tight h1 { font-size: 34px; line-height: 1.1; margin: 0; }
+  .pv-tight .muted { color: #6b7280; }
+  .pv-tight .btn { padding: 8px 12px; }
+  .pv-tight .btn-sm { padding: 6px 10px; }
+</style>
 
-  {% if verification.status == "rejected" and verification.admin_notes %}
-    <div class="alert alert-danger">
-      <div class="fw-semibold mb-1">Admin notes</div>
-      <div>{{ verification.admin_notes }}</div>
-    </div>
-  {% endif %}
+<div class="container pv-tight" style="padding-top: 24px; padding-bottom: 24px;">
+  <div class="pv-wrap">
 
-  <div class="card rounded-4 shadow-sm">
-    <div class="card-body p-4">
-      <p class="text-muted">
-        Submit basic verification details. An admin will review and mark your account as verified.
-      </p>
+    {% set vstatus = verification.status if verification else "not_submitted" %}
 
-      {% if verification.status in ["pending_review", "verified"] %}
-        <div class="alert alert-info mb-0">
-          {% if verification.status == "pending_review" %}
-            Your verification is currently pending review.
-          {% else %}
-            You are verified 🎉
-          {% endif %}
+    <!-- Header card (matches Provider Profile style) -->
+    <div class="card shadow-sm pv-card mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+          <div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <h1>Provider Verification</h1>
+
+              {% if vstatus == "verified" %}
+                <span class="badge text-bg-success">✓ Verified</span>
+              {% elif vstatus == "pending_review" %}
+                <span class="badge text-bg-warning">⏳ Pending</span>
+              {% elif vstatus == "rejected" %}
+                <span class="badge text-bg-danger">Rejected</span>
+              {% else %}
+                <span class="badge text-bg-secondary">Not submitted</span>
+              {% endif %}
+            </div>
+
+            <div class="muted mt-1">
+              Signed in as <strong>{{ current_user.email }}</strong>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+  <a class="btn btn-primary btn-sm disabled" aria-disabled="true">
+    Verification
+  </a>
+
+  <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('provider.profile') }}">
+    Profile
+  </a>
+
+  <a class="btn btn-outline-secondary btn-sm disabled" aria-disabled="true" title="Coming soon">
+    Settings
+  </a>
+</div>
         </div>
-      {% else %}
-        <form method="POST" enctype="multipart/form-data">
-          <div class="mb-3">
-            <label class="form-label">Legal name</label>
-            <input class="form-control" name="legal_name" value="{{ verification.legal_name or '' }}" required>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">License / Credential # (optional)</label>
-            <input class="form-control" name="license_number" value="{{ verification.license_number or '' }}">
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Portfolio URL (optional)</label>
-            <input class="form-control" name="portfolio_url" value="{{ verification.portfolio_url or '' }}">
-          </div>
-
-          <button class="btn btn-primary" type="submit">
-
-          <div class="mb-3">
-  <label class="form-label">ID Document (PDF/JPG/PNG)</label>
-  <input class="form-control" type="file" name="id_document" accept=".pdf,.png,.jpg,.jpeg">
-</div>
-
-<div class="mb-3">
-  <label class="form-label">Certification / License (PDF/JPG/PNG)</label>
-  <input class="form-control" type="file" name="certification" accept=".pdf,.png,.jpg,.jpeg">
-</div>
-
-            Submit for review
-          </button>
-        </form>
-      {% endif %}
+      </div>
     </div>
+
+    {% if vstatus == "rejected" and verification and verification.admin_notes %}
+      <div class="alert alert-danger">
+        <div class="fw-semibold mb-1">Admin notes</div>
+        <div>{{ verification.admin_notes }}</div>
+      </div>
+    {% endif %}
+
+    <div class="card shadow-sm pv-card">
+      <div class="card-body" style="padding: 20px;">
+        <p class="text-muted mb-3">
+          Submit basic verification details. An admin will review and mark your account as verified.
+        </p>
+
+        {% if vstatus in ["pending_review", "verified"] %}
+          <div class="alert alert-info mb-0">
+            {% if vstatus == "pending_review" %}
+              Your verification is currently pending review.
+            {% else %}
+              You are verified 🎉
+            {% endif %}
+          </div>
+        {% else %}
+          <form method="POST" enctype="multipart/form-data">
+            <div class="row g-3">
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Legal name</label>
+                <input class="form-control" name="legal_name"
+                       value="{{ verification.legal_name if verification else '' }}" required>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">License / Credential # (optional)</label>
+                <input class="form-control" name="license_number"
+                       value="{{ verification.license_number if verification else '' }}">
+              </div>
+
+              <div class="col-12">
+                <label class="form-label fw-semibold">Portfolio URL (optional)</label>
+                <input class="form-control" name="portfolio_url"
+                       value="{{ verification.portfolio_url if verification else '' }}">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">ID Document (PDF/JPG/PNG)</label>
+                <input class="form-control" type="file" name="id_document" accept=".pdf,.png,.jpg,.jpeg">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Certification / License (PDF/JPG/PNG)</label>
+                <input class="form-control" type="file" name="certification" accept=".pdf,.png,.jpg,.jpeg">
+              </div>
+
+              <div class="col-12 d-flex gap-2 pt-1">
+                <button class="btn btn-primary" type="submit">Submit for review</button>
+                <a class="btn btn-outline-secondary" href="{{ url_for('provider.profile') }}">Back to Profile</a>
+              </div>
+
+            </div>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+
   </div>
 </div>
 {% endblock %}

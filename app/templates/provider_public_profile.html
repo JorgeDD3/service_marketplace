@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Provider Profile{% endblock %}
+
+{% block content %}
+<style>
+  .container{
+    padding-top: 28px;
+    padding-bottom: 28px;
+    max-width: 1000px;
+  }
+
+  .profile-card{
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius: 18px;
+    padding: 18px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
+
+  .top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom: 10px;
+  }
+
+  .name{
+    margin:0;
+    font-size: 30px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+  }
+
+  .muted{
+    color:#64748b;
+    font-weight:600;
+  }
+
+  .pill{
+    display:inline-block;
+    padding:4px 10px;
+    border-radius:999px;
+    font-size: 0.85rem;
+    font-weight: 800;
+    border:1px solid #e5e7eb;
+    background:#ffffff;
+  }
+  .pill.verified{ border-left: 6px solid #16a34a; }
+  .pill.pending{ border-left: 6px solid #f59e0b; }
+  .pill.rejected{ border-left: 6px solid #dc2626; }
+  .pill.unverified{ border-left: 6px solid #64748b; }
+
+  .section{
+    margin-top: 14px;
+  }
+
+  .section h3{
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    font-weight: 900;
+  }
+
+  .bio{
+    white-space: pre-wrap;
+    line-height: 1.45;
+  }
+
+  ul.certs{
+    margin:0;
+    padding-left: 18px;
+  }
+</style>
+
+<div class="profile-card">
+  <div class="top">
+    <div>
+      <h1 class="name">{{ provider.first_name }} {{ provider.last_name }}</h1>
+      <div class="muted">Provider Profile</div>
+    </div>
+
+    <div>
+      {% if profile and profile.verification %}
+        {% set st = profile.verification.status %}
+        <span class="pill
+          {% if st == 'verified' %} verified
+          {% elif st == 'pending_review' %} pending
+          {% elif st == 'rejected' %} rejected
+          {% else %} unverified
+          {% endif %}
+        ">
+          {{ st.replace('_',' ') }}
+        </span>
+      {% else %}
+        <span class="pill unverified">unverified</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>About</h3>
+    {% if profile and profile.bio %}
+      <div class="bio">{{ profile.bio }}</div>
+    {% else %}
+      <div class="muted">No bio provided.</div>
+    {% endif %}
+  </div>
+
+  <div class="section">
+    <h3>Certifications</h3>
+    {% set certs = [] %}
+    {% if profile and profile.certifications %}
+      {% set raw = profile.certifications %}
+      {% for line in raw.replace('\r','\n').split('\n') %}
+        {% if line.strip() %}
+          {% set _ = certs.append(line.strip()) %}
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+
+    {% if certs %}
+      <ul class="certs">
+        {% for c in certs %}
+          <li>{{ c }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="muted">No certifications listed.</div>
+    {% endif %}
+  </div>
+
+  <div class="section">
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('main.services') }}">Back to Services</a>
+  </div>
+</div>
+{% endblock %}

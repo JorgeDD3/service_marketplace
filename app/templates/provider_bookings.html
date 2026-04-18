@@ -2,118 +2,347 @@
 {% block title %}Booking Requests{% endblock %}
 
 {% block content %}
-  <style>
-    /* Optional: highlight the targeted booking when arriving via #booking-123 */
-    li:target {
-      outline: 2px solid rgba(13,110,253,.35);
-      border-radius: 10px;
-      padding: 10px;
-      background: rgba(13,110,253,.05);
-    }
-  </style>
+<style>
+  .pb-wrap { max-width: 1100px; margin: 0 auto; }
+  .pb-card { border-radius: 18px; }
+  .pb-tight h1 { font-size: 34px; line-height: 1.1; margin: 0; }
+  .pb-tight .muted { color: #6b7280; }
+  .pb-tight .btn { padding: 8px 12px; }
+  .pb-tight .btn-sm { padding: 6px 10px; }
 
-  <h1>Booking Requests</h1>
+  .pb-item{
+    border:1px solid #e5e7eb;
+    border-radius:14px;
+    padding:14px;
+    background:#fff;
+  }
 
-  {% if not bookings %}
-    <p>No booking requests yet.</p>
-  {% else %}
-    <ul>
+  .pb-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 18px;
+    margin-top: 10px;
+  }
+  @media (max-width: 768px){
+    .pb-grid{ grid-template-columns: 1fr; }
+  }
+
+  .pb-k{ font-size:12px; color:#6b7280; }
+  .pb-v{ font-weight:600; }
+
+  /* highlight if navigated via #booking-123 */
+  li:target {
+    outline: 2px solid rgba(13,110,253,.35);
+    border-radius: 14px;
+    background: rgba(13,110,253,.05);
+  }
+</style>
+
+<div class="container pb-tight" style="padding-top: 24px; padding-bottom: 24px;">
+  <div class="pb-wrap">
+
+    <!-- Header card -->
+    <div class="card shadow-sm pb-card mb-3">
+      <div class="card-body" style="padding:16px;">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+          <div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <h1>Booking Requests</h1>
+              <span class="badge text-bg-light">Provider</span>
+            </div>
+            <div class="muted mt-1">
+              Review requests, respond, and message clients (unlocks after payment).
+            </div>
+          </div>
+          <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('provider.dashboard') }}">Dashboard</a>
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('provider.calendar_view') }}">Calendar</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if not bookings %}
+      <div class="alert alert-info">No booking requests yet.</div>
+    {% else %}
+
+      {# Split into sections using your existing fields #}
+      {% set needs_action = [] %}
+      {% set waiting_payment = [] %}
+      {% set history = [] %}
+
       {% for b in bookings %}
-        <li id="booking-{{ b.id }}" style="margin-bottom: 16px;">
-          <div>
-            <strong>Status:</strong>
-            <span class="badge {{ b.status }}">{{ b.status }}</span>
-
-            {% if b.payment_status == "paid" %}
-              <span class="badge bg-success" style="margin-left: 8px;">paid</span>
-            {% else %}
-              <span class="badge bg-warning text-dark" style="margin-left: 8px;">unpaid</span>
-            {% endif %}
-          </div>
-
-          <div>
-            <strong>Service:</strong>
-            <a href="{{ url_for('main.service_detail', service_id=b.service.id) }}">
-              {{ b.service.title }}
-            </a>
-          </div>
-
-          <div>
-            <strong>Client:</strong>
-            {{ b.client.first_name }} {{ b.client.last_name }}
-          </div>
-
-          <!-- scheduled booking time -->
-          <div>
-            <strong>Scheduled for:</strong>
-            {{ b.booking_datetime.strftime("%a %b %d, %Y %I:%M %p") if b.booking_datetime else "—" }}
-          </div>
-
-          <div>
-            <strong>Requested at:</strong>
-            {{ b.created_at.strftime("%a %b %d, %Y %I:%M %p") if b.created_at else "—" }}
-          </div>
-
-          {% if b.decided_at %}
-            <div>
-              <strong>Decided at:</strong>
-              {{ b.decided_at.strftime("%a %b %d, %Y %I:%M %p") }}
-            </div>
-          {% endif %}
-
-          {% if b.provider_note %}
-            <div><strong>Provider note:</strong> {{ b.provider_note }}</div>
-          {% endif %}
-
-          {% if b.payment_status == "paid" and b.paid_at %}
-            <div class="text-muted" style="margin-top: 6px;">
-              <small>
-                <strong>Paid at:</strong> {{ b.paid_at.strftime("%a %b %d, %Y %I:%M %p") }}
-                {% if b.payment_reference %}
-                  • <strong>Ref:</strong> {{ b.payment_reference }}
-                {% endif %}
-              </small>
-            </div>
-          {% endif %}
-
-          <div style="margin-top: 10px;">
-  {% if b.payment_status == "paid" %}
-    <a class="btn" href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">Messages</a>
-  {% else %}
-    <a class="btn" href="{{ url_for('main.checkout', booking_id=b.id) }}">View Checkout</a>
-    <span class="text-muted" style="margin-left: 8px;">
-      <small>Waiting on payment to unlock messaging.</small>
-    </span>
-  {% endif %}
-</div>
-
-          {% if b.status == "pending" %}
-            {% if b.payment_status == "paid" %}
-              <div style="margin-top: 10px;">
-                <form method="POST" action="{{ url_for('main.update_booking_status', booking_id=b.id) }}">
-                  <label>Note (optional)</label><br />
-                  <input type="text" name="provider_note" style="width: 420px;" placeholder="e.g., Can you do Tuesday at 6pm?" />
-                  <br /><br />
-                  <input type="hidden" name="status" value="accepted">
-                  <button class="btn" type="submit">Accept</button>
-                </form>
-
-                <form method="POST" action="{{ url_for('main.update_booking_status', booking_id=b.id) }}" style="margin-top: 8px;">
-                  <label>Note (optional)</label><br />
-                  <input type="text" name="provider_note" style="width: 420px;" placeholder="e.g., Not available this week." />
-                  <br /><br />
-                  <input type="hidden" name="status" value="declined">
-                  <button class="btn" type="submit">Decline</button>
-                </form>
-              </div>
-            {% else %}
-              <div class="text-muted" style="margin-top: 10px;">
-                <small>Waiting on client payment before you can accept or decline.</small>
-              </div>
-            {% endif %}
-          {% endif %}
-        </li>
+        {% if b.status == "pending" and b.payment_status == "paid" %}
+          {% set _ = needs_action.append(b) %}
+        {% elif b.status == "pending" and b.payment_status != "paid" %}
+          {% set _ = waiting_payment.append(b) %}
+        {% else %}
+          {% set _ = history.append(b) %}
+        {% endif %}
       {% endfor %}
-    </ul>
-  {% endif %}
+
+      <!-- Needs action -->
+      <div class="card shadow-sm pb-card mb-3">
+        <div class="card-body" style="padding:16px;">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="fw-semibold">Needs action</div>
+            <span class="badge text-bg-primary">{{ needs_action|length }}</span>
+          </div>
+          <div class="muted small mt-1 mb-3">Pending + paid requests you can accept or decline.</div>
+
+          {% if needs_action|length == 0 %}
+            <div class="muted">Nothing needs action right now.</div>
+          {% else %}
+            <div class="d-grid gap-2">
+              {% for b in needs_action %}
+                <div class="pb-item" id="booking-{{ b.id }}">
+                  <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                    <div>
+                      <div class="fw-semibold">
+                        <a href="{{ url_for('main.service_detail', service_id=b.service.id) }}">
+                          {{ b.service.title }}
+                        </a>
+                      </div>
+                      <div class="muted small">Client: {{ b.client.first_name }} {{ b.client.last_name }}</div>
+                    </div>
+                    <div class="d-flex gap-2">
+                      <span class="badge text-bg-warning">pending</span>
+                      <span class="badge text-bg-success">paid</span>
+                    </div>
+                  </div>
+
+                  <div class="pb-grid">
+                    <div>
+                      <div class="pb-k">Scheduled for</div>
+                      <div class="pb-v">{{ b.booking_datetime.strftime("%a %b %d, %Y %I:%M %p") if b.booking_datetime else "—" }}</div>
+                    </div>
+                    <div>
+                      <div class="pb-k">Requested at</div>
+                      <div class="pb-v">{{ b.created_at.strftime("%a %b %d, %Y %I:%M %p") if b.created_at else "—" }}</div>
+                    </div>
+                  </div>
+
+                  {% if b.provider_note %}
+                    <div class="muted small mt-2">
+                      <strong>Note:</strong> {{ b.provider_note }}
+                    </div>
+                  {% endif %}
+
+                  <div class="d-flex gap-2 mt-3 flex-wrap">
+                    <a class="btn btn-outline-secondary btn-sm"
+                       href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">
+                      Messages
+                    </a>
+
+                    <form method="POST" action="{{ url_for('main.update_booking_status', booking_id=b.id) }}" class="d-flex gap-2 flex-wrap">
+                      <input type="hidden" name="status" value="accepted">
+                      <input class="form-control form-control-sm" type="text" name="provider_note"
+                             style="max-width: 340px;"
+                             placeholder="Optional note (e.g., can you do Tue at 6pm?)" />
+                      <button class="btn btn-success btn-sm" type="submit">Accept</button>
+                    </form>
+
+                    <form method="POST" action="{{ url_for('main.update_booking_status', booking_id=b.id) }}" class="d-flex gap-2 flex-wrap">
+                      <input type="hidden" name="status" value="declined">
+                      <input class="form-control form-control-sm" type="text" name="provider_note"
+                             style="max-width: 340px;"
+                             placeholder="Optional note (e.g., not available this week)" />
+                      <button class="btn btn-outline-danger btn-sm" type="submit">Decline</button>
+                    </form>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Waiting on payment -->
+      <div class="card shadow-sm pb-card mb-3">
+        <div class="card-body" style="padding:16px;">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="fw-semibold">Waiting on payment</div>
+            <span class="badge text-bg-warning">{{ waiting_payment|length }}</span>
+          </div>
+          <div class="muted small mt-1 mb-3">Requests are locked until the client completes payment.</div>
+
+          {% if waiting_payment|length == 0 %}
+            <div class="muted">No unpaid pending requests.</div>
+          {% else %}
+            <div class="d-grid gap-2">
+              {% for b in waiting_payment %}
+                <div class="pb-item" id="booking-{{ b.id }}">
+                  <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                    <div>
+                      <div class="fw-semibold">
+                        <a href="{{ url_for('main.service_detail', service_id=b.service.id) }}">
+                          {{ b.service.title }}
+                        </a>
+                      </div>
+                      <div class="muted small">Client: {{ b.client.first_name }} {{ b.client.last_name }}</div>
+                    </div>
+                    <div class="d-flex gap-2">
+                      <span class="badge text-bg-warning">pending</span>
+                      <span class="badge bg-warning text-dark">unpaid</span>
+                    </div>
+                  </div>
+
+                  <div class="pb-grid">
+                    <div>
+                      <div class="pb-k">Scheduled for</div>
+                      <div class="pb-v">{{ b.booking_datetime.strftime("%a %b %d, %Y %I:%M %p") if b.booking_datetime else "—" }}</div>
+                    </div>
+                    <div>
+                      <div class="pb-k">Requested at</div>
+                      <div class="pb-v">{{ b.created_at.strftime("%a %b %d, %Y %I:%M %p") if b.created_at else "—" }}</div>
+                    </div>
+                  </div>
+
+                  <div class="d-flex gap-2 mt-3 flex-wrap align-items-center">
+                    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('main.checkout', booking_id=b.id) }}">
+                      View checkout
+                    </a>
+                    <span class="muted small">Messaging + accept/decline unlock after payment.</span>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- History -->
+      <div class="card shadow-sm pb-card">
+        <div class="card-body" style="padding:16px;">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="fw-semibold">History</div>
+            <span class="badge text-bg-light">{{ history|length }}</span>
+          </div>
+          <div class="muted small mt-1 mb-3">Accepted, declined, and cancelled bookings.</div>
+
+          {% if history|length == 0 %}
+            <div class="muted">No history yet.</div>
+          {% else %}
+
+            {% set recent_history = history[:3] %}
+            {% set older_history = history[3:] %}
+
+            <div class="d-grid gap-2">
+              {% for b in recent_history %}
+                <div class="pb-item" id="booking-{{ b.id }}">
+                  <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                    <div>
+                      <div class="fw-semibold">
+                        <a href="{{ url_for('main.service_detail', service_id=b.service.id) }}">
+                          {{ b.service.title }}
+                        </a>
+                      </div>
+                      <div class="muted small">Client: {{ b.client.first_name }} {{ b.client.last_name }}</div>
+                    </div>
+                    <div class="d-flex gap-2">
+                      <span class="badge text-bg-light">{{ b.status }}</span>
+                      <span class="badge text-bg-light">{{ b.payment_status }}</span>
+                    </div>
+                  </div>
+
+                  <div class="pb-grid">
+                    <div>
+                      <div class="pb-k">Scheduled for</div>
+                      <div class="pb-v">{{ b.booking_datetime.strftime("%a %b %d, %Y %I:%M %p") if b.booking_datetime else "—" }}</div>
+                    </div>
+                    <div>
+                      <div class="pb-k">Decided at</div>
+                      <div class="pb-v">{{ b.decided_at.strftime("%a %b %d, %Y %I:%M %p") if b.decided_at else "—" }}</div>
+                    </div>
+                  </div>
+
+                  {% if b.payment_status == "paid" and b.paid_at %}
+                    <div class="muted small mt-2">
+                      <strong>Paid at:</strong> {{ b.paid_at.strftime("%a %b %d, %Y %I:%M %p") }}
+                      {% if b.payment_reference %}
+                        • <strong>Ref:</strong> {{ b.payment_reference }}
+                      {% endif %}
+                    </div>
+                  {% endif %}
+
+                  <div class="mt-3">
+                    {% if b.payment_status == "paid" %}
+                      <a class="btn btn-outline-secondary btn-sm"
+                         href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">
+                        Messages
+                      </a>
+                    {% else %}
+                      <a class="btn btn-outline-primary btn-sm" href="{{ url_for('main.checkout', booking_id=b.id) }}">
+                        View checkout
+                      </a>
+                    {% endif %}
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+
+            {% if older_history|length > 0 %}
+              <div class="mt-3">
+                <button class="btn btn-outline-secondary btn-sm" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#historyCollapse"
+                        aria-expanded="false" aria-controls="historyCollapse">
+                  Show {{ older_history|length }} more
+                </button>
+
+                <div class="collapse mt-2" id="historyCollapse">
+                  <div class="d-grid gap-2">
+                    {% for b in older_history %}
+                      <div class="pb-item" id="booking-{{ b.id }}">
+                        <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                          <div>
+                            <div class="fw-semibold">
+                              <a href="{{ url_for('main.service_detail', service_id=b.service.id) }}">
+                                {{ b.service.title }}
+                              </a>
+                            </div>
+                            <div class="muted small">Client: {{ b.client.first_name }} {{ b.client.last_name }}</div>
+                          </div>
+                          <div class="d-flex gap-2">
+                            <span class="badge text-bg-light">{{ b.status }}</span>
+                            <span class="badge text-bg-light">{{ b.payment_status }}</span>
+                          </div>
+                        </div>
+
+                        <div class="pb-grid">
+                          <div>
+                            <div class="pb-k">Scheduled for</div>
+                            <div class="pb-v">{{ b.booking_datetime.strftime("%a %b %d, %Y %I:%M %p") if b.booking_datetime else "—" }}</div>
+                          </div>
+                          <div>
+                            <div class="pb-k">Decided at</div>
+                            <div class="pb-v">{{ b.decided_at.strftime("%a %b %d, %Y %I:%M %p") if b.decided_at else "—" }}</div>
+                          </div>
+                        </div>
+
+                        <div class="mt-3">
+                          {% if b.payment_status == "paid" %}
+                            <a class="btn btn-outline-secondary btn-sm"
+                               href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">
+                              Messages
+                            </a>
+                          {% else %}
+                            <a class="btn btn-outline-primary btn-sm" href="{{ url_for('main.checkout', booking_id=b.id) }}">
+                              View checkout
+                            </a>
+                          {% endif %}
+                        </div>
+                      </div>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+            {% endif %}
+
+          {% endif %}
+        </div>
+      </div>
+
+    {% endif %}
+  </div>
+</div>
 {% endblock %}

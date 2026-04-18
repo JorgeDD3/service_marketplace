@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+  <h1 class="mb-3">500 — Server Error</h1>
+  <p>Something went wrong on our end.</p>
+  <p class="text-muted">If this keeps happening, try again in a moment.</p>
+<a class="btn btn-primary" href="{{ url_for('main.favicon') | replace('favicon.ico','') }}">Go home</a>
+</div>
+{% endblock %}

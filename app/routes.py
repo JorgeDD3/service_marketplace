@@ -1,6 +1,7 @@
 # app/routes.py
 from datetime import datetime, timedelta, time
 import secrets
+from app.utils.flash import flash_success, flash_warning, flash_danger
 
 from flask import (
     Blueprint,
@@ -18,7 +19,7 @@ from flask_login import login_required, current_user
 
 from app.decorators import role_required
 from app.extensions import db
-from app.models import Service, Booking, ProviderProfile, ProviderAvailability, ProviderTimeOff
+from app.models import User, Service, Booking, ProviderProfile, ProviderAvailability, ProviderTimeOff
 
 main = Blueprint("main", __name__)
 
@@ -139,7 +140,8 @@ def generate_available_slots(service: Service, days_ahead: int = 7) -> list[date
                 cursor += timedelta(minutes=slot_minutes)
 
     slots.sort()
-    return slots[:60]
+    # Cap slots to avoid rendering huge pages, but allow ~3 weeks of 30-min slots
+    return slots[:500]
 
 
 @main.route("/")
@@ -183,6 +185,22 @@ def services():
     )
 
 
+@main.get("/providers/<int:provider_id>")
+def provider_public_profile(provider_id: int):
+    provider = User.query.get_or_404(provider_id)
+
+    # Only allow viewing real providers
+    if not provider.has_role("provider"):
+        abort(404)
+
+    profile = getattr(provider, "provider_profile", None)
+
+    return render_template(
+        "provider_public_profile.html",
+        provider=provider,
+        profile=profile,
+    )
+
 @main.route("/services/<int:service_id>")
 def service_detail(service_id: int):
     service = Service.query.get_or_404(service_id)
@@ -215,7 +233,7 @@ def service_detail(service_id: int):
             active_status = existing.status
 
     # Scheduling: compute slots for next 30 days (used by template)
-    available_slots = generate_available_slots(service, days_ahead=30)
+    available_slots = generate_available_slots(service, days_ahead=21)
 
     return render_template(
         "service_detail.html",
@@ -378,35 +396,28 @@ def my_bookings():
     return render_template("my_bookings.html", bookings=bookings)
 
 
-@main.route("/my/bookings/<int:booking_id>/cancel", methods=["POST"])
+@main.route("/bookings/<int:booking_id>/cancel", methods=["POST"])
 @login_required
-@role_required("client")
 def cancel_booking(booking_id: int):
     booking = Booking.query.get_or_404(booking_id)
 
-    # Ownership check: only the client who created it can cancel
+    # Ownership check: only the client who created the booking can cancel it
     if booking.client_id != current_user.id:
-        flash("You are not authorized to cancel this booking.", "danger")
+        flash_danger("You are not authorized to cancel this booking.")
         return redirect(url_for("main.my_bookings"))
 
-    # Guard: don't allow cancel after paid (demo checkout)
-    if booking.payment_status == "paid":
-        flash(
-            "This booking has been paid and can’t be canceled from the client side (demo checkout). Contact support/admin.",
-            "warning",
-        )
-        return redirect(url_for("main.my_bookings"))
+    # Only allow cancel while still pending (centralized rules)
+    if not booking.can_transition_to(Booking.STATUS_CANCELLED):
+        flash_warning(f"Cannot cancel a booking that is already '{booking.status}'.")
+        return redirect(url_for("main.my_bookings", _anchor=f"booking-{booking.id}"))
 
-    # Only cancel pending bookings
-    if booking.status != "pending":
-        flash(f"Cannot cancel a booking that is '{booking.status}'.", "warning")
-        return redirect(url_for("main.my_bookings"))
+    booking.status = Booking.STATUS_CANCELLED
+    booking.decided_at = datetime.utcnow()
 
-    booking.status = "cancelled"
     db.session.commit()
 
-    flash("Booking cancelled.", "success")
-    return redirect(url_for("main.my_bookings"))
+    flash_success("Booking cancelled.")
+    return redirect(url_for("main.my_bookings", _anchor=f"booking-{booking.id}"))
 
 # ---- Provider bookings ----
 @main.route("/provider/bookings")
@@ -436,28 +447,28 @@ def update_booking_status(booking_id: int):
 
     # Ownership check: only assigned provider can modify
     if booking.provider_id != current_user.id:
-        flash("You are not authorized to modify this booking.", "danger")
+        flash_danger("You are not authorized to modify this booking.")
         return redirect(url_for("main.provider_bookings"))
 
     # Guard: provider cannot accept/decline until client has paid (demo checkout)
     if booking.payment_status != "paid":
-        flash(
-            "This booking must be paid before you can accept or decline it (demo checkout).",
-            "warning",
+        flash_warning(
+            "This booking must be paid before you can accept or decline it (demo checkout)."
         )
         return redirect(url_for("main.provider_bookings", _anchor=f"booking-{booking.id}"))
 
     new_status = (request.form.get("status") or "").strip().lower()
-    allowed = {"accepted", "declined"}
 
-    if new_status not in allowed:
-        flash("Invalid status update.", "danger")
-        return redirect(url_for("main.provider_bookings"))
+    # Providers are only allowed to accept/decline
+    provider_allowed = {Booking.STATUS_ACCEPTED, Booking.STATUS_DECLINED}
+    if new_status not in provider_allowed:
+        flash_danger("Invalid status update.")
+        return redirect(url_for("main.provider_bookings", _anchor=f"booking-{booking.id}"))
 
-    # Only allow updates from pending
-    if booking.status != "pending":
-        flash(f"Cannot change a booking that is already '{booking.status}'.", "warning")
-        return redirect(url_for("main.provider_bookings"))
+    # Enforce model-defined state transitions
+    if not booking.can_transition_to(new_status):
+        flash_warning(f"Cannot change a booking that is already '{booking.status}'.")
+        return redirect(url_for("main.provider_bookings", _anchor=f"booking-{booking.id}"))
 
     # Save decision + optional note
     booking.status = new_status
@@ -466,11 +477,72 @@ def update_booking_status(booking_id: int):
 
     db.session.commit()
 
-    flash(f"Booking {new_status}.", "success")
+    flash_success(f"Booking {new_status}.")
     return redirect(url_for("main.provider_bookings", _anchor=f"booking-{booking.id}"))
 
-# Temporary RBAC smoke-test route
-@main.route("/admin-only")
-@role_required("admin")
-def admin_only():
-    return "admin ok"
+# ---- Provider services (manage) ----
+@main.route("/provider/services/<int:service_id>/delete", methods=["POST"])
+@login_required
+@role_required("provider")
+def provider_delete_service(service_id: int):
+    service = Service.query.get_or_404(service_id)
+
+    # Ownership check
+    if not service.provider_profile or service.provider_profile.user_id != current_user.id:
+        flash_danger("You are not authorized to delete this service.")
+        return redirect(url_for("provider_services.my_services"))
+
+    # IMPORTANT: If *any* bookings exist, we cannot delete without breaking FK integrity
+    # (bookings.service_id is NOT NULL). Preserve history.
+    has_any_bookings = (
+        Booking.query.filter_by(service_id=service.id).first() is not None
+    )
+    if has_any_bookings:
+        flash_warning("This service has booking history and can’t be deleted. Hide it instead.")
+        return redirect(url_for("provider_services.my_services"))
+
+    db.session.delete(service)
+    db.session.commit()
+    flash_success("Service deleted.")
+    return redirect(url_for("provider_services.my_services"))
+
+@main.route("/provider/services/<int:service_id>/toggle", methods=["POST"])
+@login_required
+@role_required("provider")
+def provider_toggle_service(service_id: int):
+    service = Service.query.get_or_404(service_id)
+
+    # Ownership check
+    if not service.provider_profile or service.provider_profile.user_id != current_user.id:
+        flash_danger("You are not authorized to update this service.")
+        return redirect(url_for("provider_services.my_services"))
+
+    # If currently hidden, unhide is only allowed if it wasn't admin-moderated.
+    # We treat moderation_note as the "admin action reason" flag.
+    if not bool(service.is_active):
+        if service.moderation_note:
+            flash_warning("This service was hidden by an admin and can’t be unhidden here.")
+            return redirect(url_for("provider_services.my_services"))
+
+        service.is_active = True
+        db.session.commit()
+        flash_success("Service is now visible to clients.")
+        return redirect(url_for("provider_services.my_services"))
+
+    # If currently active, providers can always hide their own service
+    service.is_active = False
+    db.session.commit()
+    flash_success("Service hidden.")
+    return redirect(url_for("provider_services.my_services"))
+
+# ---- Health check (deployment / proxy verification) ----
+@main.get("/health")
+def health():
+    """
+    Lightweight health endpoint.
+    Useful for confirming the app is reachable through a proxy (or locally via curl).
+    """
+    return {
+        "status": "ok",
+        "utc": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+    }, 200

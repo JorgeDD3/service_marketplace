@@ -5,10 +5,9 @@ import os
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-
+from app.models import ProviderProfile, ProviderAvailability, ProviderVerification
 from app.extensions import db
 from app.decorators import role_required
-from app.models import ProviderProfile, ProviderAvailability
 
 provider = Blueprint("provider", __name__, url_prefix="/provider")
 
@@ -58,17 +57,21 @@ def dashboard():
 @login_required
 @role_required("provider")
 def verification():
-    """
-    Provider submits verification info.
-    Workflow: unverified/rejected -> pending_review
-    """
-    profile = ProviderProfile.query.filter_by(user_id=current_user.id).first_or_404()
+    # Provider must have a profile
+    profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
+    if not profile:
+        flash("Create your provider profile before requesting verification.", "warning")
+        return redirect(url_for("provider.profile"))
 
-    # Ensure a verification row exists
-    verification = profile.get_or_create_verification()
+    # Source of truth: provider_verifications.provider_profile_id
+    verification = ProviderVerification.query.filter_by(provider_profile_id=profile.id).first()
+    if verification is None:
+        verification = ProviderVerification(provider_profile_id=profile.id, status="not_submitted")
+        db.session.add(verification)
+        db.session.commit()
 
     if request.method == "POST":
-        # Only allow submission if not already pending/verified
+        # Guard: prevent resubmitting if already pending/verified
         if verification.status in ("pending_review", "verified"):
             flash("Your verification is already in progress or completed.", "info")
             return redirect(url_for("provider.verification"))
@@ -77,7 +80,11 @@ def verification():
         license_number = (request.form.get("license_number") or "").strip()
         portfolio_url = (request.form.get("portfolio_url") or "").strip()
 
-                # Optional uploads
+        if not legal_name:
+            flash("Legal name is required.", "danger")
+            return redirect(url_for("provider.verification"))
+
+        # Optional uploads (your helper already enforces type/size rules)
         try:
             id_doc = _save_verification_file(request.files.get("id_document"), profile.id, "id")
             cert_doc = _save_verification_file(request.files.get("certification"), profile.id, "cert")
@@ -96,7 +103,7 @@ def verification():
 
         verification.status = "pending_review"
         verification.submitted_at = datetime.utcnow()
-        verification.admin_notes = None  # clear old notes on resubmit
+        verification.admin_notes = None
         verification.reviewed_at = None
         verification.reviewed_by_admin_id = None
 
@@ -104,16 +111,19 @@ def verification():
         flash("Verification submitted! Status: pending review.", "success")
         return redirect(url_for("provider.verification"))
 
+    
+
     return render_template(
-    "provider/provider_verification.html",
-    profile=profile,
-    verification=verification,
-)
+        "provider/provider_verification.html",
+        profile=profile,
+        verification=verification,
+    )
 
 @provider.route("/profile", methods=["GET", "POST"])
 @login_required
 @role_required("provider")
 def profile():
+    
     # One-to-one: each provider has at most one ProviderProfile
     profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
 
@@ -156,7 +166,57 @@ def profile():
         flash("Provider profile updated.", "success")
 
     db.session.commit()
+
     return redirect(url_for("provider.profile"))
+
+@provider.route("/settings", methods=["GET", "POST"])
+@login_required
+@role_required("provider")
+def settings():
+    """
+    Provider settings (NO ERD changes):
+    - View account info (email + verification status)
+    - Change password (updates users.password_hash)
+    """
+    from werkzeug.security import check_password_hash, generate_password_hash
+
+    profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
+    verification_status = None
+    if profile:
+        v = ProviderVerification.query.filter_by(provider_profile_id=profile.id).first()
+        verification_status = v.status if v else None
+
+    if request.method == "POST":
+        current_pw = (request.form.get("current_password") or "").strip()
+        new_pw = (request.form.get("new_password") or "").strip()
+        confirm_pw = (request.form.get("confirm_password") or "").strip()
+
+        if not current_pw or not new_pw or not confirm_pw:
+            flash("All password fields are required.", "danger")
+            return redirect(url_for("provider.settings"))
+
+        if not check_password_hash(current_user.password_hash, current_pw):
+            flash("Current password is incorrect.", "danger")
+            return redirect(url_for("provider.settings"))
+
+        if len(new_pw) < 8:
+            flash("New password must be at least 8 characters.", "danger")
+            return redirect(url_for("provider.settings"))
+
+        if new_pw != confirm_pw:
+            flash("New password and confirmation do not match.", "danger")
+            return redirect(url_for("provider.settings"))
+
+        current_user.password_hash = generate_password_hash(new_pw)
+        db.session.commit()
+        flash("Password updated successfully.", "success")
+        return redirect(url_for("provider.settings"))
+
+    return render_template(
+        "provider/provider_settings.html",
+        email=current_user.email,
+        verification_status=verification_status,
+    )
 
 
 @provider.route("/availability", methods=["GET", "POST"])

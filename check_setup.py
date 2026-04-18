@@ -13,6 +13,8 @@ What it checks:
 - Roles exist (client/provider/admin)
 - User model has expected fields
 - login_manager.user_loader is present
+
+Also prints key production/proxy-related config values (cookies, scheme, etc.).
 """
 
 import os
@@ -36,6 +38,20 @@ def warn(msg: str):
 
 def fail(msg: str):
     print(f"[FAIL]{msg}")
+
+
+def print_cookie_and_proxy_config(app):
+    banner("Config — Proxy/Cookies (sanity)")
+
+    ok(f"ENV APP_CONFIG: {os.getenv('APP_CONFIG')}")
+    ok(f"PREFERRED_URL_SCHEME: {app.config.get('PREFERRED_URL_SCHEME')}")
+    ok(f"SESSION_COOKIE_PATH: {app.config.get('SESSION_COOKIE_PATH')}")
+    ok(f"SESSION_COOKIE_SECURE: {app.config.get('SESSION_COOKIE_SECURE')}")
+    ok(f"SESSION_COOKIE_HTTPONLY: {app.config.get('SESSION_COOKIE_HTTPONLY')}")
+    ok(f"SESSION_COOKIE_SAMESITE: {app.config.get('SESSION_COOKIE_SAMESITE')}")
+    ok(f"REMEMBER_COOKIE_SECURE: {app.config.get('REMEMBER_COOKIE_SECURE')}")
+    ok(f"REMEMBER_COOKIE_HTTPONLY: {app.config.get('REMEMBER_COOKIE_HTTPONLY')}")
+    ok(f"REMEMBER_COOKIE_SAMESITE: {app.config.get('REMEMBER_COOKIE_SAMESITE')}")
 
 
 def main():
@@ -67,6 +83,13 @@ def main():
         ok(f"SQLALCHEMY_DATABASE_URI: {app.config.get('SQLALCHEMY_DATABASE_URI')}")
     except Exception:
         warn("Could not print some config values (non-fatal).")
+
+    # ---- Step C2: Print cookie/proxy config (helps with Turing reverse proxy debugging) ----
+    try:
+        print_cookie_and_proxy_config(app)
+    except Exception:
+        warn("Could not print cookie/proxy config values (non-fatal).")
+        traceback.print_exc()
 
     # ---- Step D: Check extensions ----
     try:
