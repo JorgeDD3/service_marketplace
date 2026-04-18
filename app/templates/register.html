@@ -1,32 +1,116 @@
-<!doctype html>
-<html>
-  <body>
-    <h1>Register</h1>
+{# app/templates/register.html #}
+{% extends "base.html" %}
 
-    <form method="POST">
-      <label>First Name</label><br />
-      <input name="first_name" type="text" required /><br /><br />
+{% block title %}Create Account{% endblock %}
 
-      <label>Last Name</label><br />
-      <input name="last_name" type="text" required /><br /><br />
+{% block content %}
+<div class="container py-5" style="max-width: 920px;">
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-7">
 
-      <label>Email</label><br />
-      <input name="email" type="email" required /><br /><br />
+      <div class="text-center mb-4">
+        <h1 class="h3 mb-1">Create your account</h1>
+        <p class="text-muted mb-0">Join as a client or provider. It only takes a minute.</p>
+      </div>
 
-      <label>Password</label><br />
-      <input name="password" type="password" required /><br /><br />
+      <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body p-4 p-md-5">
 
-      <label>Confirm Password</label><br />
-      <input name="confirm_password" type="password" required /><br /><br />
+          <form method="POST" action="{{ url_for('auth.register') }}" novalidate>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">First name</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  name="first_name"
+                  autocomplete="given-name"
+                  required
+                  autofocus
+                >
+              </div>
 
-      <label>Role</label><br />
-      <select name="role" required>
-        <option value="">Select...</option>
-        <option value="client">Client</option>
-        <option value="provider">Provider</option>
-      </select><br /><br />
+              <div class="col-md-6">
+                <label class="form-label">Last name</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  name="last_name"
+                  autocomplete="family-name"
+                  required
+                >
+              </div>
 
-      <button type="submit">Register</button>
-    </form>
-  </body>
-</html>
+              <div class="col-12">
+                <label class="form-label">Email</label>
+                <input
+                  type="email"
+                  class="form-control"
+                  name="email"
+                  autocomplete="email"
+                  placeholder="you@example.com"
+                  required
+                >
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Password</label>
+                <input
+                  type="password"
+                  class="form-control"
+                  name="password"
+                  autocomplete="new-password"
+                  minlength="8"
+                  required
+                >
+                <div class="form-text">At least 8 characters.</div>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Confirm password</label>
+                <input
+                  type="password"
+                  class="form-control"
+                  name="confirm_password"
+                  autocomplete="new-password"
+                  minlength="8"
+                  required
+                >
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Account type</label>
+                <select class="form-select" name="role" required>
+                  <option value="" selected disabled>Select…</option>
+                  <option value="client">Client (book services)</option>
+                  <option value="provider">Provider (offer services)</option>
+                </select>
+                <div class="form-text">
+                  Providers can create a profile, list services, and manage availability.
+                </div>
+              </div>
+
+              <div class="col-12 d-grid mt-2">
+                <button type="submit" class="btn btn-primary btn-lg rounded-3">
+                  Create account
+                </button>
+              </div>
+
+              <div class="col-12 text-center">
+                <span class="text-muted">Already have an account?</span>
+                <a href="{{ url_for('auth.login') }}" class="text-decoration-none ms-1">Log in</a>
+              </div>
+            </div>
+          </form>
+
+        </div>
+      </div>
+
+      <p class="text-center text-muted small mt-4 mb-0">
+        By creating an account, you agree to use the platform responsibly.
+      </p>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
