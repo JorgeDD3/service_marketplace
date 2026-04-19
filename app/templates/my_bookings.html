@@ -26,16 +26,12 @@
   }
 
   .muted{ color:#64748b; }
-
-  .subline{
-    margin-top: 4px;
-    color:#64748b;
-  }
+  .subline{ margin-top: 4px; color:#64748b; }
 
   .tabs{
     display:flex;
     gap:10px;
-    margin: 12px 0 16px 0;
+    margin: 12px 0 18px 0;
     flex-wrap: wrap;
     align-items:center;
   }
@@ -68,28 +64,29 @@
     box-shadow: 0 1px 2px rgba(0,0,0,0.06);
   }
 
-  .section-title{
-    margin: 18px 0 10px 0;
-    font-weight: 800;
-    font-size: 16px;
-    color:#0f172a;
-  }
-
+  /* ====== Bigger cards, 2 per row ====== */
   .bookings-grid{
     display:grid;
-    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
     align-items: stretch;
   }
 
   .booking-card{
     background:#fff;
     border:1px solid #e5e7eb;
-    border-radius: 16px;
-    padding: 16px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    border-radius: 18px;
+    padding: 18px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.05);
     display:flex;
     flex-direction:column;
+    min-height: 260px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .booking-card:hover{
+    transform: translateY(-2px);
+    box-shadow: 0 10px 26px rgba(0,0,0,0.08);
   }
 
   .booking-top{
@@ -97,69 +94,127 @@
     align-items:flex-start;
     justify-content:space-between;
     gap:12px;
-    margin-bottom:10px;
+    margin-bottom:12px;
   }
+
+  .title-wrap{ min-width: 0; }
 
   .booking-title{
     margin:0;
-    font-size: 18px;
-    font-weight: 800;
-    line-height: 1.2;
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
   }
 
-  .booking-title a{ text-decoration:none; }
+  .booking-title a{
+    text-decoration:none;
+    color:#0f172a;
+  }
+  .booking-title a:hover{ text-decoration: underline; }
+
+  .provider-line{
+    margin-top: 6px;
+    color:#475569;
+    font-weight: 600;
+  }
 
   .badge-row{
     display:flex;
     flex-wrap:wrap;
     gap:8px;
     justify-content:flex-end;
+    align-items:flex-start;
+    text-transform: lowercase;
   }
 
+  /* Paid/unpaid + next step pills */
   .pill{
     display:inline-block;
     padding:4px 10px;
     border-radius:999px;
     font-size: 0.85rem;
-    font-weight: 700;
+    font-weight: 800;
     border:1px solid #e5e7eb;
     background:#ffffff;
-    text-transform: lowercase;
   }
-
   .pill.paid{ border-left: 6px solid #16a34a; }
   .pill.unpaid{ border-left: 6px solid #f59e0b; }
 
-  .booking-meta{
+  .pill.next{
+    border-left: 6px solid #2563eb;
+    background: #eef2ff;
+    color: #1d4ed8;
+  }
+  .pill.next.warn{
+    border-left: 6px solid #f59e0b;
+    background: #fff7ed;
+    color: #9a3412;
+  }
+  .pill.next.good{
+    border-left: 6px solid #16a34a;
+    background: #ecfdf5;
+    color: #166534;
+  }
+
+  /* Cleaner meta section */
+  .meta-grid{
     display:grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px 14px;
+    gap: 10px 14px;
+    margin-top: 8px;
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #f8fafc;
+  }
+
+  .meta-item{
+    font-size: 0.95rem;
+    color:#0f172a;
+  }
+
+  .meta-label{
+    display:block;
+    font-size: 0.78rem;
+    color:#64748b;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: 2px;
+  }
+
+  .meta-value{
+    font-weight: 800;
+    color:#0f172a;
+  }
+
+  .note{
     margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
   }
+  .note .meta-label{ margin-bottom: 4px; }
 
-  .meta-item{ font-size: 0.95rem; }
-  .meta-item strong{ font-weight:800; }
-
-  .divider{
-    height:1px;
-    background:#e5e7eb;
-    margin: 14px 0 12px 0;
-  }
-
-  .booking-actions{
+  /* Actions at bottom */
+  .actions{
     display:flex;
     align-items:center;
-    flex-wrap:wrap;
-    gap:10px;
+    justify-content:space-between;
+    gap: 10px;
+    flex-wrap: wrap;
     margin-top:auto;
+    padding-top: 14px;
   }
 
   .btn{
     background:#2563eb;
     color:#fff;
-    border-radius:10px;
+    border-radius:12px;
     padding:10px 14px;
-    font-weight:800;
+    font-weight:900;
     text-decoration:none;
     border:none;
     display:inline-block;
@@ -180,11 +235,11 @@
   .hint{
     color:#64748b;
     font-size: 12px;
+    font-weight: 700;
   }
 
-  @media (max-width: 520px){
+  @media (max-width: 980px){
     .bookings-grid{ grid-template-columns: 1fr; }
-    .booking-meta{ grid-template-columns: 1fr; }
   }
 </style>
 
@@ -193,8 +248,8 @@
     <h1 class="page-title">My Sessions</h1>
     <div class="subline">See what’s next, what needs action, and your past sessions.</div>
     <div id="sessionsSummary" class="subline" style="font-size: 0.95rem; margin-top: 6px;">
-  Upcoming: — • Past: — • Total: —
-</div>
+      Upcoming: — • Past: — • Total: —
+    </div>
   </div>
   <div class="muted">Checkout unlocks messaging.</div>
 </div>
@@ -226,76 +281,88 @@
     {% for b in bookings %}
       <div class="booking-card" id="booking-{{ b.id }}" data-status="{{ b.status }}" data-paid="{{ b.payment_status }}">
         <div class="booking-top">
-          <div>
+          <div class="title-wrap">
             <div class="booking-title">
               <a href="{{ url_for('main.service_detail', service_id=b.service.id) }}">
                 {{ b.service.title }}
               </a>
             </div>
-            <div class="muted" style="margin-top:4px;">
-              Provider: {{ b.provider.first_name }} {{ b.provider.last_name }}
+            <div class="provider-line">
+              Provider: <span class="muted" style="font-weight:800;">{{ b.provider.first_name }} {{ b.provider.last_name }}</span>
             </div>
           </div>
 
           <div class="badge-row">
             <span class="status-badge {{ b.status }}">{{ b.status }}</span>
+
             {% if b.payment_status == "paid" %}
               <span class="pill paid">paid</span>
             {% else %}
               <span class="pill unpaid">unpaid</span>
             {% endif %}
-          </div>
-        </div>
 
-        <div class="booking-meta">
-          <div class="meta-item">
-            <strong>Scheduled:</strong>
-            {{ b.booking_datetime.strftime("%a %b %d, %Y %I:%M %p") if b.booking_datetime else "—" }}
-          </div>
-
-          <div class="meta-item">
-            <strong>Requested:</strong>
-            {{ b.created_at.strftime("%a %b %d, %Y %I:%M %p") if b.created_at else "—" }}
-          </div>
-
-          <div class="meta-item">
-            <strong>Decided:</strong>
-            {{ b.decided_at.strftime("%a %b %d, %Y %I:%M %p") if b.decided_at else "—" }}
-          </div>
-
-          <div class="meta-item">
-            <strong>Paid at:</strong>
-            {% if b.payment_status == "paid" and b.paid_at %}
-              {{ b.paid_at.strftime("%a %b %d, %Y %I:%M %p") }}
-              {% if b.payment_reference %}
-                <span class="muted">• Ref: {{ b.payment_reference }}</span>
-              {% endif %}
+            {% if b.payment_status != "paid" %}
+              <span class="pill next warn">needs checkout</span>
             {% else %}
-              —
+              {% if b.status == "pending" %}
+                <span class="pill next">awaiting provider</span>
+              {% else %}
+                <span class="pill next good">ready to message</span>
+              {% endif %}
             {% endif %}
           </div>
-
-          {% if b.provider_note %}
-            <div class="meta-item" style="grid-column: 1 / -1;">
-              <strong>Provider note:</strong> {{ b.provider_note }}
-            </div>
-          {% endif %}
         </div>
 
-        <div class="divider"></div>
+        <div class="meta-grid">
+          <div class="meta-item">
+            <span class="meta-label">Scheduled</span>
+            <span class="meta-value">
+              {{ b.booking_datetime.strftime("%a %b %d, %Y %I:%M %p") if b.booking_datetime else "—" }}
+            </span>
+          </div>
 
-        <div class="booking-actions">
-          {% if b.payment_status == "paid" %}
-            <a class="btn secondary" href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">
-              Message
-            </a>
-            <a class="btn ghost" href="{{ url_for('main.service_detail', service_id=b.service.id) }}">
-              View
-            </a>
-          {% else %}
-            <a class="btn" href="{{ url_for('main.checkout', booking_id=b.id) }}">Checkout</a>
-            <span class="hint">Pay to unlock messaging.</span>
-          {% endif %}
+          <div class="meta-item">
+            <span class="meta-label">Status</span>
+            <span class="meta-value">{{ b.status }}</span>
+          </div>
+
+          <div class="meta-item">
+            <span class="meta-label">Requested</span>
+            <span class="meta-value">
+              {{ b.created_at.strftime("%b %d, %Y %I:%M %p") if b.created_at else "—" }}
+            </span>
+          </div>
+
+          <div class="meta-item">
+            <span class="meta-label">Paid</span>
+            <span class="meta-value">
+              {% if b.payment_status == "paid" and b.paid_at %}
+                {{ b.paid_at.strftime("%b %d, %Y %I:%M %p") }}
+              {% else %}
+                —
+              {% endif %}
+            </span>
+          </div>
+        </div>
+
+        {% if b.provider_note %}
+          <div class="note">
+            <span class="meta-label">Provider note</span>
+            <div class="meta-value" style="font-weight:700;">{{ b.provider_note }}</div>
+          </div>
+        {% endif %}
+
+        <div class="actions">
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            {% if b.payment_status == "paid" %}
+              <a class="btn secondary" href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">Message</a>
+              <a class="btn ghost" href="{{ url_for('main.service_detail', service_id=b.service.id) }}">View</a>
+            {% else %}
+              <a class="btn" href="{{ url_for('main.checkout', booking_id=b.id) }}">Checkout</a>
+              <span class="hint">Pay to unlock messaging.</span>
+              <a class="btn ghost" href="{{ url_for('main.service_detail', service_id=b.service.id) }}">View</a>
+            {% endif %}
+          </div>
 
           {% if b.status == "pending" and b.payment_status != "paid" %}
             <form method="POST" action="{{ url_for('main.cancel_booking', booking_id=b.id) }}" style="display:inline;">
@@ -313,20 +380,15 @@
   const cards = Array.from(document.querySelectorAll(".booking-card"));
   const tabs = Array.from(document.querySelectorAll("#bookingTabs .tab"));
 
-  // Upcoming = sessions that are still in play for the client
-  // (pending/accepted) plus anything paid that isn't cancelled/declined/completed.
   const upcomingStatuses = new Set(["pending", "accepted"]);
   const pastStatuses = new Set(["declined", "cancelled", "completed"]);
 
-  function getStatus(card){
-    return (card.dataset.status || "").toLowerCase();
-  }
+  function getStatus(card){ return (card.dataset.status || "").toLowerCase(); }
 
   function isUpcoming(card){
     const status = getStatus(card);
     if (upcomingStatuses.has(status)) return true;
 
-    // If it's paid and not clearly "past", treat it as upcoming/active
     const paid = (card.dataset.paid || "").toLowerCase() === "paid";
     if (paid && !pastStatuses.has(status)) return true;
 
@@ -363,10 +425,11 @@
     document.getElementById("countAll").textContent = `(${total})`;
     document.getElementById("countUpcoming").textContent = `(${upcomingCount})`;
     document.getElementById("countPast").textContent = `(${pastCount})`;
+
     const summary = document.getElementById("sessionsSummary");
-if (summary) {
-  summary.textContent = `Upcoming: ${upcomingCount} • Past: ${pastCount} • Total: ${total}`;
-}
+    if (summary) {
+      summary.textContent = `Upcoming: ${upcomingCount} • Past: ${pastCount} • Total: ${total}`;
+    }
   }
 
   tabs.forEach((tab) => {
@@ -378,7 +441,7 @@ if (summary) {
   });
 
   updateCounts();
-  applyFilter("upcoming"); // default view
+  applyFilter("upcoming");
 })();
 </script>
 {% endblock %}
