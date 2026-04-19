@@ -12,7 +12,7 @@
       <h1 class="mb-3">{{ service.title }}</h1>
 
       <p>
-                <strong>Provider:</strong>
+        <strong>Provider:</strong>
         <a href="{{ url_for('main.provider_public_profile', provider_id=service.provider_profile.user.id) }}"
            style="text-decoration:none; font-weight:800;">
           {{ service.provider_profile.user.first_name }} {{ service.provider_profile.user.last_name }}
@@ -41,14 +41,49 @@
         <p class="mt-3" style="max-width:650px;">
           {{ service.description }}
         </p>
-        <div class="mt-3 p-3" style="background:#e0f2fe; border:1px solid #bae6fd; border-radius:14px;">
-  <div style="font-weight:900; color:#0f172a; margin-bottom:6px;">Questions before booking?</div>
-  <div style="color:#0f172a;">
-    After you request a time, you can message this provider from <strong>My Bookings</strong> or <strong>Messages</strong>.
-    <span style="color:#0f172a; opacity:.85;">(Messaging is tied to bookings for privacy and access control.)</span>
-  </div>
-</div>
       {% endif %}
+
+      <!-- PRE-BOOK INQUIRY (Option A) -->
+      <div class="mt-3 p-3" style="background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); max-width:650px;">
+        <div style="font-weight:900; color:#0f172a; margin-bottom:6px;">Contact provider</div>
+        <div class="text-muted small" style="margin-bottom:10px;">
+          Ask a quick question before booking. <strong>Limit:</strong> 1 inquiry per service every 24 hours.
+        </div>
+
+        {% if current_user.is_authenticated and current_user.has_role('client') %}
+          <form method="POST" action="{{ url_for('main.service_inquiry', service_id=service.id) }}">
+            <label class="form-label mb-1" style="font-weight:800;">Message</label>
+            <textarea
+              class="form-control"
+              name="message"
+              rows="3"
+              maxlength="500"
+              required
+              placeholder="Example: Do you have availability this weekend? Are there materials I should bring?"
+              style="border-radius:12px;"
+            ></textarea>
+
+            <div class="d-flex justify-content-between align-items-center mt-2">
+              <div class="text-muted small">Max 500 characters.</div>
+              <button type="submit" class="btn btn-outline-primary" style="border-radius:12px; font-weight:800;">
+                Send inquiry
+              </button>
+            </div>
+
+            <div class="text-muted small mt-2">
+              If the provider replies, you’ll see it in <strong>Messages</strong>.
+            </div>
+          </form>
+        {% else %}
+          <div class="text-muted small mb-2">
+            Log in as a client to contact this provider.
+          </div>
+          <a class="btn btn-outline-primary" style="border-radius:12px; font-weight:800;"
+             href="{{ url_for('auth.login', next=request.path) }}">
+            Log in to contact
+          </a>
+        {% endif %}
+      </div>
 
       <a class="btn btn-outline-secondary mt-4"
          href="{{ url_for('main.services') }}">
@@ -66,7 +101,7 @@
           <h4 class="mb-3">Book Appointment</h4>
 
           {% if current_user.is_authenticated and current_user.has_role('client') %}
-{% endif %}
+          {% endif %}
 
           <p class="mb-1">
             <strong>Price:</strong>
@@ -130,10 +165,10 @@
 
             {# IMPORTANT: button is now type="button" so we can confirm first #}
             <button id="openConfirm"
-        type="button"
-        class="btn btn-primary w-100 mt-4">
-  Book Appointment
-</button>
+                    type="button"
+                    class="btn btn-primary w-100 mt-4">
+              Book Appointment
+            </button>
 
           </form>
 
@@ -505,7 +540,6 @@ document.addEventListener("DOMContentLoaded", function () {
     slots.forEach(slot => {
       slot.style.display = slot.dataset.date === dateStr ? "block" : "none";
     });
-    // When switching dates, clear any previously selected time to avoid accidental mismatch
     const checked = form ? form.querySelector('input[name="booking_datetime"]:checked') : null;
     if (checked) checked.checked = false;
   }
@@ -524,13 +558,13 @@ document.addEventListener("DOMContentLoaded", function () {
       year: "numeric"
     });
 
-    const jsDay = firstDay.getDay(); // 0=Sun..6=Sat (already Sunday-first)
+    const jsDay = firstDay.getDay();
 
-for (let i = 0; i < jsDay; i++) {
-  const blank = document.createElement("div");
-  blank.className = "calendar-day blank";
-  calendarGrid.appendChild(blank);
-}
+    for (let i = 0; i < jsDay; i++) {
+      const blank = document.createElement("div");
+      blank.className = "calendar-day blank";
+      calendarGrid.appendChild(blank);
+    }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -583,7 +617,6 @@ for (let i = 0; i < jsDay; i++) {
     buildCalendar();
   });
 
-  // --- Modal helpers ---
   function getSelectedSlotLabel() {
     if (!form) return null;
     const checked = form.querySelector('input[name="booking_datetime"]:checked');
