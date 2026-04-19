@@ -151,8 +151,12 @@ def home():
 
 @main.route("/services")
 def services():
-    search = request.args.get("search", "").strip()
-    category = request.args.get("category", "").strip()
+    # Support both param names:
+    # - new UI uses q
+    # - older links may still use search
+    search = (request.args.get("q") or request.args.get("search") or "").strip()
+    category = (request.args.get("category") or "").strip()
+    sort = (request.args.get("sort") or "").strip()
 
     query = Service.query.filter(Service.is_active.is_(True))
 
@@ -165,11 +169,23 @@ def services():
     if category:
         query = query.filter(Service.category == category)
 
-    services = query.order_by(Service.created_at.desc()).all()
+    # Sorting (no schema changes)
+    if sort == "price_low":
+        query = query.order_by(Service.price.asc(), Service.created_at.desc())
+    elif sort == "price_high":
+        query = query.order_by(Service.price.desc(), Service.created_at.desc())
+    elif sort == "title_az":
+        query = query.order_by(Service.title.asc(), Service.created_at.desc())
+    else:
+        # default: newest first (current behavior)
+        query = query.order_by(Service.created_at.desc())
 
-    # Get unique categories for filter buttons
+    services = query.all()
+
+    # Categories for pills (only from visible services so the UI matches inventory)
     categories = (
         db.session.query(Service.category)
+        .filter(Service.is_active.is_(True))
         .filter(Service.category.isnot(None))
         .distinct()
         .all()
@@ -182,8 +198,8 @@ def services():
         categories=categories,
         selected_category=category,
         search=search,
+        sort=sort,
     )
-
 
 @main.get("/providers/<int:provider_id>")
 def provider_public_profile(provider_id: int):
