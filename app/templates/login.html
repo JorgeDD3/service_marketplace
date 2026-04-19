@@ -3,74 +3,130 @@
 {% block title %}Login{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width: 980px;">
+<div class="container py-4" style="max-width: 1040px;">
   <div class="row justify-content-center">
-    <div class="col-lg-10">
-      <div class="row g-4 align-items-stretch">
+    <div class="col-12">
 
-        <!-- LEFT: Branding / Demo -->
-        <div class="col-md-6">
-          <div class="p-4 h-100 rounded-4 border bg-light">
-            <h2 class="fw-bold mb-2">Welcome back</h2>
-            <p class="text-muted mb-3">
-              Sign in to manage bookings, request services, and schedule appointments.
-            </p>
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden auth-shell">
+        <div class="row g-0 auth-row">
 
-            {% if config.DEBUG %}
-              <div class="small text-muted mb-2">Demo shortcuts</div>
-              <div class="d-grid gap-2">
-                <button type="button" class="btn btn-outline-primary demo-btn"
-                        data-email="client_demo@example.com"
-                        data-password="Password123!">
-                  Demo Client Login
-                </button>
+          <!-- LEFT: Brand + Visual -->
+          <div class="col-md-5 d-none d-md-block">
+            <div class="h-100 p-4 p-lg-5 text-white d-flex flex-column auth-left"
+                 style="background: linear-gradient(135deg, #0d6efd 0%, #084298 100%);">
 
-                <button type="button" class="btn btn-outline-success demo-btn"
-                        data-email="provider_demo@example.com"
-                        data-password="Password123!">
-                  Demo Provider Login
-                </button>
-
-                <button type="button" class="btn btn-outline-dark demo-btn"
-                        data-email="admin_demo@example.com"
-                        data-password="Password123!">
-                  Demo Admin Login
-                </button>
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <img
+                  src="{{ url_for('static', filename='brand/servicesphere-logo4.png') }}"
+                  alt="ServiceSphere"
+                  class="rounded-circle"
+                  style="
+                    height: 34px;
+                    width: 34px;
+                    object-fit: cover;
+                    border: 2px solid rgba(255,255,255,0.45);
+                    box-shadow: 0 6px 16px rgba(0,0,0,0.22);
+                    background: rgba(255,255,255,0.10);
+                  "
+                >
+                <div class="fw-semibold">ServiceSphere</div>
               </div>
 
-              <hr class="my-4">
-
-              <div class="text-muted small">
-                Tip: demo credentials are configured in
-                <code>templates/auth/login.html</code>.
+              <div class="mb-3">
+                <h1 class="h4 mb-2">Welcome back</h1>
+                <p class="text-white-50 mb-0">
+                  Sign in to manage bookings, message providers, and schedule appointments.
+                </p>
               </div>
-            {% else %}
-              <div class="p-3 rounded-3 border bg-white">
-                <div class="fw-semibold mb-1">Sign in</div>
-                <div class="text-muted small">
-                  Use your account email and password to continue.
+
+              <ul class="list-unstyled mb-3">
+                <li class="d-flex gap-2 mb-2">
+                  <span aria-hidden="true">✅</span>
+                  <span>Secure login with role-based access</span>
+                </li>
+                <li class="d-flex gap-2 mb-2">
+                  <span aria-hidden="true">✅</span>
+                  <span>Client + provider workflows</span>
+                </li>
+                <li class="d-flex gap-2">
+                  <span aria-hidden="true">✅</span>
+                  <span>Messaging + scheduling rules</span>
+                </li>
+              </ul>
+
+              <!-- Hero photo (fixed height so no scrolling) -->
+              <div class="mt-auto">
+                <div class="rounded-4 overflow-hidden border border-white border-opacity-25 auth-hero"
+                     style="box-shadow: 0 10px 26px rgba(0,0,0,0.25);">
+                  <img
+                    src="{{ url_for('static', filename='brand/login-hero.jpg') }}"
+                    alt="ServiceSphere in action"
+                    class="img-fluid"
+                    style="width: 100%; height: 200px; object-fit: cover;"
+                  >
                 </div>
-              </div>
-            {% endif %}
-          </div>
-        </div>
 
-        <!-- RIGHT: Login Card -->
-        <div class="col-md-6">
-          <div class="card shadow-sm rounded-4 h-100">
-            <div class="card-body p-4">
-              <h3 class="fw-bold mb-1">Login</h3>
-              <p class="text-muted mb-4">Use your account email and password.</p>
+                {% if config.DEBUG %}
+                <div class="mt-3">
+                  <button class="btn btn-outline-light w-100"
+                          type="button"
+                          data-bs-toggle="collapse"
+                          data-bs-target="#demoShortcuts"
+                          aria-expanded="false"
+                          aria-controls="demoShortcuts"
+                          style="border-radius: 12px;">
+                    Demo shortcuts (dev only)
+                  </button>
+
+                  <div class="collapse mt-2" id="demoShortcuts">
+                    <div class="bg-white bg-opacity-10 rounded-4 p-3">
+                      <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-outline-light demo-btn"
+                                data-email="client_demo@example.com"
+                                data-password="Password123!">
+                          Demo Client Login
+                        </button>
+
+                        <button type="button" class="btn btn-outline-light demo-btn"
+                                data-email="provider_demo@example.com"
+                                data-password="Password123!">
+                          Demo Provider Login
+                        </button>
+
+                        <button type="button" class="btn btn-outline-light demo-btn"
+                                data-email="admin_demo@example.com"
+                                data-password="Password123!">
+                          Demo Admin Login
+                        </button>
+                      </div>
+                      <div class="text-white-50 small mt-2">
+                        Buttons auto-fill and submit the form.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {% endif %}
+              </div>
+
+            </div>
+          </div>
+
+          <!-- RIGHT: Login form (vertically centered) -->
+          <div class="col-12 col-md-7">
+            <div class="p-4 p-lg-5 h-100 d-flex flex-column justify-content-center auth-right">
+
+              <div class="mb-4 text-center text-md-start">
+                <h2 class="h3 mb-1">Login</h2>
+                <p class="text-muted mb-0">Use your account email and password.</p>
+              </div>
 
               <form id="loginForm" method="POST" action="{{ url_for('auth.login') }}">
-                {# Flask-WTF CSRF support #}
                 {% if form and form.csrf_token %}
                   {{ form.csrf_token }}
                 {% endif %}
 
                 <div class="mb-3">
                   <label for="email" class="form-label">Email</label>
-
                   {% if form and form.email %}
                     {{ form.email(class_="form-control", id="email", placeholder="you@example.com") }}
                   {% else %}
@@ -96,13 +152,13 @@
                   </div>
                 </div>
 
-                <div class="d-grid gap-2">
-                  <button class="btn btn-primary btn-lg" type="submit">
+                <div class="d-grid gap-2 mt-3">
+                  <button class="btn btn-primary btn-lg rounded-3" type="submit">
                     Sign in
                   </button>
                 </div>
 
-                <div class="mt-3 d-flex justify-content-between align-items-center">
+                <div class="mt-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                   <div class="text-muted small">
                     Don’t have an account?
                     <a href="{{ url_for('auth.register') }}">Register</a>
@@ -113,36 +169,56 @@
                   </div>
                 </div>
 
-                {# Preserve ?next= redirects if you use them #}
                 {% if request.args.get('next') %}
                   <input type="hidden" name="next" value="{{ request.args.get('next') }}">
                 {% endif %}
               </form>
 
-              {% if config.DEBUG %}
-                <div class="mt-4 p-3 rounded-3 border bg-light">
-                  <div class="fw-semibold mb-1">Quick demo note</div>
-                  <div class="text-muted small">
-                    Demo buttons auto-fill and submit the form.
-                  </div>
+              <!-- Mobile-only hero (so it still looks great on phones) -->
+              <div class="d-md-none mt-4">
+                <div class="rounded-4 overflow-hidden border"
+                     style="box-shadow: 0 10px 26px rgba(0,0,0,0.10);">
+                  <img
+                    src="{{ url_for('static', filename='brand/login-hero.jpg') }}"
+                    alt="ServiceSphere in action"
+                    class="img-fluid"
+                    style="width: 100%; height: 180px; object-fit: cover;"
+                  >
                 </div>
-              {% endif %}
+              </div>
 
             </div>
           </div>
-        </div>
 
+        </div>
       </div>
+
     </div>
   </div>
 </div>
 
 <style>
+  /* Keep everything within one viewport height on desktop */
+  .auth-shell{
+    max-height: calc(100vh - 170px); /* nav + container padding buffer */
+  }
+  .auth-row{
+    height: 100%;
+  }
+  .auth-left, .auth-right{
+    min-height: 520px;
+  }
+
+  .auth-hero{
+    /* if the viewport is short, this prevents the photo from causing scroll */
+    max-height: 200px;
+  }
+
   .password-wrap{
     position: relative;
   }
   .password-wrap .password-input{
-    padding-right: 72px; /* space for toggle button */
+    padding-right: 76px;
   }
   .password-toggle{
     position: absolute;
@@ -160,11 +236,19 @@
   .password-toggle:hover{
     background: #eef2ff;
   }
+
+  /* On smaller heights, reduce padding a bit (prevents scroll) */
+  @media (max-height: 760px) and (min-width: 768px) {
+    .auth-shell{ max-height: calc(100vh - 140px); }
+    .auth-left{ padding: 1.25rem !important; }
+    .auth-right{ padding: 1.25rem !important; }
+    .auth-hero img{ height: 170px !important; }
+  }
 </style>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-  // Demo buttons (dev only) — enabled via data flag set by Jinja
+  // Demo buttons (dev only) — enabled via data flag set by base.html
   const demoEnabled = document.body.dataset.demoLogin === "1";
 
   if (demoEnabled) {
@@ -175,10 +259,8 @@ document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll(".demo-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         if (!form || !emailEl || !passEl) return;
-
         emailEl.value = btn.dataset.email || "";
         passEl.value = btn.dataset.password || "";
-
         form.submit();
       });
     });

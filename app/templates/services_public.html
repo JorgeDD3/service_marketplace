@@ -15,15 +15,16 @@
     margin: 0 auto;
   }
 
-    .services-hero {
+  .services-hero {
     text-align: center;
     margin: 6px 0 18px 0;
   }
 
   .services-hero h1 {
     margin-bottom: 8px;
-    font-weight: 700;
+    font-weight: 800;
     font-size: 2.4rem;
+    letter-spacing: -0.02em;
   }
 
   .services-hero p {
@@ -32,7 +33,7 @@
     font-size: 1.05rem;
   }
 
-    .services-categories {
+  .services-categories {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
@@ -49,7 +50,7 @@
     background: #fff;
     color: #495057;
     text-decoration: none;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 0.95rem;
     transition: all 0.15s ease;
   }
@@ -66,29 +67,30 @@
     color: #fff;
   }
 
-  .services-search {
-    max-width: 720px;
-    margin: 0 auto 28px auto;
-  }
-
-  .services-search form {
-    display: flex;
+  .controls-row{
+    max-width: 900px;
+    margin: 0 auto 22px auto;
+    display:flex;
     gap: 12px;
-    flex-wrap: wrap;
-    justify-content: center;
+    justify-content:center;
+    flex-wrap:wrap;
   }
 
-  .services-search .form-control {
+  .controls-row .form-control,
+  .controls-row .form-select,
+  .controls-row .btn{
+    height: 48px;
+    border-radius: 12px;
+  }
+
+  .controls-row .form-control{
     flex: 1 1 420px;
     min-width: 260px;
-    height: 48px;
-    border-radius: 12px;
   }
 
-  .services-search .btn {
-    height: 48px;
-    border-radius: 12px;
-    padding: 0 18px;
+  .controls-row .form-select{
+    flex: 0 0 220px;
+    min-width: 200px;
   }
 
   .services-results {
@@ -98,7 +100,7 @@
     font-size: 0.95rem;
   }
 
-    .services-grid {
+  .services-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 18px;
@@ -113,7 +115,7 @@
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
     display: flex;
     flex-direction: column;
-    min-height: 270px;
+    min-height: 280px;
     height: 100%;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
@@ -135,11 +137,12 @@
     margin: 0;
     font-size: 1.25rem;
     line-height: 1.25;
-    font-weight: 700;
+    font-weight: 800;
   }
 
   .service-title a {
     text-decoration: none;
+    color: #0f172a;
   }
 
   .service-title a:hover {
@@ -148,64 +151,64 @@
 
   .service-price {
     white-space: nowrap;
-    font-weight: 700;
+    font-weight: 800;
     font-size: 1.05rem;
     color: #198754;
+    text-align:right;
   }
 
   .service-duration {
-  font-size: 0.9rem;
-  color: #6c757d;
-  font-weight: 500;
-  margin-left: 4px;
-}
+    font-size: 0.9rem;
+    color: #6c757d;
+    font-weight: 600;
+    margin-left: 4px;
+  }
 
   .service-provider {
-    margin-bottom: 14px;
+    margin-bottom: 12px;
     color: #495057;
     font-size: 0.97rem;
   }
 
   .service-category-badge {
-  display: inline-block;
-  margin-bottom: 14px;
-  padding: 4px 10px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  border-radius: 999px;
-  background: #eef2ff;
-  color: #0d6efd;
-}
-  
+    display: inline-block;
+    margin-bottom: 14px;
+    padding: 4px 10px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: #0d6efd;
+  }
+
   .service-description {
     color: #212529;
-    margin-bottom: 20px;
+    margin-bottom: 18px;
     flex-grow: 1;
   }
 
-  .service-description p {
-    margin: 0;
-  }
+  .service-description p { margin: 0; }
 
   .read-more-link {
     display: inline-block;
     margin-top: 8px;
-    font-weight: 600;
+    font-weight: 700;
     text-decoration: none;
   }
 
-  .read-more-link:hover {
-    text-decoration: underline;
-  }
+  .read-more-link:hover { text-decoration: underline; }
 
   .service-actions {
     margin-top: auto;
     display: flex;
     justify-content: flex-start;
+    gap: 10px;
+    align-items:center;
   }
 
   .service-actions .btn {
-    border-radius: 10px;
+    border-radius: 12px;
+    font-weight: 800;
   }
 
   .empty-state {
@@ -222,6 +225,7 @@
   .empty-state h3 {
     margin-bottom: 8px;
     color: #212529;
+    font-weight: 800;
   }
 </style>
 
@@ -231,10 +235,10 @@
     <p>Browse provider offerings, compare options, and book a service that fits your needs.</p>
   </div>
 
-    {% if categories %}
+  {% if categories %}
     <div class="services-categories">
       <a
-        href="{{ url_for('main.services', search=search) }}"
+        href="{{ url_for('main.services', q=search, sort=sort) }}"
         class="category-pill {% if not selected_category %}active{% endif %}"
       >
         All
@@ -242,7 +246,7 @@
 
       {% for cat in categories %}
         <a
-          href="{{ url_for('main.services', category=cat, search=search) }}"
+          href="{{ url_for('main.services', category=cat, q=search, sort=sort) }}"
           class="category-pill {% if selected_category == cat %}active{% endif %}"
         >
           {{ cat }}
@@ -251,8 +255,14 @@
     </div>
   {% endif %}
 
-  <div class="services-search">
-    <form method="GET" action="{{ url_for('main.services') }}">
+  <div class="controls-row">
+    <form method="GET" action="{{ url_for('main.services') }}" class="d-flex gap-2 flex-wrap justify-content-center w-100">
+
+      {# preserve category when searching/sorting #}
+      {% if selected_category %}
+        <input type="hidden" name="category" value="{{ selected_category }}">
+      {% endif %}
+
       <input
         type="text"
         name="q"
@@ -260,8 +270,17 @@
         placeholder="Search by service title or description"
         value="{{ search or '' }}"
       >
-      <button type="submit" class="btn btn-primary">Search</button>
-      {% if search or selected_category %}
+
+      <select name="sort" class="form-select">
+        <option value="" {% if not sort %}selected{% endif %}>Sort: Recommended</option>
+        <option value="price_low" {% if sort == "price_low" %}selected{% endif %}>Price: Low to High</option>
+        <option value="price_high" {% if sort == "price_high" %}selected{% endif %}>Price: High to Low</option>
+        <option value="title_az" {% if sort == "title_az" %}selected{% endif %}>Title: A to Z</option>
+      </select>
+
+      <button type="submit" class="btn btn-primary">Apply</button>
+
+      {% if search or selected_category or sort %}
         <a href="{{ url_for('main.services') }}" class="btn btn-outline-secondary">Clear</a>
       {% endif %}
     </form>
@@ -270,17 +289,16 @@
   {% if search %}
     <div class="services-results">
       Showing results for <strong>"{{ search }}"</strong>
+      {% if selected_category %}
+        <span class="text-muted">in</span> <strong>{{ selected_category }}</strong>
+      {% endif %}
     </div>
   {% endif %}
 
   {% if not services %}
     <div class="empty-state">
       <h3>No services found</h3>
-      {% if q %}
-        <p>Try a different search term or clear the search to see all available services.</p>
-      {% else %}
-        <p>No services are available yet.</p>
-      {% endif %}
+      <p>Try a different search term, change categories, or clear filters to see all available services.</p>
     </div>
   {% else %}
     <div class="services-grid">
@@ -294,36 +312,36 @@
             </h2>
 
             <div class="service-price">
-  ${{ '%.2f'|format(s.price) }}
-  {% if s.duration_minutes %}
-    <span class="service-duration">• {{ s.duration_minutes }} min</span>
-  {% endif %}
-</div>
+              ${{ '%.2f'|format(s.price) }}
+              {% if s.duration_minutes %}
+                <span class="service-duration">• {{ s.duration_minutes }} min</span>
+              {% endif %}
+            </div>
           </div>
 
           <div class="service-provider">
-  Provider:
-  <strong>
-    {{ s.provider_profile.user.first_name }} {{ s.provider_profile.user.last_name }}
-    {% if s.provider_profile.verification and s.provider_profile.verification.status == "verified" %}
-      <span class="badge text-bg-success ms-2">Verified</span>
-    {% endif %}
-  </strong>
-</div>
+            Provider:
+            <strong>
+              {{ s.provider_profile.user.first_name }} {{ s.provider_profile.user.last_name }}
+              {% if s.provider_profile.verification and s.provider_profile.verification.status == "verified" %}
+                <span class="badge text-bg-success ms-2">Verified</span>
+              {% endif %}
+            </strong>
+          </div>
 
-{% if s.category %}
-  <div class="service-category-badge">
-    {% if s.category == "Academic Support" %}
-      🎓 {{ s.category }}
-    {% elif s.category == "Tech Help" %}
-      💻 {{ s.category }}
-    {% elif s.category == "Sports & Fitness" %}
-      ⛳ {{ s.category }}
-    {% else %}
-      📌 {{ s.category }}
-    {% endif %}
-  </div>
-{% endif %}
+          {% if s.category %}
+            <div class="service-category-badge">
+              {% if s.category == "Academic Support" %}
+                🎓 {{ s.category }}
+              {% elif s.category == "Tech Help" %}
+                💻 {{ s.category }}
+              {% elif s.category == "Sports & Fitness" %}
+                ⛳ {{ s.category }}
+              {% else %}
+                📌 {{ s.category }}
+              {% endif %}
+            </div>
+          {% endif %}
 
           <div class="service-description">
             {% set has_long_description = s.description and (s.description|length > 140) %}
@@ -344,7 +362,7 @@
 
           <div class="service-actions">
             <a class="btn btn-primary" href="{{ url_for('main.service_detail', service_id=s.id) }}">
-              View Details
+              View &amp; Book
             </a>
           </div>
         </div>
