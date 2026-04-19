@@ -12,17 +12,33 @@
 
           {# Left panel (desktop only): branding + value props + illustration #}
           <div class="col-md-5 d-none d-md-block">
-            <div class="h-100 p-4 p-lg-5 text-white"
+            <div class="h-100 p-4 p-lg-5 text-white d-flex flex-column"
                  style="background: linear-gradient(135deg, #0d6efd 0%, #084298 100%);">
+
               <div class="d-flex align-items-center gap-2 mb-4">
-                <div class="bg-white bg-opacity-25 rounded-3 px-2 py-1 fw-bold">SM</div>
-                <div class="fw-semibold">Service Marketplace</div>
+                <img
+  src="{{ url_for('static', filename='brand/servicesphere-logo4.png') }}"
+  alt="ServiceSphere"
+  class="rounded-circle"
+  style="
+    height: 36px;
+    width: 36px;
+    object-fit: cover;
+    padding: 0px;
+    background: rgba(255,255,255,0.10);
+    border: 2px solid rgba(255,255,255,0.45);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.22);
+  "
+>
+                <div class="fw-semibold">ServiceSphere</div>
               </div>
 
-              <h1 class="h4 mb-2">Create an account</h1>
-              <p class="text-white-50 mb-4">
-                Join as a client to book services, or as a provider to offer services and manage availability.
-              </p>
+              <div class="mb-4">
+                <h1 class="h4 mb-2">Create an account</h1>
+                <p class="text-white-50 mb-0">
+                  Join as a client to book services, or as a provider to offer services and manage availability.
+                </p>
+              </div>
 
               <ul class="list-unstyled mb-4">
                 <li class="d-flex gap-2 mb-2">
@@ -40,32 +56,33 @@
               </ul>
 
               <div class="bg-white bg-opacity-10 rounded-4 p-3 mt-auto">
-                {# Simple inline SVG so you don’t need hosted images #}
+                {# Smaller inline SVG for better visual balance #}
                 <svg viewBox="0 0 520 220" width="100%" height="auto" role="img" aria-label="Marketplace illustration">
                   <defs>
                     <linearGradient id="g1" x1="0" x2="1">
-                      <stop offset="0" stop-color="#ffffff" stop-opacity="0.35"/>
-                      <stop offset="1" stop-color="#ffffff" stop-opacity="0.12"/>
+                      <stop offset="0" stop-color="#ffffff" stop-opacity="0.32"/>
+                      <stop offset="1" stop-color="#ffffff" stop-opacity="0.10"/>
                     </linearGradient>
                   </defs>
                   <rect x="0" y="0" width="520" height="220" rx="18" fill="url(#g1)"/>
-                  <rect x="34" y="38" width="180" height="40" rx="10" fill="#ffffff" fill-opacity="0.22"/>
-                  <rect x="34" y="92" width="320" height="22" rx="10" fill="#ffffff" fill-opacity="0.18"/>
-                  <rect x="34" y="126" width="260" height="22" rx="10" fill="#ffffff" fill-opacity="0.18"/>
-                  <rect x="34" y="160" width="220" height="22" rx="10" fill="#ffffff" fill-opacity="0.18"/>
-                  <circle cx="430" cy="96" r="42" fill="#ffffff" fill-opacity="0.20"/>
-                  <rect x="388" y="148" width="86" height="26" rx="13" fill="#ffffff" fill-opacity="0.22"/>
+                  <rect x="34" y="42" width="180" height="36" rx="10" fill="#ffffff" fill-opacity="0.20"/>
+                  <rect x="34" y="92" width="320" height="20" rx="10" fill="#ffffff" fill-opacity="0.16"/>
+                  <rect x="34" y="124" width="260" height="20" rx="10" fill="#ffffff" fill-opacity="0.16"/>
+                  <rect x="34" y="156" width="220" height="20" rx="10" fill="#ffffff" fill-opacity="0.16"/>
+                  <circle cx="430" cy="98" r="40" fill="#ffffff" fill-opacity="0.18"/>
+                  <rect x="388" y="146" width="86" height="24" rx="12" fill="#ffffff" fill-opacity="0.20"/>
                 </svg>
               </div>
+
             </div>
           </div>
 
           {# Right panel: form #}
           <div class="col-12 col-md-7">
             <div class="p-4 p-lg-5">
-              <div class="mb-4">
-                <h2 class="h3 mb-1 text-center text-md-start">Create your account</h2>
-                <p class="text-muted mb-0 text-center text-md-start">Join as a client or provider.</p>
+              <div class="mb-4 text-center text-md-start">
+                <h2 class="h3 mb-1">Create your account</h2>
+                <p class="text-muted mb-0">Join as a client or provider.</p>
               </div>
 
               <form method="POST" action="{{ url_for('auth.register') }}" novalidate>
@@ -132,34 +149,67 @@
                   </div>
 
                   <div class="col-12">
-                    <div class="d-flex justify-content-between align-items-end">
-                      <label class="form-label mb-1">Account type</label>
-                      <small class="text-muted">Choose one</small>
-                    </div>
+  <div class="d-flex justify-content-between align-items-end">
+    <label class="form-label mb-1">Account type</label>
+    <small class="text-muted">Choose one</small>
+  </div>
 
-                    {# Role selection as “radio cards” for a more professional UX #}
-                    <div class="row g-2">
-                      <div class="col-sm-6">
-                        <input class="btn-check" type="radio" name="role" id="role-client" value="client" required>
-                        <label class="btn w-100 text-start border rounded-3 p-3" for="role-client">
-                          <div class="fw-semibold">Client</div>
-                          <div class="text-muted small">Browse and book services</div>
-                        </label>
-                      </div>
+  <div class="row g-2">
+    <div class="col-sm-6 d-flex">
+      <input class="btn-check" type="radio" name="role" id="role-client" value="client" required>
+      <label class="btn w-100 text-start border rounded-3 p-3 d-flex flex-column"
+             for="role-client"
+             style="min-height: 84px;">
+        <div class="fw-semibold">Client</div>
+        <div class="text-muted small mt-1">Browse and book services</div>
+      </label>
+    </div>
 
-                      <div class="col-sm-6">
-                        <input class="btn-check" type="radio" name="role" id="role-provider" value="provider" required>
-                        <label class="btn w-100 text-start border rounded-3 p-3" for="role-provider">
-                          <div class="fw-semibold">Provider</div>
-                          <div class="text-muted small">Offer services & manage availability</div>
-                        </label>
-                      </div>
-                    </div>
+    <div class="col-sm-6 d-flex">
+      <input class="btn-check" type="radio" name="role" id="role-provider" value="provider" required>
+      <label class="btn w-100 text-start border rounded-3 p-3 d-flex flex-column"
+             for="role-provider"
+             style="min-height: 84px;">
+        <div class="fw-semibold">Provider</div>
+        <div class="text-muted small mt-1">Offer services & manage availability</div>
+      </label>
+    </div>
+  </div>
 
-                    <div class="form-text mt-2">
-                      Providers can create a profile, list services, and manage availability.
-                    </div>
-                  </div>
+  <div id="role-help" class="form-text mt-2">
+    Please choose Client or Provider.
+  </div>
+
+  <style>
+    #role-client:checked + label,
+    #role-provider:checked + label {
+      border-color: rgba(13, 110, 253, 0.65) !important;
+      box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+    }
+  </style>
+
+  <script>
+    (function () {
+      const client = document.getElementById("role-client");
+      const provider = document.getElementById("role-provider");
+      const help = document.getElementById("role-help");
+
+      function updateHelp() {
+        if (client.checked) {
+          help.textContent = "Clients can browse services, book appointments, and message providers after checkout.";
+        } else if (provider.checked) {
+          help.textContent = "Providers can create a profile, list services, manage availability, and respond to bookings.";
+        } else {
+          help.textContent = "Please choose Client or Provider.";
+        }
+      }
+
+      client.addEventListener("change", updateHelp);
+      provider.addEventListener("change", updateHelp);
+      updateHelp();
+    })();
+  </script>
+</div>
 
                   <div class="col-12 d-grid mt-2">
                     <button type="submit" class="btn btn-primary btn-lg rounded-3">
