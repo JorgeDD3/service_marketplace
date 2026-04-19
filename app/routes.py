@@ -19,7 +19,7 @@ from flask_login import login_required, current_user
 
 from app.decorators import role_required
 from app.extensions import db
-from app.models import User, Service, Booking, ProviderProfile, ProviderAvailability, ProviderTimeOff
+from app.models import User, Service, Booking, Message, ProviderProfile, ProviderAvailability, ProviderTimeOff
 
 main = Blueprint("main", __name__)
 
@@ -258,6 +258,85 @@ def service_detail(service_id: int):
         active_status=active_status,
         available_slots=available_slots,
     )
+
+@main.route("/services/<int:service_id>/inquiry", methods=["POST"])
+@login_required
+@role_required("client")
+def service_inquiry(service_id: int):
+    """
+    Pre-book inquiry messaging without schema changes.
+
+    Implementation strategy:
+      - Reuse Booking + Conversation + Message (no new tables)
+      - Create a special "inquiry booking" (tagged) to anchor the conversation
+      - Rate limit: 1 inquiry per (client, service) per 24 hours
+      - Use far-future booking_datetime placeholder to satisfy NOT NULL constraint
+    """
+    service = Service.query.get_or_404(service_id)
+
+    # Block inquiries for hidden services
+    if not service.is_active:
+        abort(404)
+
+    body = (request.form.get("message") or "").strip()
+    if not body:
+        flash("Please enter a message.", "warning")
+        return redirect(url_for("main.service_detail", service_id=service.id))
+
+    if len(body) > 500:
+        flash("Message is too long (max 500 characters).", "warning")
+        return redirect(url_for("main.service_detail", service_id=service.id))
+
+    now = datetime.utcnow()
+    cutoff = now - timedelta(hours=24)
+
+    inquiry_prefix = "[INQUIRY]"
+    existing = (
+        Booking.query
+        .filter_by(client_id=current_user.id, service_id=service.id)
+        .filter(Booking.created_at >= cutoff)
+        .filter(Booking.provider_note.isnot(None))
+        .filter(Booking.provider_note.ilike(f"{inquiry_prefix}%"))
+        .order_by(Booking.created_at.desc())
+        .first()
+    )
+
+    if existing:
+        convo = existing.get_or_create_conversation()
+        flash("You already sent an inquiry for this service recently. Continuing that thread.", "info")
+        return redirect(url_for("messages.booking_thread", booking_id=existing.id, _anchor="compose"))
+
+    # Create an "inquiry booking" to anchor a conversation (no schema changes)
+    provider_user_id = service.provider_profile.user_id
+
+    inquiry_booking = Booking(
+        provider_id=provider_user_id,
+        client_id=current_user.id,
+        service_id=service.id,
+        # Placeholder datetime (far future) to satisfy NOT NULL.
+        # We'll hide these from the Sessions dashboard in a later micro-step.
+        booking_datetime=datetime(2099, 1, 1, 0, 0, 0),
+        duration_minutes=0,
+        status=Booking.STATUS_PENDING,
+        payment_status="unpaid",
+        provider_note=f"{inquiry_prefix} Pre-book inquiry",
+    )
+
+    db.session.add(inquiry_booking)
+    db.session.commit()
+
+    convo = inquiry_booking.get_or_create_conversation()
+
+    msg = Message(
+        conversation_id=convo.id,
+        sender_id=current_user.id,
+        body=body,
+    )
+    db.session.add(msg)
+    db.session.commit()
+
+    flash("Inquiry sent to the provider.", "success")
+    return redirect(url_for("messages.booking_thread", booking_id=inquiry_booking.id, _anchor="compose"))
 
 
 @main.route("/services/<int:service_id>/book", methods=["POST"])
