@@ -192,6 +192,9 @@
   <div>
     <h1 class="page-title">My Sessions</h1>
     <div class="subline">See what’s next, what needs action, and your past sessions.</div>
+    <div id="sessionsSummary" class="subline" style="font-size: 0.95rem; margin-top: 6px;">
+  Upcoming: — • Past: — • Total: —
+</div>
   </div>
   <div class="muted">Checkout unlocks messaging.</div>
 </div>
@@ -360,6 +363,10 @@
     document.getElementById("countAll").textContent = `(${total})`;
     document.getElementById("countUpcoming").textContent = `(${upcomingCount})`;
     document.getElementById("countPast").textContent = `(${pastCount})`;
+    const summary = document.getElementById("sessionsSummary");
+if (summary) {
+  summary.textContent = `Upcoming: ${upcomingCount} • Past: ${pastCount} • Total: ${total}`;
+}
   }
 
   tabs.forEach((tab) => {
