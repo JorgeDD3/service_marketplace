@@ -482,14 +482,21 @@ def checkout(booking_id: int):
 @login_required
 @role_required("client")
 def my_bookings():
+    # Hide inquiry-only "pseudo bookings" from the Sessions dashboard.
+    # Inquiries are still accessible via Messages.
+    inquiry_prefix = "[INQUIRY]"
+
     bookings = (
         Booking.query
-        .filter_by(client_id=current_user.id)
+        .filter(Booking.client_id == current_user.id)
+        .filter(
+            (Booking.provider_note.is_(None)) |
+            (~Booking.provider_note.ilike(f"{inquiry_prefix}%"))
+        )
         .order_by(Booking.created_at.desc())
         .all()
     )
     return render_template("my_bookings.html", bookings=bookings)
-
 
 @main.route("/bookings/<int:booking_id>/cancel", methods=["POST"])
 @login_required
