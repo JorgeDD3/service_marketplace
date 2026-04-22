@@ -79,13 +79,20 @@ nav a:hover{
 
 .container{
     padding:60px 40px;
-    max-width:1100px;
-    margin:auto;
+    max-width: 100%;
+    margin: 0;
 }
 
 .container-wide{
     padding:40px;
     max-width:1600px;
+    margin:auto;
+}
+
+/* Dashboard pages: wider + much less vertical padding (prevents scroll) */
+.container-dashboard{
+    padding:18px 20px;
+    max-width:1700px;
     margin:auto;
 }
 
@@ -337,11 +344,11 @@ cursor:not-allowed;
 
 <!-- MAIN CONTENT -->
 
-<div class="container">
+<div class="{% block container_class %}container{% endblock %}">
 
-<div class="flash-wrap">
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-wrap">
       {% for category, message in messages %}
         {% set cat = category if category in ['success','info','warning','danger'] else 'info' %}
         <div class="flash {{ cat }}" role="alert" aria-live="polite" data-autodismiss="1">
@@ -351,9 +358,9 @@ cursor:not-allowed;
           </div>
         </div>
       {% endfor %}
-    {% endif %}
-  {% endwith %}
-</div>
+    </div>
+  {% endif %}
+{% endwith %}
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {

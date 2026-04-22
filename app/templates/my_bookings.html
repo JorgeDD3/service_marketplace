@@ -292,24 +292,34 @@
             </div>
           </div>
 
-          <div class="badge-row">
+                    <div class="badge-row">
+            {% set refund_requested = (b.admin_note or "").startswith("[REFUND_REQUEST]") %}
+
             <span class="status-badge {{ b.status }}">{{ b.status }}</span>
 
             {% if b.payment_status == "paid" %}
-              <span class="pill paid">paid</span>
+              {% if refund_requested %}
+                <span class="pill unpaid">awaiting refund</span>
+              {% else %}
+                <span class="pill paid">paid</span>
+              {% endif %}
             {% else %}
               <span class="pill unpaid">unpaid</span>
             {% endif %}
 
-            {% if b.payment_status != "paid" %}
-              <span class="pill next warn">needs checkout</span>
-            {% else %}
-              {% if b.status == "pending" %}
-                <span class="pill next">awaiting provider</span>
-              {% else %}
-                <span class="pill next good">ready to message</span>
-              {% endif %}
-            {% endif %}
+            {% if refund_requested %}
+  {# Refund is already shown via the payment pill "awaiting refund" above #}
+{% else %}
+  {% if b.payment_status != "paid" %}
+    <span class="pill next warn">needs checkout</span>
+  {% else %}
+    {% if b.status == "pending" %}
+      <span class="pill next">awaiting provider</span>
+    {% else %}
+      <span class="pill next good">ready to message</span>
+    {% endif %}
+  {% endif %}
+{% endif %}
           </div>
         </div>
 
@@ -345,6 +355,16 @@
           </div>
         </div>
 
+        {% set refund_requested = (b.admin_note or "").startswith("[REFUND_REQUEST]") %}
+{% if refund_requested %}
+  <div class="note">
+    <span class="meta-label">Refund</span>
+    <div class="meta-value" style="font-weight:700;">
+      Refund request sent to administrator.
+    </div>
+  </div>
+{% endif %}
+        
         {% if b.provider_note %}
           <div class="note">
             <span class="meta-label">Provider note</span>
@@ -357,6 +377,13 @@
             {% if b.payment_status == "paid" %}
               <a class="btn secondary" href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">Message</a>
               <a class="btn ghost" href="{{ url_for('main.service_detail', service_id=b.service.id) }}">View</a>
+              <form method="POST"
+      action="{{ url_for('main.cancel_booking', booking_id=b.id) }}"
+      style="display:inline;"
+      onsubmit="return confirm('Request a refund and cancel this session?');">
+  <input type="hidden" name="refund_reason" value="">
+  <button class="btn ghost" type="submit">Request refund</button>
+</form>
             {% else %}
               <a class="btn" href="{{ url_for('main.checkout', booking_id=b.id) }}">Checkout</a>
               <span class="hint">Pay to unlock messaging.</span>
@@ -364,11 +391,14 @@
             {% endif %}
           </div>
 
-          {% if b.status == "pending" and b.payment_status != "paid" %}
-            <form method="POST" action="{{ url_for('main.cancel_booking', booking_id=b.id) }}" style="display:inline;">
-              <button class="btn ghost" type="submit">Cancel</button>
-            </form>
-          {% endif %}
+          {% if b.payment_status != "paid" and b.status in ["pending", "accepted"] %}
+  <form method="POST"
+        action="{{ url_for('main.cancel_booking', booking_id=b.id) }}"
+        style="display:inline;"
+        onsubmit="return confirm('Cancel this session?');">
+    <button class="btn ghost" type="submit">Cancel</button>
+  </form>
+{% endif %}
         </div>
       </div>
     {% endfor %}

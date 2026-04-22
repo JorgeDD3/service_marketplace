@@ -1,167 +1,336 @@
 {% extends "base.html" %}
 {% block title %}Provider Profile{% endblock %}
+{% block container_class %}container-dashboard{% endblock %}
 
 {% block content %}
+{# ERD-safe: provider_profiles only has bio, hourly_rate, availability_notes, created_at.
+   (No display_name/headline/skills/social links/profile photo.) #}
+
+{% set email_prefix = current_user.email.split('@')[0] if current_user.email else 'provider' %}
+{% set fallback_name = email_prefix.replace('.', ' ').replace('_', ' ')|title %}
+{% set provider_name = (current_user.full_name if current_user.full_name else (current_user.name if current_user.name else fallback_name)) %}
+
+{# Initials-only avatar #}
+{% set initials_a = provider_name[0]|upper if provider_name else 'P' %}
+{% set initials_b = provider_name.split(' ')[1][0]|upper if ' ' in provider_name else 'R' %}
+
 <style>
-  /* Page-specific density tweaks (kept local to this template) */
-  .pp-wrap { max-width: 1100px; margin: 0 auto; }
-  .pp-card { border-radius: 18px; }
-  .pp-tight .card-body { padding: 16px !important; }
-  .pp-tight h1 { font-size: 34px; line-height: 1.1; margin: 0; }
-  .pp-tight .muted { color: #6b7280; }
-  .pp-tight .form-text { margin-top: 6px; }
-  .pp-tight textarea { resize: vertical; }
-  .pp-tight .btn { padding: 8px 12px; }
-  .pp-tight .btn-sm { padding: 6px 10px; }
-  .pp-tight .list-group-item { padding: 10px 12px; }
+  .pp-wrap{ max-width:1600px; margin:0 auto; padding:18px 10px 24px; }
+  .pp-card{ border-radius:20px; border:1px solid #dbe3ee; box-shadow:0 12px 26px rgba(15,23,42,0.06); background:#fff; }
+  .pp-topbar .card-body{ padding:16px 18px !important; }
+
+  .pp-title{ margin:0; font-size:36px; line-height:1.05; font-weight:900; letter-spacing:-0.03em; color:#0f172a; }
+  .pp-muted{ color:#64748b; }
+  .pp-subtitle{ margin-top:6px; font-size:15px; font-weight:650; color:#475569; }
+
+  .pp-avatar{
+    width:86px; height:86px; border-radius:22px; border:1px solid #dbe3ee;
+    background:linear-gradient(180deg,#f8fafc 0%,#eef2f7 100%);
+    display:flex; align-items:center; justify-content:center; overflow:hidden; flex:0 0 auto;
+  }
+  .pp-avatar-initials{ font-size:30px; font-weight:900; color:#0f172a; letter-spacing:-0.03em; }
+
+  .pp-badge-row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+  .pp-pill{
+    display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px;
+    border:1px solid #dbe3ee; background:#fff; font-size:13px; font-weight:850; color:#334155;
+  }
+
+  .pp-actions{ display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-end; }
+  .pp-actions .btn{ font-weight:800; border-radius:12px; padding:9px 14px; }
+
+  .pp-gear{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:44px; height:44px; border-radius:12px;
+    text-decoration:none; font-size:22px; line-height:1;
+    border:none; background:transparent; color:#475569;
+  }
+  .pp-gear:hover{ background:#f1f5f9; color:#0f172a; }
+  .pp-gear:active{ transform: translateY(1px); }
+
+  .pp-main-grid{ display:grid; grid-template-columns:minmax(0, 2.2fr) minmax(320px, 1fr); gap:16px; align-items:start; }
+  .pp-card-body{ padding:18px !important; }
+
+  .pp-section-kicker{ font-size:14px; text-transform:uppercase; letter-spacing:0.08em; font-weight:900; color:#64748b; margin-bottom:6px; }
+  .pp-section-title{ font-size:16px; font-weight:800; color:#0f172a; margin-bottom:4px; }
+  .pp-section-sub{ font-size:14px; font-weight:650; color:#64748b; margin-bottom:16px; }
+  .pp-divider{ height:1px; background:#e8eef5; margin:16px 0; }
+
+  .pp-rate-pill{
+    padding:10px 14px; border-radius:999px; border:1px solid #dbe3ee; background:#f8fafc;
+    font-weight:900; color:#0f172a; white-space:nowrap;
+  }
+
+  .pp-public-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .pp-info-box{ border:1px solid #e6edf5; border-radius:16px; padding:16px; background:#fbfdff; height:100%; }
+  .pp-info-label{ font-size:13px; font-weight:900; letter-spacing:0.07em; text-transform:uppercase; color:#64748b; margin-bottom:10px; }
+  .pp-info-text{ font-size:16px; line-height:1.65; color:#334155; font-weight:650; }
+  .pp-info-text.empty{ color:#94a3b8; }
+
+  .pp-side-stack{ display:flex; flex-direction:column; gap:16px; }
+  .pp-list{ display:flex; flex-direction:column; gap:10px; }
+  .pp-list-row{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 14px; border:1px solid #e6edf5; border-radius:14px; background:#fbfdff; }
+  .pp-list-row strong{ color:#0f172a; }
+  .pp-status-badge{ border-radius:999px; padding:4px 10px; font-size:12px; font-weight:900; }
+  .pp-status-badge.yes{ background:#dcfce7; color:#166534; }
+  .pp-status-badge.no{ background:#e5e7eb; color:#475569; }
+
+  details.pp-edit{ margin-top:16px; border:1px solid #dbe3ee; border-radius:20px; background:#fff; box-shadow:0 12px 26px rgba(15,23,42,0.06); }
+  details.pp-edit summary{ list-style:none; cursor:pointer; }
+  details.pp-edit summary::-webkit-details-marker{ display:none; }
+  .pp-edit-head{ padding:18px; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  .pp-edit-body{ padding:0 18px 18px; }
+
+  .pp-form-section{ border:1px solid #e6edf5; background:#fbfdff; border-radius:16px; padding:16px; margin-bottom:14px; }
+  .pp-form-section-title{ font-size:15px; font-weight:900; color:#0f172a; margin-bottom:4px; }
+  .pp-form-section-sub{ font-size:13px; color:#64748b; font-weight:650; margin-bottom:14px; }
+
+  @media (max-width:1100px){
+    .pp-main-grid{ grid-template-columns:1fr; }
+    .pp-public-grid{ grid-template-columns:1fr; }
+    .pp-actions{ justify-content:flex-start; }
+  }
+  @media (max-width:768px){
+    .pp-title{ font-size:28px; }
+  }
 </style>
 
-<div class="container pp-tight" style="padding-top: 24px; padding-bottom: 24px;">
-  <div class="pp-wrap">
-
-    <!-- Header -->
-    <div class="card shadow-sm pp-card mb-3">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-          <div>
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-              <h1>Provider Profile</h1>
-              {% if nav_verification_status == "verified" %}
-                <span class="badge text-bg-success">✓ Verified</span>
-              {% elif nav_verification_status == "pending_review" %}
-                <span class="badge text-bg-warning">⏳ Pending</span>
-              {% else %}
-                <span class="badge text-bg-secondary">Not verified</span>
-              {% endif %}
-            </div>
-            <div class="muted mt-1">
-              Signed in as <strong>{{ current_user.email }}</strong>
-            </div>
+<div class="pp-wrap">
+  <!-- Top Bar -->
+  <div class="card pp-card pp-topbar mb-3">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+          <div class="pp-avatar" aria-label="Profile avatar">
+            <span class="pp-avatar-initials">{{ initials_a }}{{ initials_b }}</span>
           </div>
 
-          <div class="d-flex gap-2">
-            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('provider.verification') }}">
-              Verification
-            </a>
+          <div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <h1 class="pp-title">{{ provider_name }} Profile</h1>
+            </div>
+
+            <div class="pp-subtitle">
+              Signed in as <strong>{{ current_user.email }}</strong>
+            </div>
+
+            <div class="pp-badge-row">
+              <span class="pp-pill">Profile settings</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex flex-column gap-2" style="min-width: 320px;">
+          <div class="pp-actions">
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('provider.dashboard') }}">Dashboard</a>
+
             {% if profile %}
-              <a class="btn btn-primary btn-sm" href="{{ url_for('main.provider_public_profile', provider_id=profile.id) }}">
-                Public Profile
+              <a class="btn btn-outline-primary btn-sm" href="{{ url_for('main.provider_public_profile', provider_id=profile.id) }}">
+                Public profile
               </a>
             {% endif %}
-            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('provider.dashboard') }}">
-              Dashboard
-            </a>
+
+            {% if nav_verification_status == "verified" %}
+              <a class="btn btn-success btn-sm" href="{{ url_for('provider.verification') }}">✓ Verified</a>
+            {% else %}
+              <a class="btn btn-danger btn-sm" href="{{ url_for('provider.verification') }}">Verification needed</a>
+            {% endif %}
+
+            <div class="d-flex gap-2">
+              <button class="btn btn-primary btn-sm" type="button"
+                onclick="const d=document.getElementById('ppEdit'); d.open=true; d.scrollIntoView({behavior:'smooth', block:'start'});">
+                Edit profile
+              </button>
+
+              <a class="pp-gear" href="{{ url_for('provider.settings') }}" title="Settings" aria-label="Settings">⚙️</a>
+            </div>
           </div>
         </div>
       </div>
     </div>
+  </div>
 
-    <div class="row g-3">
-      <!-- Left: form -->
-      <div class="col-lg-8">
-        <div class="card shadow-sm pp-card">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-              <div>
-                <div class="fw-semibold">Public information</div>
-                <div class="muted small">This appears on your public provider page.</div>
+  <!-- Main Layout -->
+  <div class="pp-main-grid">
+    <!-- Left -->
+    <div>
+      <div class="card pp-card">
+        <div class="card-body pp-card-body">
+          <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+            <div>
+              <div class="pp-section-kicker">Provider profile</div>
+              <div class="pp-section-title">This is what clients can see on your public provider page.</div>
+              <div class="pp-section-sub">Based on fields from your ERD (bio, rate, notes).</div>
+            </div>
+
+            <div class="pp-rate-pill">
+              {% if profile and profile.hourly_rate is not none %}
+                ${{ "%.0f"|format(profile.hourly_rate) }}/hr
+              {% else %}
+                Rate not set
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="pp-divider"></div>
+
+          <div class="pp-public-grid">
+            <div class="pp-info-box">
+              <div class="pp-info-label">Bio</div>
+              <div class="pp-info-text {{ 'empty' if not (profile and profile.bio) }}">
+                {{ profile.bio if profile and profile.bio else "Add a short bio so clients know what you offer and what they can expect." }}
               </div>
             </div>
 
-            <form method="POST">
-              <div class="mb-2">
-                <label class="form-label fw-semibold mb-1">Bio</label>
-                <textarea class="form-control" name="bio" rows="3" required
-                  placeholder="What you offer, experience, what clients can expect...">{{ profile.bio if profile else "" }}</textarea>
-                <div class="form-text small muted">
-                  Include specialties + what a “great booking” looks like.
+            <div class="pp-info-box">
+              <div class="pp-info-label">Availability notes</div>
+              <div class="pp-info-text {{ 'empty' if not (profile and profile.availability_notes) }}">
+                {{ profile.availability_notes if profile and profile.availability_notes else "Example: Weekdays after 5pm, weekends flexible." }}
+              </div>
+            </div>
+
+            <div class="pp-info-box">
+              <div class="pp-info-label">Client-facing details</div>
+              <div class="row g-3">
+                <div class="col-6">
+                  <div class="pp-info-text" style="font-size:14px;">
+                    <strong style="display:block; color:#0f172a;">Hourly rate</strong>
+                    {% if profile and profile.hourly_rate is not none %}
+                      ${{ "%.2f"|format(profile.hourly_rate) }}
+                    {% else %}
+                      —
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="pp-info-text" style="font-size:14px;">
+                    <strong style="display:block; color:#0f172a;">Verification</strong>
+                    {% if nav_verification_status == "verified" %}
+                      Verified
+                    {% elif nav_verification_status == "pending_review" %}
+                      Pending review
+                    {% else %}
+                      Not verified
+                    {% endif %}
+                  </div>
                 </div>
               </div>
+            </div>
 
-              <div class="row g-2">
+            <div class="pp-info-box">
+              <div class="pp-info-label">Profile created</div>
+              <div class="pp-info-text {{ 'empty' if not (profile and profile.created_at) }}">
+                {% if profile and profile.created_at %}
+                  {{ profile.created_at.strftime("%b %d, %Y") if profile.created_at.strftime else profile.created_at }}
+                {% else %}
+                  —
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit Panel (ERD fields only) -->
+      <details id="ppEdit" class="pp-edit">
+        <summary>
+          <div class="pp-edit-head">
+            <div>
+              <div class="fw-bold" style="font-size:20px; color:#0f172a;">Edit profile</div>
+              <div class="pp-muted">Update bio, hourly rate, and availability notes.</div>
+            </div>
+            <div class="pp-muted">Click to expand</div>
+          </div>
+        </summary>
+
+        <div class="pp-edit-body">
+          <form method="POST">
+            <div class="pp-form-section">
+              <div class="pp-form-section-title">Public details</div>
+              <div class="pp-form-section-sub">These are stored on your provider profile record.</div>
+
+              <div class="row g-3">
+                <div class="col-12">
+                  <label class="form-label fw-semibold">Bio</label>
+                  <textarea class="form-control" name="bio" rows="4"
+                    placeholder="Describe what you offer, your experience, and what clients can expect.">{{ profile.bio if profile and profile.bio else "" }}</textarea>
+                </div>
+
                 <div class="col-md-6">
-                  <label class="form-label fw-semibold mb-1">Hourly Rate (optional)</label>
+                  <label class="form-label fw-semibold">Hourly rate</label>
                   <div class="input-group">
                     <span class="input-group-text">$</span>
                     <input class="form-control" name="hourly_rate" inputmode="decimal"
                            value="{{ profile.hourly_rate if profile and profile.hourly_rate is not none else '' }}"
-                           placeholder="e.g., 50">
+                           placeholder="e.g. 50">
                   </div>
                 </div>
 
                 <div class="col-md-6">
-                  <label class="form-label fw-semibold mb-1">Availability Notes (optional)</label>
+                  <label class="form-label fw-semibold">Availability notes</label>
                   <input class="form-control" name="availability_notes"
                          value="{{ profile.availability_notes if profile and profile.availability_notes else '' }}"
-                         placeholder="Weekdays after 5pm, weekends flexible...">
+                         placeholder="Example: Weekdays after 5pm, weekends flexible">
                 </div>
               </div>
-
-              <div class="d-flex gap-2 mt-3">
-                <button class="btn btn-primary" type="submit">Save</button>
-                {% if profile %}
-                  <a class="btn btn-outline-secondary" href="{{ url_for('main.provider_public_profile', provider_id=profile.id) }}">
-                    Preview
-                  </a>
-                {% endif %}
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right: compact tiles -->
-      <div class="col-lg-4">
-        <div class="card shadow-sm pp-card mb-3">
-          <div class="card-body">
-            <div class="fw-semibold mb-2">Quick actions</div>
-            <div class="d-grid gap-2">
-              <a class="btn btn-outline-primary btn-sm" href="{{ url_for('provider.calendar_view') }}">Calendar</a>
-              <a class="btn btn-outline-primary btn-sm" href="{{ url_for('provider.availability') }}">Availability</a>
-              <a class="btn btn-outline-primary btn-sm" href="{{ url_for('provider_services.my_services') }}">Services</a>
-              <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('main.provider_bookings') }}">Bookings</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="card shadow-sm pp-card">
-          <div class="card-body">
-            <div class="fw-semibold mb-2">Checklist</div>
-            <div class="list-group">
-              <div class="list-group-item d-flex justify-content-between align-items-center">
-                Bio
-                <span class="badge text-bg-{{ 'success' if profile and profile.bio else 'secondary' }}">
-                  {{ 'Yes' if profile and profile.bio else 'No' }}
-                </span>
-              </div>
-              <div class="list-group-item d-flex justify-content-between align-items-center">
-                Rate
-                <span class="badge text-bg-{{ 'success' if profile and profile.hourly_rate is not none else 'secondary' }}">
-                  {{ 'Yes' if profile and profile.hourly_rate is not none else 'No' }}
-                </span>
-              </div>
-              <div class="list-group-item d-flex justify-content-between align-items-center">
-                Verified
-                <span class="badge text-bg-{{ 'success' if nav_verification_status == 'verified' else 'secondary' }}">
-                  {{ 'Yes' if nav_verification_status == 'verified' else 'No' }}
-                </span>
-              </div>
             </div>
 
-            {% if nav_verification_status != "verified" %}
-              <div class="alert alert-light border mt-3 mb-0 p-2">
-                <div class="fw-semibold small mb-1">Boost trust</div>
-                <div class="muted small">Verified providers convert better.</div>
-                <a class="btn btn-sm btn-outline-primary mt-2" href="{{ url_for('provider.verification') }}">
-                  Submit verification
+            <div class="d-flex gap-2 flex-wrap">
+              <button class="btn btn-primary" type="submit">Save changes</button>
+
+              {% if profile %}
+                <a class="btn btn-outline-primary" href="{{ url_for('main.provider_public_profile', provider_id=profile.id) }}">
+                  Preview public profile
                 </a>
-              </div>
-            {% endif %}
+              {% endif %}
+
+              <button class="btn btn-outline-secondary" type="button"
+                      onclick="document.getElementById('ppEdit').open=false;">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </details>
+    </div>
+
+    <!-- Right -->
+    <div class="pp-side-stack">
+      <div class="card pp-card">
+        <div class="card-body pp-card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="pp-section-title mb-0">Visibility summary</div>
+            <div class="pp-muted" style="font-size:13px;font-weight:650;">Public profile</div>
+          </div>
+
+          {% set has_bio = true if (profile and profile.bio) else false %}
+          {% set has_rate = true if (profile and profile.hourly_rate is not none) else false %}
+          {% set has_notes = true if (profile and profile.availability_notes) else false %}
+
+          <div class="pp-list">
+            <div class="pp-list-row">
+              <strong>Bio</strong>
+              <span class="pp-status-badge {{ 'yes' if has_bio else 'no' }}">{{ 'Public' if has_bio else 'Not set' }}</span>
+            </div>
+
+            <div class="pp-list-row">
+              <strong>Hourly rate</strong>
+              <span class="pp-status-badge {{ 'yes' if has_rate else 'no' }}">{{ 'Public' if has_rate else 'Not set' }}</span>
+            </div>
+
+            <div class="pp-list-row">
+              <strong>Availability notes</strong>
+              <span class="pp-status-badge {{ 'yes' if has_notes else 'no' }}">{{ 'Public' if has_notes else 'Not set' }}</span>
+            </div>
+          </div>
+
+          <div class="pp-muted mt-3" style="font-size:13px;font-weight:650;">
+            Only fields you’ve filled out will show to clients.
           </div>
         </div>
       </div>
-
     </div>
+
   </div>
 </div>
 {% endblock %}

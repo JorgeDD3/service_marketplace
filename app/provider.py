@@ -123,51 +123,62 @@ def verification():
 @login_required
 @role_required("provider")
 def profile():
-    
-    # One-to-one: each provider has at most one ProviderProfile
     profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
+    nav_verification_status = get_provider_verification_status(current_user.id)
 
-    if request.method == "GET":
-        return render_template("provider_profile.html", profile=profile)
+    if request.method == "POST":
+        # --- NEW: allow updating the user's first/last name (stored on users table) ---
+        first_name = (request.form.get("first_name") or "").strip()
+        last_name = (request.form.get("last_name") or "").strip()
 
-    # POST: create or update
-    bio = (request.form.get("bio") or "").strip()
-    hourly_rate_raw = (request.form.get("hourly_rate") or "").strip()
-    availability_notes = (request.form.get("availability_notes") or "").strip()
+        # Optional: only update if they provided something (prevents accidental blanking)
+        if first_name:
+            current_user.first_name = first_name
+        if last_name:
+            current_user.last_name = last_name
 
-    # Minimal validation (keep it simple for Phase 1.3)
-    if not bio:
-        flash("Bio is required.", "danger")
-        return redirect(url_for("provider.profile"))
+        # Existing provider profile fields (provider_profiles table)
+        bio = (request.form.get("bio") or "").strip()
+        availability_notes = (request.form.get("availability_notes") or "").strip()
 
-    hourly_rate = None
-    if hourly_rate_raw:
-        try:
-            hourly_rate = float(hourly_rate_raw)
-            if hourly_rate < 0:
-                raise ValueError()
-        except ValueError:
-            flash("Hourly rate must be a valid non-negative number.", "danger")
+        hourly_rate_raw = (request.form.get("hourly_rate") or "").strip()
+        hourly_rate = None
+        if hourly_rate_raw:
+            try:
+                hourly_rate = float(hourly_rate_raw)
+                if hourly_rate < 0:
+                    raise ValueError
+            except ValueError:
+                flash("Hourly rate must be a valid non-negative number.", "danger")
+                return redirect(url_for("provider.profile"))
+
+        if not bio:
+            flash("Bio is required.", "danger")
             return redirect(url_for("provider.profile"))
 
-    if profile is None:
-        profile = ProviderProfile(
-            user_id=current_user.id,
-            bio=bio,
-            hourly_rate=hourly_rate,
-            availability_notes=availability_notes or None,
-        )
-        db.session.add(profile)
-        flash("Provider profile created.", "success")
-    else:
-        profile.bio = bio
-        profile.hourly_rate = hourly_rate
-        profile.availability_notes = availability_notes or None
-        flash("Provider profile updated.", "success")
+        if profile is None:
+            profile = ProviderProfile(
+                user_id=current_user.id,
+                bio=bio,
+                hourly_rate=hourly_rate,
+                availability_notes=availability_notes or None,
+            )
+            db.session.add(profile)
+            flash("Provider profile created.", "success")
+        else:
+            profile.bio = bio
+            profile.hourly_rate = hourly_rate
+            profile.availability_notes = availability_notes or None
+            flash("Provider profile updated.", "success")
 
-    db.session.commit()
+        db.session.commit()
+        return redirect(url_for("provider.profile"))
 
-    return redirect(url_for("provider.profile"))
+    return render_template(
+        "provider/profile.html",
+        profile=profile,
+        nav_verification_status=nav_verification_status,
+    )
 
 @provider.route("/settings", methods=["GET", "POST"])
 @login_required
@@ -175,10 +186,14 @@ def profile():
 def settings():
     """
     Provider settings (NO ERD changes):
-    - View account info (email + verification status)
-    - Change password (updates users.password_hash)
+    - Account update: email only (no password required)
+    - Password update: requires current password
+
+    IMPORTANT: This fixes the bug where changing email triggers
+    "All password fields are required."
     """
     from werkzeug.security import check_password_hash, generate_password_hash
+    from app.models import User
 
     profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
     verification_status = None
@@ -187,37 +202,74 @@ def settings():
         verification_status = v.status if v else None
 
     if request.method == "POST":
-        current_pw = (request.form.get("current_password") or "").strip()
-        new_pw = (request.form.get("new_password") or "").strip()
-        confirm_pw = (request.form.get("confirm_password") or "").strip()
+        form_type = (request.form.get("form_type") or "").strip()
 
-        if not current_pw or not new_pw or not confirm_pw:
-            flash("All password fields are required.", "danger")
+        # ----------------------------
+        # Account update (email only)
+        # ----------------------------
+        if form_type == "account_update":
+            new_email = (request.form.get("account_email") or "").strip().lower()
+
+            if not new_email:
+                flash("Email is required.", "danger")
+                return redirect(url_for("provider.settings"))
+
+            # Enforce unique email (assuming you already rely on email uniqueness for login)
+            existing = User.query.filter(User.email == new_email).first()
+            if existing and existing.id != current_user.id:
+                flash("That email is already in use.", "danger")
+                return redirect(url_for("provider.settings"))
+
+            current_user.email = new_email
+            db.session.add(current_user)
+            db.session.commit()
+
+            flash("Email updated.", "success")
             return redirect(url_for("provider.settings"))
 
-        if not check_password_hash(current_user.password_hash, current_pw):
-            flash("Current password is incorrect.", "danger")
+        # ----------------------------
+        # Password update
+        # ----------------------------
+        if form_type == "password_update":
+            current_pw = (request.form.get("current_password") or "").strip()
+            new_pw = (request.form.get("new_password") or "").strip()
+            confirm_pw = (request.form.get("confirm_password") or "").strip()
+
+            if not current_pw or not new_pw or not confirm_pw:
+                flash("All password fields are required.", "danger")
+                return redirect(url_for("provider.settings"))
+
+            if not check_password_hash(current_user.password_hash, current_pw):
+                flash("Current password is incorrect.", "danger")
+                return redirect(url_for("provider.settings"))
+
+            if len(new_pw) < 8:
+                flash("New password must be at least 8 characters.", "danger")
+                return redirect(url_for("provider.settings"))
+
+            if new_pw != confirm_pw:
+                flash("New password and confirmation do not match.", "danger")
+                return redirect(url_for("provider.settings"))
+
+            current_user.password_hash = generate_password_hash(new_pw)
+            db.session.add(current_user)
+            db.session.commit()
+
+            flash("Password updated successfully.", "success")
             return redirect(url_for("provider.settings"))
 
-        if len(new_pw) < 8:
-            flash("New password must be at least 8 characters.", "danger")
-            return redirect(url_for("provider.settings"))
-
-        if new_pw != confirm_pw:
-            flash("New password and confirmation do not match.", "danger")
-            return redirect(url_for("provider.settings"))
-
-        current_user.password_hash = generate_password_hash(new_pw)
-        db.session.commit()
-        flash("Password updated successfully.", "success")
+        # Unknown submission
+        flash("Invalid settings submission.", "danger")
         return redirect(url_for("provider.settings"))
 
+    # GET
     return render_template(
         "provider/provider_settings.html",
         email=current_user.email,
         verification_status=verification_status,
+        # If your template displays username, you can pass user_id as the "username"
+        username=str(current_user.id),
     )
-
 
 @provider.route("/availability", methods=["GET", "POST"])
 @login_required

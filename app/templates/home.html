@@ -1,18 +1,546 @@
 {% extends "base.html" %}
-
-{% block title %}Home | Service Marketplace{% endblock %}
+{% block title %}ServiceSphere{% endblock %}
 
 {% block content %}
+<style>
+  .bleed{
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+  }
 
-<h1>Find the Right Service Provider</h1>
+  :root{
+    --ink:#0b1220;
+    --muted:#556579;
+    --line:#e5e7eb;
+    --card:#ffffff;
+    --bg:#ffffff;
 
-<p>
-    A clean and simple platform where clients can request services
-    and providers can showcase their expertise.
-</p>
+    /* Brand accents */
+    --brand:#2563eb;
+    --brand2:#7c3aed;
+    --accent:#10b981;
+    --soft:#f6f8fc;
+  }
 
-<a class="btn btn-primary" href="{{ url_for('main.services') }}">
-  Browse Services
-</a>
+  /* HERO */
+  .hero{
+    background:
+      radial-gradient(1200px 620px at 10% 10%, rgba(37,99,235,0.18), transparent 60%),
+      radial-gradient(900px 520px at 90% 18%, rgba(124,58,237,0.14), transparent 60%),
+      radial-gradient(800px 520px at 60% 70%, rgba(16,185,129,0.10), transparent 60%),
+      linear-gradient(180deg, #f7faff 0%, #ffffff 65%);
+    border-bottom: 1px solid var(--line);
+  }
 
+  .hero-inner{
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 28px 20px 34px;
+    min-height: calc(100vh - 74px);
+    display:flex;
+    align-items:center;
+  }
+
+  .hero-grid{
+    width:100%;
+    display:grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 34px;
+    align-items:center;
+  }
+
+  .kicker{
+    display:inline-flex;
+    align-items:center;
+    gap:10px;
+    padding: 9px 14px;
+    border-radius: 999px;
+    background: rgba(37,99,235,0.10);
+    color: var(--brand);
+    font-size: 13px;
+    font-weight: 950;
+    letter-spacing: .02em;
+  }
+
+  .title{
+    margin: 16px 0 0 0;
+    font-size: clamp(44px, 5.4vw, 84px);
+    line-height: 1.01;
+    font-weight: 950;
+    letter-spacing: -0.05em;
+    color: var(--ink);
+  }
+
+  .subtitle{
+    margin: 18px 0 0 0;
+    max-width: 660px;
+    font-size: 18px;
+    line-height: 1.75;
+    color: var(--muted);
+    font-weight: 650;
+  }
+
+  .cta-row{
+    display:flex;
+    gap: 14px;
+    flex-wrap:wrap;
+    margin-top: 26px;
+  }
+
+  .cta-primary,.cta-secondary{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    text-decoration:none;
+    border-radius: 16px;
+    padding: 14px 18px;
+    font-weight: 950;
+    font-size: 16px;
+    transition: transform .15s ease, background .15s ease, box-shadow .15s ease, border-color .15s ease;
+    user-select:none;
+  }
+
+  .cta-primary{
+    color:#fff;
+    background: linear-gradient(135deg, var(--brand), var(--brand2));
+    box-shadow: 0 18px 36px rgba(37,99,235,.22);
+  }
+  .cta-primary:hover{ transform: translateY(-1px); box-shadow: 0 22px 44px rgba(37,99,235,.24); }
+
+  .cta-secondary{
+    background: rgba(255,255,255,0.9);
+    color: var(--ink);
+    border: 1px solid #dbe1ea;
+    backdrop-filter: blur(10px);
+  }
+  .cta-secondary:hover{ background:#ffffff; border-color:#cfd8e3; }
+
+  .trust-row{
+    display:flex;
+    gap: 10px;
+    flex-wrap:wrap;
+    margin-top: 16px;
+  }
+
+  .trust-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding: 10px 12px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.78);
+    border: 1px solid var(--line);
+    box-shadow: 0 10px 18px rgba(15,23,42,0.05);
+    color:#6b7a8c;
+    font-weight: 900;
+    font-size: 13px;
+  }
+
+  .dot{
+    width:8px;
+    height:8px;
+    border-radius:999px;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px rgba(16,185,129,0.12);
+  }
+
+  /* HERO MEDIA */
+  .hero-media{ position:relative; }
+
+  .media-card{
+    border-radius: 30px;
+    overflow:hidden;
+    border: 1px solid var(--line);
+    background:#fff;
+    box-shadow: 0 30px 80px rgba(15,23,42,0.16);
+    height: 520px;
+  }
+
+  .media-img{
+    width:100%;
+    height:100%;
+    object-fit: cover;
+    display:block;
+  }
+
+  .media-overlay{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    background: linear-gradient(to top, rgba(11,18,32,0.82), rgba(11,18,32,0.18) 48%, rgba(11,18,32,0));
+  }
+
+  .media-caption{
+    position:absolute;
+    left:18px;
+    right:18px;
+    bottom:18px;
+    color:#fff;
+  }
+
+  .media-badge{
+    display:inline-flex;
+    align-items:center;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.14);
+    backdrop-filter: blur(10px);
+    font-size: 12px;
+    font-weight: 950;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .media-title{
+    margin:0;
+    font-size: 28px;
+    line-height: 1.18;
+    font-weight: 950;
+    letter-spacing: -0.02em;
+  }
+
+  .media-text{
+    margin-top: 10px;
+    color: rgba(255,255,255,0.92);
+    font-weight: 700;
+    line-height: 1.6;
+    max-width: 92%;
+  }
+
+  /* SECTION */
+  .section{
+    background: var(--bg);
+  }
+
+  .section-inner{
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 44px 20px 56px;
+  }
+
+  .section-header{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:18px;
+    flex-wrap:wrap;
+    margin-bottom: 18px;
+  }
+
+  .h2{
+    margin:0;
+    font-size: 30px;
+    font-weight: 950;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+
+  .muted{
+    margin: 6px 0 0 0;
+    color: var(--muted);
+    font-weight: 650;
+  }
+
+  /* Category tiles */
+  .cat-grid{
+    display:grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 16px;
+  }
+
+  .cat-tile{
+    text-decoration:none;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    background: #fff;
+    padding: 18px;
+    box-shadow: 0 12px 26px rgba(15,23,42,0.06);
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    color: var(--ink);
+    position:relative;
+    overflow:hidden;
+  }
+
+  .cat-tile:before{
+    content:"";
+    position:absolute;
+    inset:-2px;
+    background:
+      radial-gradient(400px 220px at 10% 10%, rgba(37,99,235,0.12), transparent 60%),
+      radial-gradient(420px 240px at 90% 20%, rgba(124,58,237,0.10), transparent 60%);
+    opacity:.9;
+    pointer-events:none;
+  }
+
+  .cat-tile:hover{
+    transform: translateY(-2px);
+    border-color:#d7deea;
+    box-shadow: 0 18px 44px rgba(15,23,42,0.08);
+  }
+
+  .cat-in{
+    position:relative;
+    z-index:1;
+  }
+
+  .cat-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom: 12px;
+  }
+
+  .cat-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding: 8px 10px;
+    border-radius: 999px;
+    background: rgba(37,99,235,0.10);
+    color: var(--brand);
+    font-size: 12px;
+    font-weight: 950;
+  }
+
+  .arrow{
+    width:34px;
+    height:34px;
+    border-radius: 999px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    background: rgba(255,255,255,0.75);
+    border: 1px solid var(--line);
+    color:#334155;
+    font-weight: 950;
+  }
+
+  .cat-name{
+    font-size: 18px;
+    font-weight: 950;
+    letter-spacing: -0.01em;
+    margin:0;
+  }
+
+  .cat-desc{
+    margin-top: 8px;
+    color: var(--muted);
+    font-weight: 650;
+    line-height: 1.6;
+  }
+
+  /* Social proof */
+  .proof{
+    margin-top: 34px;
+    border: 1px solid var(--line);
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border-radius: 26px;
+    padding: 22px;
+    box-shadow: 0 12px 26px rgba(15,23,42,0.06);
+  }
+
+  .proof-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin-top: 14px;
+  }
+
+  .quote{
+    border: 1px solid var(--line);
+    background:#fff;
+    border-radius: 22px;
+    padding: 18px;
+  }
+
+  .quote p{
+    margin:0;
+    color:#334155;
+    font-weight: 650;
+    line-height: 1.7;
+  }
+
+  .quote .who{
+    margin-top: 12px;
+    color:#64748b;
+    font-weight: 900;
+    font-size: 13px;
+  }
+
+  /* Footer */
+  .footer{
+    border-top: 1px solid var(--line);
+    background: #ffffff;
+  }
+
+  .footer-inner{
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 26px 20px;
+    display:flex;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+    color:#64748b;
+    font-weight: 700;
+    font-size: 13px;
+  }
+
+  .footer a{
+    color:#64748b;
+    text-decoration:none;
+    font-weight: 800;
+  }
+  .footer a:hover{ color:#334155; text-decoration:underline; }
+
+  @media (max-width: 1050px){
+    .hero-inner{ min-height: auto; padding-top: 22px; padding-bottom: 22px; }
+    .hero-grid{ grid-template-columns: 1fr; }
+    .media-card{ height: 380px; }
+    .cat-grid{ grid-template-columns: 1fr 1fr; }
+    .proof-grid{ grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 640px){
+    .title{ font-size: 44px; }
+    .cta-row{ flex-direction: column; align-items: stretch; }
+    .cta-primary,.cta-secondary{ width: 100%; }
+    .cat-grid{ grid-template-columns: 1fr; }
+  }
+</style>
+
+<section class="bleed hero">
+  <div class="hero-inner">
+    <div class="hero-grid">
+      <div>
+        <div class="kicker">A marketplace for services you can trust</div>
+        <h1 class="title">Book the right help, right when you need it.</h1>
+
+        <p class="subtitle">
+          Discover providers, explore offerings, and schedule sessions with a clean, modern experience —
+          from first search to confirmation.
+        </p>
+
+        <div class="cta-row">
+          <a class="cta-primary" href="{{ url_for('main.services') }}">Browse Services</a>
+
+          {% if current_user.is_authenticated %}
+            {% if current_user.has_role('client') %}
+              <a class="cta-secondary" href="{{ url_for('main.my_bookings') }}">My Sessions</a>
+            {% elif current_user.has_role('provider') %}
+              <a class="cta-secondary" href="{{ url_for('provider_services.my_services') }}">Provider Dashboard</a>
+            {% else %}
+              <a class="cta-secondary" href="{{ url_for('main.services') }}">Explore</a>
+            {% endif %}
+          {% else %}
+            <a class="cta-secondary" href="{{ url_for('auth.register') }}">Create Account</a>
+          {% endif %}
+        </div>
+
+        <div class="trust-row">
+          <span class="trust-pill"><span class="dot"></span>Verified providers</span>
+          <span class="trust-pill"><span class="dot"></span>Smart scheduling</span>
+          <span class="trust-pill"><span class="dot"></span>Secure messaging</span>
+          <span class="trust-pill"><span class="dot"></span>Support when needed</span>
+        </div>
+      </div>
+
+      <div class="hero-media">
+        <div class="media-card">
+          <img class="media-img"
+               src="{{ url_for('static', filename='images/home-hero.jpg') }}"
+               alt="Instructor presenting a technical topic">
+        </div>
+        <div class="media-overlay"></div>
+        <div class="media-caption">
+          <div class="media-badge">Servicesphere</div>
+          <h2 class="media-title">A marketplace that feels real.</h2>
+          <div class="media-text">
+            Find, book, and manage services with a clean flow that stays out of your way.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="bleed section">
+  <div class="section-inner">
+    <div class="section-header">
+      <div>
+        <h2 class="h2">Explore popular categories</h2>
+        <p class="muted">Start with what you’re looking for — then browse providers and details.</p>
+      </div>
+    </div>
+
+    <div class="cat-grid">
+      <a class="cat-tile" href="{{ url_for('main.services', category='Academic Support') }}">
+        <div class="cat-in">
+          <div class="cat-top">
+            <span class="cat-badge">Popular</span>
+            <span class="arrow">→</span>
+          </div>
+          <h3 class="cat-name">Academic Support</h3>
+          <div class="cat-desc">Study strategies, coaching, and help staying organized.</div>
+        </div>
+      </a>
+
+      <a class="cat-tile" href="{{ url_for('main.services', category='Tutoring') }}">
+        <div class="cat-in">
+          <div class="cat-top">
+            <span class="cat-badge">Top rated</span>
+            <span class="arrow">→</span>
+          </div>
+          <h3 class="cat-name">Tutoring</h3>
+          <div class="cat-desc">One-on-one learning sessions across common subjects.</div>
+        </div>
+      </a>
+
+      <a class="cat-tile" href="{{ url_for('main.services', category='Tech Help') }}">
+        <div class="cat-in">
+          <div class="cat-top">
+            <span class="cat-badge">Fast help</span>
+            <span class="arrow">→</span>
+          </div>
+          <h3 class="cat-name">Tech Help</h3>
+          <div class="cat-desc">Setup, troubleshooting, and practical tech support.</div>
+        </div>
+      </a>
+
+      <a class="cat-tile" href="{{ url_for('main.services', category='Fitness') }}">
+        <div class="cat-in">
+          <div class="cat-top">
+            <span class="cat-badge">New</span>
+            <span class="arrow">→</span>
+          </div>
+          <h3 class="cat-name">Fitness</h3>
+          <div class="cat-desc">Coaching sessions built around your schedule and goals.</div>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer class="bleed footer">
+  <div class="footer-inner">
+    <div>© {{ (now().year if now else "") }} ServiceSphere</div>
+    <div style="display:flex; gap:14px; flex-wrap:wrap;">
+      <a href="{{ url_for('main.services') }}">Services</a>
+      {% if current_user.is_authenticated %}
+        {% if current_user.has_role('client') %}
+          <a href="{{ url_for('main.my_bookings') }}">My Sessions</a>
+        {% elif current_user.has_role('provider') %}
+          <a href="{{ url_for('provider_services.my_services') }}">Provider</a>
+        {% endif %}
+      {% else %}
+        <a href="{{ url_for('auth.login') }}">Login</a>
+        <a href="{{ url_for('auth.register') }}">Register</a>
+      {% endif %}
+    </div>
+  </div>
+</footer>
 {% endblock %}

@@ -349,19 +349,8 @@ def book_service(service_id: int):
     if not service.is_active:
         abort(404)
 
-    # Prevent duplicate active bookings by the same client for the same service
-    existing = (
-        Booking.query
-        .filter_by(client_id=current_user.id, service_id=service.id)
-        .filter(Booking.status.in_(["pending", "accepted"]))
-        .first()
-    )
-    if existing:
-        flash(
-            f"You already have an active booking for this service (status: {existing.status}).",
-            "warning",
-        )
-        return redirect(url_for("main.service_detail", service_id=service.id))
+    # Allow multiple bookings per service.
+    # Conflicts are prevented by generate_available_slots() (provider availability + busy intervals).
 
     # Read selected slot from form (ISO string)
     selected = (request.form.get("booking_datetime") or "").strip()
@@ -498,28 +487,54 @@ def my_bookings():
     )
     return render_template("my_bookings.html", bookings=bookings)
 
+# ---- Client cancel / refund request ----
 @main.route("/bookings/<int:booking_id>/cancel", methods=["POST"])
 @login_required
+@role_required("client")
 def cancel_booking(booking_id: int):
     booking = Booking.query.get_or_404(booking_id)
 
-    # Ownership check: only the client who created the booking can cancel it
+    # Ownership check
     if booking.client_id != current_user.id:
-        flash_danger("You are not authorized to cancel this booking.")
+        flash_danger("You are not authorized to modify this booking.")
         return redirect(url_for("main.my_bookings"))
 
-    # Only allow cancel while still pending (centralized rules)
-    if not booking.can_transition_to(Booking.STATUS_CANCELLED):
-        flash_warning(f"Cannot cancel a booking that is already '{booking.status}'.")
+    # Never allow actions on inquiry pseudo-bookings from Sessions
+    if (booking.provider_note or "").startswith("[INQUIRY]"):
+        flash_warning("This is an inquiry thread, not a booked session.")
+        return redirect(url_for("main.my_bookings"))
+
+    # If UNPAID: allow true cancel (pending or accepted)
+    if booking.payment_status != "paid":
+        # expand beyond strict state machine: allow cancel for pending/accepted unpaid
+        if (booking.status or "").lower() not in (Booking.STATUS_PENDING, Booking.STATUS_ACCEPTED):
+            flash_warning(f"Cannot cancel a booking that is already '{booking.status}'.")
+            return redirect(url_for("main.my_bookings", _anchor=f"booking-{booking.id}"))
+
+        booking.status = Booking.STATUS_CANCELLED
+        booking.decided_at = datetime.utcnow()
+        db.session.commit()
+
+        flash_success("Booking cancelled.")
         return redirect(url_for("main.my_bookings", _anchor=f"booking-{booking.id}"))
 
-    booking.status = Booking.STATUS_CANCELLED
-    booking.decided_at = datetime.utcnow()
+    # If PAID: do NOT change status (no refund status exists) — create refund request record
+    reason = (request.form.get("refund_reason") or "").strip()
+    if len(reason) > 500:
+        flash_warning("Refund reason is too long (max 500 characters).")
+        return redirect(url_for("main.my_bookings", _anchor=f"booking-{booking.id}"))
 
+    tag = "[REFUND_REQUEST]"
+    note = f"{tag} {reason}" if reason else f"{tag} Client requested refund/cancel."
+
+    # Store in existing admin moderation fields (no ERD changes)
+    booking.admin_note = note
+    booking.admin_action_at = datetime.utcnow()
     db.session.commit()
 
-    flash_success("Booking cancelled.")
+    flash_success("Refund requested. You’ll be notified once it’s reviewed.")
     return redirect(url_for("main.my_bookings", _anchor=f"booking-{booking.id}"))
+
 
 # ---- Provider bookings ----
 @main.route("/provider/bookings")

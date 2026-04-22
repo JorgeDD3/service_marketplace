@@ -10,6 +10,30 @@ from .models import Conversation, Message, Booking, ConversationRead
 messages_bp = Blueprint("messages", __name__, url_prefix="/messages")
 
 
+def _is_inquiry_booking(booking: Booking | None) -> bool:
+    """
+    Inquiry pseudo-bookings are tagged by provider_note prefix.
+    These should NEVER be pay-gated.
+    """
+    if not booking:
+        return False
+    note = booking.provider_note or ""
+    return note.startswith("[INQUIRY]")
+
+
+def _should_gate_client_for_booking(booking: Booking | None) -> bool:
+    """
+    Gate ONLY clients for unpaid REAL bookings.
+    - Providers are never gated
+    - Inquiry pseudo-bookings are never gated
+    """
+    if not booking:
+        return False
+    if _is_inquiry_booking(booking):
+        return False
+    return booking.payment_status != "paid"
+
+
 @messages_bp.get("/")
 @login_required
 def inbox():
@@ -98,8 +122,12 @@ def thread(conversation_id: int):
     if not convo.user_is_participant(current_user.id):
         abort(403)
 
-    # Demo checkout gate: require payment before messaging
-    if convo.booking and convo.booking.payment_status != "paid":
+    # Demo checkout gate:
+    # - Providers are never gated
+    # - Inquiry threads are never gated
+    # - Clients are gated only for unpaid REAL bookings
+    is_provider_view = current_user.id == convo.provider_id
+    if (not is_provider_view) and convo.booking and _should_gate_client_for_booking(convo.booking):
         flash(
             "Please complete checkout (demo) to unlock messaging for this booking.",
             "warning",
@@ -199,8 +227,12 @@ def booking_thread(booking_id: int):
     if current_user.id not in (booking.client_id, booking.provider_id):
         abort(403)
 
-    # Demo checkout gate: require payment before messaging
-    if booking.payment_status != "paid":
+    # Demo checkout gate:
+    # - Providers are never gated
+    # - Inquiry threads are never gated
+    # - Clients are gated only for unpaid REAL bookings
+    is_provider_view = current_user.id == booking.provider_id
+    if (not is_provider_view) and _should_gate_client_for_booking(booking):
         flash(
             "Please complete checkout (demo) to unlock messaging for this booking.",
             "warning",

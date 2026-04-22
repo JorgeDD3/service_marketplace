@@ -15,9 +15,9 @@
     border-radius: 18px;
     overflow:hidden;
     box-shadow: 0 1px 2px rgba(0,0,0,0.06);
-      display: flex;
-  flex-direction: column;
-  height: 75vh;          /* overall chat card height */
+    display:flex;
+    flex-direction:column;
+    height: 75vh;
   }
 
   .chat-header{
@@ -30,6 +30,13 @@
     background:#ffffff;
   }
 
+  .chat-title-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+
   .chat-title{
     margin:0;
     font-size: 18px;
@@ -38,7 +45,7 @@
   }
 
   .chat-sub{
-    margin-top: 4px;
+    margin-top: 6px;
     color:#64748b;
     font-size: 0.93rem;
     font-weight: 600;
@@ -63,16 +70,13 @@
   .back-btn:hover{ background:#eef2f7; }
 
   .chat-body{
-  flex: 1;                 /* take remaining height */
-  padding: 14px;
-  overflow-y: auto;        /* internal scrolling */
-  background:#f8fafc;
-}
-
-  .msg-row{
-    display:flex;
-    margin: 10px 0;
+    flex:1;
+    padding: 14px;
+    overflow-y:auto;
+    background:#f8fafc;
   }
+
+  .msg-row{ display:flex; margin: 10px 0; }
   .msg-row.me{ justify-content:flex-end; }
   .msg-row.them{ justify-content:flex-start; }
 
@@ -111,17 +115,15 @@
     text-align:right;
   }
 
-  .me .bubble .time{
-    opacity: 0.85;
-  }
+  .me .bubble .time{ opacity: 0.85; }
 
   .chat-compose{
-  flex: 0 0 auto;
-  background: rgba(255,255,255,0.96);
-  backdrop-filter: blur(8px);
-  border-top: 1px solid #eef2f7;
-  padding: 12px 14px;
-}
+    flex:0 0 auto;
+    background: rgba(255,255,255,0.96);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid #eef2f7;
+    padding: 12px 14px;
+  }
 
   .compose-row{
     display:flex;
@@ -134,7 +136,7 @@
     border:1px solid #e5e7eb;
     border-radius: 14px;
     padding: 10px 12px;
-    resize: none;
+    resize:none;
     min-height: 44px;
     max-height: 140px;
     outline:none;
@@ -155,9 +157,7 @@
   }
   .send-btn:hover{ background:#1d4ed8; }
 
-  .suggest-wrap{
-    margin-bottom: 10px;
-  }
+  .suggest-wrap{ margin-bottom: 10px; }
   .suggest-title{
     color:#64748b;
     font-weight: 700;
@@ -181,16 +181,43 @@
   }
   .suggest:hover{ background:#f1f5f9; }
 
+  /* NEW: Inquiry pill */
+  .inquiry-pill{
+    display:inline-flex;
+    align-items:center;
+    border:1px solid #e2e8f0;
+    background:#f8fafc;
+    color:#0f172a;
+    font-weight: 900;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+  }
+
   @media (max-width: 650px){
     .bubble{ max-width: 92%; }
     .chat-body{ max-height: 66vh; }
   }
 </style>
 
+{% set is_inquiry = convo.booking and convo.booking.provider_note and convo.booking.provider_note.startswith("[INQUIRY]") %}
+
 <div class="chat-shell">
   <div class="chat-header">
     <div>
-      <h2 class="chat-title">Booking #{{ convo.booking_id }}</h2>
+      <div class="chat-title-row">
+        <h2 class="chat-title">
+          {% if is_inquiry %}
+            Inquiry (Ref #{{ convo.booking_id }})
+          {% else %}
+            Booking #{{ convo.booking_id }}
+          {% endif %}
+        </h2>
+
+        {% if is_inquiry %}
+          <span class="inquiry-pill">Inquiry</span>
+        {% endif %}
+      </div>
 
       {% if convo.booking %}
         <div class="chat-meta">
@@ -198,11 +225,17 @@
           <a href="{{ url_for('main.service_detail', service_id=convo.booking.service_id) }}">
             {{ convo.booking.service.title if convo.booking.service else "—" }}
           </a>
-          <span class="mx-2">•</span>
-          <span class="fw-semibold">When:</span>
-          {{ convo.booking.booking_datetime.strftime("%b %d, %Y %I:%M %p") if convo.booking.booking_datetime else "—" }}
-          <span class="mx-2">•</span>
-          <span class="status-badge {{ convo.booking.status }}">{{ convo.booking.status }}</span>
+
+          {% if is_inquiry %}
+            <span class="mx-2">•</span>
+            <span class="fw-semibold">Type:</span> Pre-book question
+          {% else %}
+            <span class="mx-2">•</span>
+            <span class="fw-semibold">When:</span>
+            {{ convo.booking.booking_datetime.strftime("%b %d, %Y %I:%M %p") if convo.booking.booking_datetime else "—" }}
+            <span class="mx-2">•</span>
+            <span class="status-badge {{ convo.booking.status }}">{{ convo.booking.status }}</span>
+          {% endif %}
         </div>
       {% endif %}
 
@@ -261,11 +294,9 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-  // Auto-scroll message pane to bottom
   const scroller = document.getElementById("msgScroll");
   if (scroller) scroller.scrollTop = scroller.scrollHeight;
 
-  // Suggested buttons
   const textarea = document.getElementById("body");
   document.querySelectorAll(".msg-suggest").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -277,7 +308,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
-  // If URL has #compose, focus the textarea
   if (window.location.hash === "#compose") {
     if (textarea) textarea.focus();
   }

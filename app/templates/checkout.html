@@ -1,155 +1,854 @@
 {% extends "base.html" %}
+{% block title %}Checkout{% endblock %}
+
 {% block content %}
-<div class="container py-4" style="max-width: 780px;">
-  <div class="d-flex align-items-center justify-content-between mb-3">
-    <h2 class="mb-0">Checkout (Demo)</h2>
-    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('main.my_bookings') }}">
-      Back to bookings
-    </a>
+<style>
+  .checkout-shell{
+    max-width: 1320px;
+    margin: 28px auto 36px auto;
+    padding: 0 16px;
+  }
+
+  .checkout-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:16px;
+    margin-bottom:20px;
+  }
+
+  .checkout-title{
+    margin:0;
+    font-size:42px;
+    line-height:1.05;
+    font-weight:900;
+    letter-spacing:-0.03em;
+    color:#0f172a;
+  }
+
+  .checkout-subtitle{
+    margin-top:8px;
+    color:#64748b;
+    font-size:15px;
+    font-weight:500;
+  }
+
+  .back-link{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    text-decoration:none;
+    border:1px solid #d1d5db;
+    background:#fff;
+    color:#334155;
+    border-radius:12px;
+    padding:10px 14px;
+    font-weight:800;
+    white-space:nowrap;
+  }
+
+  .back-link:hover{ background:#f8fafc; }
+
+  .checkout-grid{
+    display:grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(340px, 420px);
+    gap:22px;
+    align-items:start;
+  }
+
+  .checkout-card{
+    background:#ffffff;
+    border:1px solid #e5e7eb;
+    border-radius:22px;
+    box-shadow:0 8px 24px rgba(15, 23, 42, 0.06);
+  }
+
+  .checkout-main{ padding:24px; }
+
+  .section-title{
+    margin:0 0 16px 0;
+    font-size:24px;
+    font-weight:900;
+    color:#0f172a;
+    letter-spacing:-0.02em;
+  }
+
+  .section-subtitle{
+    margin:-6px 0 18px 0;
+    color:#64748b;
+    font-size:14px;
+  }
+
+  .step-row{
+    display:flex;
+    gap:10px;
+    margin-bottom:22px;
+    flex-wrap:wrap;
+  }
+
+  .step-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    border-radius:999px;
+    padding:8px 12px;
+    font-size:13px;
+    font-weight:800;
+    border:1px solid #dbeafe;
+    background:#eff6ff;
+    color:#1d4ed8;
+  }
+  .step-pill.muted{
+    border-color:#e5e7eb;
+    background:#f8fafc;
+    color:#64748b;
+  }
+
+  .payment-methods{
+    display:grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap:10px;
+    margin-bottom:20px;
+  }
+
+  .pay-option{ position:relative; }
+  .pay-option input{ position:absolute; opacity:0; pointer-events:none; }
+
+  .pay-option label{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border:1px solid #dbe1ea;
+    border-radius:14px;
+    background:#fff;
+    padding:14px 12px;
+    font-weight:800;
+    color:#0f172a;
+    cursor:pointer;
+    min-height:54px;
+    transition:border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .pay-option input:checked + label{
+    border-color:#2563eb;
+    box-shadow:0 0 0 3px rgba(37, 99, 235, 0.12);
+    color:#1d4ed8;
+  }
+
+  .form-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:16px;
+  }
+
+  .form-group{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .form-group.full{ grid-column:1 / -1; }
+
+  .form-label{
+    font-size:14px;
+    font-weight:800;
+    color:#0f172a;
+  }
+
+  .form-input{
+    width:100%;
+    border:1px solid #dbe1ea;
+    border-radius:14px;
+    padding:14px 14px;
+    font-size:16px;
+    color:#0f172a;
+    background:#fff;
+    outline:none;
+  }
+
+  .form-input:focus{
+    border-color:#2563eb;
+    box-shadow:0 0 0 3px rgba(37, 99, 235, 0.12);
+  }
+
+  .input-help{
+    font-size:12px;
+    color:#64748b;
+    margin-top:-2px;
+  }
+
+  .checkout-actions{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-top:24px;
+  }
+
+  .btn-primary,
+  .btn-secondary{
+    border:none;
+    border-radius:14px;
+    padding:14px 18px;
+    font-weight:900;
+    font-size:15px;
+    cursor:pointer;
+    transition:transform 0.15s ease, background 0.15s ease;
+  }
+
+  .btn-primary{
+    background:#2563eb;
+    color:#fff;
+    box-shadow:0 6px 14px rgba(37, 99, 235, 0.24);
+  }
+  .btn-primary:hover{
+    background:#1d4ed8;
+    transform:translateY(-1px);
+  }
+
+  .btn-secondary{
+    background:#f1f5f9;
+    color:#0f172a;
+  }
+  .btn-secondary:hover{ background:#e2e8f0; }
+
+  .summary-card{
+    padding:22px;
+    position:sticky;
+    top:20px;
+  }
+
+  .summary-top{
+    padding-bottom:16px;
+    border-bottom:1px solid #e5e7eb;
+    margin-bottom:16px;
+  }
+
+  .summary-kicker{
+    font-size:12px;
+    font-weight:900;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:#64748b;
+    margin-bottom:8px;
+  }
+
+  .summary-service{
+    font-size:24px;
+    font-weight:900;
+    line-height:1.15;
+    color:#0f172a;
+    margin-bottom:8px;
+  }
+
+  .summary-provider{
+    color:#475569;
+    font-weight:700;
+    font-size:14px;
+  }
+
+  .summary-block{ margin-bottom:18px; }
+
+  .summary-label{
+    font-size:12px;
+    font-weight:900;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:#64748b;
+    margin-bottom:6px;
+  }
+
+  .summary-value{
+    color:#0f172a;
+    font-weight:800;
+    line-height:1.4;
+  }
+
+  .summary-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    margin:10px 0;
+    color:#0f172a;
+    font-weight:700;
+  }
+
+  .summary-row.total{
+    margin-top:14px;
+    padding-top:14px;
+    border-top:1px solid #e5e7eb;
+    font-size:18px;
+    font-weight:900;
+  }
+
+  .summary-status{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:12px;
+  }
+
+  .badge{
+    display:inline-flex;
+    align-items:center;
+    border-radius:999px;
+    padding:6px 10px;
+    font-size:12px;
+    font-weight:900;
+    border:1px solid #e5e7eb;
+    background:#fff;
+    color:#0f172a;
+    text-transform: lowercase;
+  }
+
+  .badge.pending{ background:#f8fafc; color:#475569; }
+  .badge.unpaid{ background:#fff7ed; color:#9a3412; border-color:#fdba74; }
+  .badge.paid{ background:#ecfdf5; color:#166534; border-color:#86efac; }
+
+    /* Review modal (no scrolling needed) */
+  .review-modal-backdrop{
+    position:fixed;
+    inset:0;
+    background: rgba(15, 23, 42, 0.55);
+    display:none;
+    z-index: 2000;
+  }
+  .review-modal-backdrop.open{ display:block; }
+
+  .review-modal{
+    position:fixed;
+    left:50%;
+    top:50%;
+    transform:translate(-50%, -50%);
+    width:min(720px, calc(100vw - 24px));
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:22px;
+    box-shadow:0 22px 60px rgba(15, 23, 42, 0.30);
+    padding:18px;
+    display:none;
+    z-index: 2100;
+  }
+  .review-modal.open{ display:block; }
+
+  .review-modal-header{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:12px;
+  }
+
+  .review-modal-title{
+    margin:0;
+    font-size:20px;
+    font-weight:900;
+    color:#0f172a;
+    letter-spacing:-0.02em;
+  }
+
+  .review-close{
+    border:1px solid #e5e7eb;
+    background:#fff;
+    color:#334155;
+    border-radius:12px;
+    padding:10px 12px;
+    font-weight:900;
+    cursor:pointer;
+  }
+  .review-close:hover{ background:#f8fafc; }
+
+  .review-modal-body{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:14px;
+    margin-top:10px;
+  }
+
+  .review-mini{
+    border:1px solid #e5e7eb;
+    background:#f8fafc;
+    border-radius:16px;
+    padding:14px;
+  }
+
+  .review-mini .k{
+    font-size:12px;
+    font-weight:900;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:#64748b;
+    margin-bottom:6px;
+  }
+
+  .review-mini .v{
+    font-weight:900;
+    color:#0f172a;
+    line-height:1.35;
+  }
+
+  .review-modal-footer{
+    display:flex;
+    justify-content:flex-end;
+    gap:12px;
+    margin-top:16px;
+    padding-top:14px;
+    border-top:1px solid #e5e7eb;
+    flex-wrap:wrap;
+  }
+
+  .pay-submit{
+    margin-top:0;
+    width:auto;
+    padding:14px 18px;
+    border:none;
+    border-radius:16px;
+    background:#16a34a;
+    color:#fff;
+    font-weight:900;
+    font-size:16px;
+    cursor:pointer;
+    box-shadow:0 8px 16px rgba(22, 163, 74, 0.20);
+  }
+  .pay-submit:hover{ background:#15803d; }
+
+  .pay-cancel{
+    border:none;
+    border-radius:16px;
+    padding:14px 18px;
+    background:#f1f5f9;
+    color:#0f172a;
+    font-weight:900;
+    cursor:pointer;
+  }
+  .pay-cancel:hover{ background:#e2e8f0; }
+
+  @media (max-width: 720px){
+    .review-modal-body{
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .review-box{
+    border:1px solid #dbeafe;
+    background:#f8fbff;
+    border-radius:16px;
+    padding:16px;
+  }
+
+  .review-box h3{
+    margin:0 0 8px 0;
+    font-size:18px;
+    font-weight:900;
+    color:#0f172a;
+  }
+
+  .review-box p{
+    margin:0;
+    color:#475569;
+    font-size:14px;
+    line-height:1.5;
+  }
+
+  .pay-submit{
+    margin-top:16px;
+    width:100%;
+    padding:16px 18px;
+    border:none;
+    border-radius:16px;
+    background:#16a34a;
+    color:#fff;
+    font-weight:900;
+    font-size:16px;
+    cursor:pointer;
+    box-shadow:0 8px 16px rgba(22, 163, 74, 0.20);
+  }
+  .pay-submit:hover{ background:#15803d; }
+
+  .paid-panel{
+    padding:22px;
+  }
+
+  .paid-box{
+    border:1px solid #bbf7d0;
+    background:#ecfdf5;
+    border-radius:16px;
+    padding:16px;
+  }
+
+  .paid-box h3{
+    margin:0 0 6px 0;
+    font-size:18px;
+    font-weight:900;
+    color:#166534;
+  }
+
+  .paid-meta{
+    margin-top:10px;
+    color:#475569;
+    font-size:13px;
+    font-weight:700;
+  }
+
+  .paid-cta{
+    margin-top:14px;
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+
+  .btn-link{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    text-decoration:none;
+    border-radius:14px;
+    padding:14px 18px;
+    font-weight:900;
+    font-size:15px;
+    border:1px solid #e5e7eb;
+    background:#0f172a;
+    color:#fff;
+  }
+  .btn-link:hover{ background:#111827; }
+
+  @media (max-width: 1100px){
+    .checkout-grid{ grid-template-columns: 1fr; }
+    .summary-card{ position:static; }
+  }
+
+  @media (max-width: 720px){
+    .payment-methods{ grid-template-columns:1fr; }
+    .form-grid{ grid-template-columns:1fr; }
+    .checkout-header{ flex-direction:column; align-items:flex-start; }
+    .checkout-title{ font-size:34px; }
+  }
+</style>
+
+<div class="checkout-shell">
+  <div class="checkout-header">
+    <div>
+      <h1 class="checkout-title">Secure Checkout</h1>
+      <div class="checkout-subtitle">Review your order summary, then confirm payment.</div>
+    </div>
+    <a class="back-link" href="{{ url_for('main.my_bookings') }}">Back to bookings</a>
   </div>
 
-  <div class="card shadow-sm mb-3">
-    <div class="card-body">
-      <div class="d-flex justify-content-between align-items-start gap-3">
-        <div style="min-width:0;">
-          <p class="mb-1"><strong>Booking #{{ booking.id }}</strong></p>
-          <div class="text-muted small">
-            Status: <span class="badge bg-secondary">{{ booking.status }}</span>
-            <span class="ms-2">
-              Payment:
-              {% if booking.payment_status == "paid" %}
-                <span class="badge bg-success">paid</span>
-              {% else %}
-                <span class="badge bg-warning text-dark">unpaid</span>
-              {% endif %}
-            </span>
-          </div>
-        </div>
-      </div>
-
+  <div class="checkout-grid">
+    <div class="checkout-card">
       {% if booking.payment_status != "paid" %}
-        <div class="alert alert-warning mt-3 mb-0">
-          <strong>Demo only:</strong> Please do not enter real payment information. This form is for presentation/UI realism.
-        </div>
-      {% endif %}
-    </div>
-  </div>
-
-  <div class="card shadow-sm">
-    <div class="card-body">
-
-      {% if booking.payment_status != "paid" %}
-        <form method="post" action="{{ url_for('main.checkout', booking_id=booking.id) }}">
-          <h5 class="mb-3">Payment method</h5>
-
-          <div class="d-flex flex-wrap gap-3 mb-4">
-            <label class="d-flex align-items-center gap-2">
-              <input type="radio" name="payment_method" value="card" checked>
-              <span>Credit / Debit Card</span>
-            </label>
-            <label class="d-flex align-items-center gap-2">
-              <input type="radio" name="payment_method" value="paypal">
-              <span>PayPal (Demo)</span>
-            </label>
-            <label class="d-flex align-items-center gap-2">
-              <input type="radio" name="payment_method" value="applepay">
-              <span>Apple Pay (Demo)</span>
-            </label>
+        <form method="post" action="{{ url_for('main.checkout', booking_id=booking.id) }}" id="checkoutForm" class="checkout-main" novalidate>
+          <div class="step-row">
+            <span class="step-pill">1. Payment details</span>
+            <span class="step-pill muted" id="reviewStepPill">2. Review & confirm</span>
           </div>
 
-          <h5 class="mb-3">Card details</h5>
+          <h2 class="section-title">Payment Method</h2>
+          <div class="section-subtitle">Choose how you’d like to pay for this session.</div>
 
-          <div class="row g-3">
-            <div class="col-12">
-              <label class="form-label">Name on card</label>
-              <input
-                class="form-control"
-                name="card_name"
-                type="text"
-                placeholder="Demo User"
-                autocomplete="off"
-                required
-              />
-            </div>
-
-            <div class="col-12">
-              <label class="form-label">Card number</label>
-              <input
-                class="form-control"
-                name="card_number"
-                type="text"
-                inputmode="numeric"
-                pattern="[0-9 ]{12,19}"
-                placeholder="4242 4242 4242 4242"
-                autocomplete="off"
-                required
-              />
-              <div class="form-text">Demo validation only (digits/spaces). Nothing is stored.</div>
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label">Expiration</label>
-              <input
-                class="form-control"
-                name="card_exp"
-                type="text"
-                inputmode="numeric"
-                pattern="(0[1-9]|1[0-2])\/[0-9]{2}"
-                placeholder="MM/YY"
-                autocomplete="off"
-                required
-              />
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label">CVC</label>
-              <input
-                class="form-control"
-                name="card_cvc"
-                type="password"
-                inputmode="numeric"
-                pattern="[0-9]{3,4}"
-                placeholder="123"
-                autocomplete="off"
-                required
-              />
-            </div>
-          </div>
-
-          <hr class="my-4">
-
-          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-            <button class="btn btn-primary" type="submit">
-              Pay Now (Demo)
-            </button>
-            <span class="text-muted small">No real payment is processed.</span>
-          </div>
-        </form>
-
-      {% else %}
-        <div class="alert alert-success mb-3">
-          <strong>Payment complete.</strong>
-          {% if booking.paid_at %}
-            <div class="small text-muted">Paid at {{ booking.paid_at.strftime("%b %d, %Y %I:%M %p") }}</div>
-          {% endif %}
-          {% if booking.payment_reference %}
-            <div class="small text-muted">Ref: {{ booking.payment_reference }}</div>
-          {% endif %}
-        </div>
-
-        <a class="btn btn-primary"
-           href="{{ url_for('messages.booking_thread', booking_id=booking.id, _anchor='compose') }}">
-          Continue to Messages
-        </a>
-      {% endif %}
-
-      <hr class="my-4">
-
-      <div class="text-muted small">
-        <strong>Demo note:</strong> This checkout exists to demonstrate a realistic booking flow and state tracking.
-        It’s not connected to a real payment provider.
-      </div>
-    </div>
+          <div class="payment-methods" style="grid-template-columns: 1fr; max-width: 340px;">
+  <div class="pay-option">
+    <input type="radio" id="pm_card" name="payment_method" value="card" checked>
+    <label for="pm_card">Credit / Debit Card</label>
   </div>
 </div>
+
+          <div id="cardFields">
+            <h2 class="section-title" style="font-size:22px;">Card Details</h2>
+
+            <div class="form-grid">
+              <div class="form-group full">
+                <label class="form-label" for="card_name">Name on card</label>
+                <input class="form-input" id="card_name" name="card_name" type="text" value="Demo User" autocomplete="cc-name">
+              </div>
+
+              <div class="form-group full">
+                <label class="form-label" for="card_number">Card number</label>
+                <input class="form-input" id="card_number" name="card_number" type="text" value="4242 4242 4242 4242" autocomplete="cc-number">
+                <div class="input-help">Supported card formats are accepted.</div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="card_exp">Expiration</label>
+                <input class="form-input" id="card_exp" name="card_exp" type="text" placeholder="MM/YY" autocomplete="cc-exp">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="card_cvc">Security code</label>
+                <input class="form-input" id="card_cvc" name="card_cvc" type="text" value="123" autocomplete="cc-csc">
+              </div>
+            </div>
+          </div>
+
+          <div class="checkout-actions">
+            <button type="button" class="btn-primary" id="continueToReview">Continue to Summary</button>
+            <a class="btn-secondary" href="{{ url_for('main.my_bookings') }}" style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">Cancel</a>
+          </div>
+
+                    <!-- Review modal (no scroll) -->
+          <div id="reviewBackdrop" class="review-modal-backdrop" aria-hidden="true"></div>
+
+          <div id="reviewModal" class="review-modal" role="dialog" aria-modal="true" aria-labelledby="reviewTitle">
+            <div class="review-modal-header">
+              <div>
+                <h3 class="review-modal-title" id="reviewTitle">Review & confirm</h3>
+                <div class="section-subtitle" style="margin:6px 0 0 0;">
+                  Confirm your session details and submit payment.
+                </div>
+              </div>
+              <button type="button" class="review-close" id="closeReview">Close</button>
+            </div>
+
+            <div class="review-modal-body">
+              <div class="review-mini">
+                <div class="k">Session</div>
+                <div class="v">{{ booking.service.title }}</div>
+                <div style="margin-top:8px; color:#475569; font-weight:800;">
+                  Provider: {{ booking.provider.first_name }} {{ booking.provider.last_name }}
+                </div>
+              </div>
+
+              <div class="review-mini">
+                <div class="k">When</div>
+                <div class="v">
+                  {{ booking.booking_datetime.strftime("%A, %B %d, %Y") }}<br>
+                  {{ booking.booking_datetime.strftime("%I:%M %p") }}
+                </div>
+              </div>
+
+              <div class="review-mini">
+                <div class="k">Payment method</div>
+                <div class="v" id="reviewPaymentMethod">Card</div>
+              </div>
+
+              <div class="review-mini">
+                <div class="k">Total due</div>
+                <div class="v">{{ "$%.2f"|format(booking.service.price or 0) }}</div>
+              </div>
+            </div>
+
+            <div class="review-modal-footer">
+              <button type="button" class="pay-cancel" id="cancelReview">Back</button>
+              <button type="submit" class="pay-submit">
+                Pay {{ "$%.2f"|format(booking.service.price or 0) }}
+              </button>
+            </div>
+          </div>
+        </form>
+      {% else %}
+        <div class="paid-panel">
+          <div class="paid-box">
+            <h3>Payment complete</h3>
+            <div class="paid-meta">
+              {% if booking.paid_at %}
+                Paid at {{ booking.paid_at.strftime("%b %d, %Y %I:%M %p") }}<br>
+              {% endif %}
+              {% if booking.payment_reference %}
+                Reference: {{ booking.payment_reference }}
+              {% endif %}
+            </div>
+
+            <div class="paid-cta">
+              <a class="btn-link" href="{{ url_for('messages.booking_thread', booking_id=booking.id, _anchor='compose') }}">
+                Continue to Messages
+              </a>
+              <a class="btn-secondary" href="{{ url_for('main.my_bookings') }}" style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">
+                Back to sessions
+              </a>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <aside class="checkout-card summary-card">
+      <div class="summary-top">
+        <div class="summary-kicker">Order Summary</div>
+        <div class="summary-service">{{ booking.service.title }}</div>
+        <div class="summary-provider">
+          Provider: {{ booking.provider.first_name }} {{ booking.provider.last_name }}
+        </div>
+
+        <div class="summary-status">
+          <span class="badge {{ booking.status }}">{{ booking.status }}</span>
+          <span class="badge {{ booking.payment_status }}">{{ booking.payment_status }}</span>
+        </div>
+      </div>
+
+      <div class="summary-block">
+        <div class="summary-label">Session Date & Time</div>
+        <div class="summary-value">
+          {{ booking.booking_datetime.strftime("%A, %B %d, %Y") }}<br>
+          {{ booking.booking_datetime.strftime("%I:%M %p") }}
+        </div>
+      </div>
+
+      <div class="summary-block">
+        <div class="summary-label">Booking Details</div>
+        <div class="summary-value">
+          Booking #{{ booking.id }}<br>
+          Duration: {{ booking.duration_minutes }} minutes
+        </div>
+      </div>
+
+      <div class="summary-block">
+        <div class="summary-row">
+          <span>Session subtotal</span>
+          <span>{{ "$%.2f"|format(booking.service.price or 0) }}</span>
+        </div>
+        <div class="summary-row">
+          <span>Service fee</span>
+          <span>$0.00</span>
+        </div>
+        <div class="summary-row total">
+          <span>Total due</span>
+          <span>{{ "$%.2f"|format(booking.service.price or 0) }}</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function () {
+  const continueBtn = document.getElementById("continueToReview");
+  if (!continueBtn) return;
+
+  function qs(sel){ return document.querySelector(sel); }
+  function qsa(sel){ return Array.from(document.querySelectorAll(sel)); }
+
+  // Try to find the checkout form (so "Pay" submits correctly)
+  const form = document.getElementById("checkoutForm") || qs("form[action*='/checkout/']") || qs("form");
+
+  function getText(el){ return el ? (el.textContent || "").trim() : ""; }
+
+  // Pull data from the Order Summary card (right side)
+  function summaryData(){
+    const service = getText(qs(".summary-service")) || "Session";
+    const provider = getText(qs(".summary-provider")) || "";
+    const total = getText(qs(".summary-row.total span:last-child")) || "";
+    const dateTimeBlock = qsa(".summary-block .summary-value")[0];
+    const when = getText(dateTimeBlock).replace(/\n+/g, "\n");
+    return { service, provider, total, when };
+  }
+
+  function ensureModal(){
+    let backdrop = document.getElementById("reviewBackdrop");
+    let modal = document.getElementById("reviewModal");
+
+    if (!backdrop) {
+      backdrop = document.createElement("div");
+      backdrop.id = "reviewBackdrop";
+      backdrop.style.cssText = `
+        position:fixed; inset:0; background: rgba(15,23,42,.55);
+        display:none; z-index:2000;
+      `;
+      document.body.appendChild(backdrop);
+    }
+
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "reviewModal";
+      modal.setAttribute("role", "dialog");
+      modal.setAttribute("aria-modal", "true");
+      modal.style.cssText = `
+        position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
+        width:min(720px, calc(100vw - 24px));
+        background:#fff; border:1px solid #e5e7eb; border-radius:22px;
+        box-shadow:0 22px 60px rgba(15,23,42,.30);
+        padding:18px; display:none; z-index:2100;
+      `;
+      document.body.appendChild(modal);
+    }
+
+    return { backdrop, modal };
+  }
+
+  function openModal(){
+    const { backdrop, modal } = ensureModal();
+    const s = summaryData();
+
+    modal.innerHTML = `
+      <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:12px;">
+        <div>
+          <div style="font-size:20px; font-weight:900; color:#0f172a; letter-spacing:-.02em;">Review & confirm</div>
+          <div style="margin-top:6px; color:#64748b; font-size:14px;">Confirm your session details and submit payment.</div>
+        </div>
+        <button type="button" id="reviewCloseBtn"
+          style="border:1px solid #e5e7eb; background:#fff; color:#334155; border-radius:12px; padding:10px 12px; font-weight:900; cursor:pointer;">
+          Close
+        </button>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:10px;">
+        <div style="border:1px solid #e5e7eb; background:#f8fafc; border-radius:16px; padding:14px;">
+          <div style="font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:#64748b; margin-bottom:6px;">Session</div>
+          <div style="font-weight:900; color:#0f172a; line-height:1.35;">${s.service}</div>
+          <div style="margin-top:8px; color:#475569; font-weight:800;">${s.provider}</div>
+        </div>
+
+        <div style="border:1px solid #e5e7eb; background:#f8fafc; border-radius:16px; padding:14px;">
+          <div style="font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:#64748b; margin-bottom:6px;">When</div>
+          <div style="font-weight:900; color:#0f172a; line-height:1.35; white-space:pre-line;">${s.when}</div>
+        </div>
+
+        <div style="border:1px solid #e5e7eb; background:#f8fafc; border-radius:16px; padding:14px;">
+          <div style="font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:#64748b; margin-bottom:6px;">Payment method</div>
+          <div style="font-weight:900; color:#0f172a; line-height:1.35;">Credit / Debit Card</div>
+        </div>
+
+        <div style="border:1px solid #e5e7eb; background:#f8fafc; border-radius:16px; padding:14px;">
+          <div style="font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:#64748b; margin-bottom:6px;">Total due</div>
+          <div style="font-weight:900; color:#0f172a; line-height:1.35;">${s.total}</div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:16px; padding-top:14px; border-top:1px solid #e5e7eb; flex-wrap:wrap;">
+        <button type="button" id="reviewBackBtn"
+          style="border:none; border-radius:16px; padding:14px 18px; background:#f1f5f9; color:#0f172a; font-weight:900; cursor:pointer;">
+          Back
+        </button>
+        <button type="button" id="reviewPayBtn"
+          style="border:none; border-radius:16px; padding:14px 18px; background:#16a34a; color:#fff; font-weight:900; font-size:16px; cursor:pointer; box-shadow:0 8px 16px rgba(22,163,74,.20);">
+          Pay ${s.total}
+        </button>
+      </div>
+    `;
+
+    function close(){
+      backdrop.style.display = "none";
+      modal.style.display = "none";
+      document.body.style.overflow = "";
+    }
+
+    backdrop.style.display = "block";
+    modal.style.display = "block";
+    document.body.style.overflow = "hidden";
+
+    backdrop.onclick = close;
+
+    const closeBtn = document.getElementById("reviewCloseBtn");
+    const backBtn = document.getElementById("reviewBackBtn");
+    const payBtn = document.getElementById("reviewPayBtn");
+
+    if (closeBtn) closeBtn.onclick = close;
+    if (backBtn) backBtn.onclick = close;
+
+    if (payBtn) {
+      payBtn.onclick = function () {
+        // Submit the actual checkout form (POST /checkout/<id>)
+        if (form) form.submit();
+      };
+    }
+
+    document.addEventListener("keydown", function esc(e){
+      if (e.key === "Escape") {
+        close();
+        document.removeEventListener("keydown", esc);
+      }
+    });
+  }
+
+  continueBtn.addEventListener("click", openModal);
+})();
+</script>
 {% endblock %}

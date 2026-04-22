@@ -4,9 +4,10 @@
 {% block content %}
 <style>
 
-    .is-old-thread{
+  .is-old-thread{
     display:none;
   }
+
   /* Page-specific layout */
   .container{
     padding-top: 28px;
@@ -106,6 +107,10 @@
     color:#64748b;
     font-size: 0.92rem;
     font-weight: 600;
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:8px;
   }
 
   .thread-preview{
@@ -127,6 +132,19 @@
     flex-direction:column;
     gap:6px;
     align-items:flex-end;
+  }
+
+  /* NEW: Inquiry label */
+  .inquiry-pill{
+    display:inline-flex;
+    align-items:center;
+    border:1px solid #e2e8f0;
+    background:#f8fafc;
+    color:#0f172a;
+    font-weight: 900;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.82rem;
   }
 
   .unread-pill{
@@ -180,22 +198,23 @@
     </div>
   </div>
 {% else %}
-<div style="display:flex; gap:10px; align-items:center; margin: 8px 0 12px 0; flex-wrap: wrap;">
-  <input id="threadSearch"
-         type="text"
-         placeholder="Search conversations…"
-         style="flex: 1; min-width: 220px; max-width: 520px; padding:10px 12px; border-radius:12px; border:1px solid #e5e7eb;"
-         aria-label="Search conversations" />
+  <div style="display:flex; gap:10px; align-items:center; margin: 8px 0 12px 0; flex-wrap: wrap;">
+    <input id="threadSearch"
+           type="text"
+           placeholder="Search conversations…"
+           style="flex: 1; min-width: 220px; max-width: 520px; padding:10px 12px; border-radius:12px; border:1px solid #e5e7eb;"
+           aria-label="Search conversations" />
 
-  <button id="toggleThreads" class="btn btn-sm btn-outline-primary" type="button">
-    Show all
-  </button>
+    <button id="toggleThreads" class="btn btn-sm btn-outline-primary" type="button">
+      Show all
+    </button>
 
-  <span class="muted"><small>Showing your 5 most recent by default.</small></span>
-</div>
+    <span class="muted"><small>Showing your 5 most recent by default.</small></span>
+  </div>
+
   <div class="inbox-panel">
     {% for c in conversations %}
-  {% set idx = loop.index0 %}
+      {% set idx = loop.index0 %}
       {% set last = last_by_convo.get(c.id) %}
       {% set is_unread = c.id in unread_ids %}
 
@@ -208,8 +227,9 @@
       {% set initials = (other.first_name[:1] ~ (other.last_name[:1] if other.last_name else ""))|upper %}
 
       <a class="thread {% if idx >= 5 %}is-old-thread{% endif %}"
-   data-search="{{ other.first_name }} {{ other.last_name }} Booking #{{ c.booking_id }} {% if c.booking and c.booking.service %}{{ c.booking.service.title }}{% endif %}"
-   href="{{ url_for('messages.thread', conversation_id=c.id) }}">
+         data-search="{{ other.first_name }} {{ other.last_name }} Booking #{{ c.booking_id }} {% if c.booking and c.booking.service %}{{ c.booking.service.title }}{% endif %}"
+         href="{{ url_for('messages.thread', conversation_id=c.id) }}">
+
         <div class="thread-left">
           <div class="avatar">{{ initials }}</div>
 
@@ -218,10 +238,17 @@
               <div class="thread-title">
                 {{ other.first_name }} {{ other.last_name }}
               </div>
+
               <div class="thread-meta">
-                • Booking #{{ c.booking_id }}
+                <span>• Booking #{{ c.booking_id }}</span>
+
+                {% if c.booking and c.booking.provider_note and c.booking.provider_note.startswith("[INQUIRY]") %}
+                  <span>•</span>
+                  <span class="inquiry-pill">Inquiry</span>
+                {% endif %}
+
                 {% if c.booking and c.booking.service %}
-                  • {{ c.booking.service.title }}
+                  <span>• {{ c.booking.service.title }}</span>
                 {% endif %}
               </div>
             </div>
@@ -254,11 +281,11 @@
     {% endfor %}
   </div>
 {% endif %}
+
 <script>
 (function(){
   const btn = document.getElementById("toggleThreads");
   const search = document.getElementById("threadSearch");
-  const oldThreads = Array.from(document.querySelectorAll(".is-old-thread"));
   const allThreads = Array.from(document.querySelectorAll(".thread"));
 
   let showingAll = false;
