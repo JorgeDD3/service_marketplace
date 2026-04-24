@@ -116,22 +116,32 @@ def toggle_user_active(user_id: int):
 
     # Toggle
     if target.is_active:
-        # disable
+        # disable user
         target.is_active = False
         target.disabled_at = datetime.utcnow()
         reason = (request.form.get("disabled_reason") or "").strip()
         target.disabled_reason = reason or "Disabled by admin"
+
+        # If disabling a provider, also hide all their services from the marketplace.
+        # No ERD changes: we only flip Service.is_active.
+        if target.has_role("provider"):
+            Service.query.filter(Service.provider_user_id == target.id).update(
+                {"is_active": False},
+                synchronize_session=False,
+            )
+
         flash(f"User {target.email} disabled.", "success")
     else:
-        # enable
+        # enable user
         target.is_active = True
         target.disabled_at = None
         target.disabled_reason = None
+
+        # NOTE: We do NOT auto-reactivate services on enable (no previous state stored).
         flash(f"User {target.email} enabled.", "success")
 
     db.session.commit()
     return redirect(url_for("admin.users"))
-
 
 # --------------------
 # Services (Admin Moderation)
