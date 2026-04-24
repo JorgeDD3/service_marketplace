@@ -30,22 +30,53 @@ def dashboard():
     return redirect(url_for("admin.moderation"))
 
 
+# app/admin.py
+
 @admin_bp.route("/moderation")
 @login_required
 @role_required("admin")
 def moderation():
     """
     Admin moderation hub.
+    Shows "needs attention" counts.
     """
-    notif = {
-        "refund_requests": 0,
-        "pending_verifications": 0,
-        "open_service_requests": 0,
-        "hidden_services": 0,
-        "disabled_users": 0,
-    }
-    return render_template("admin/admin_moderation.html", notif=notif)
 
+    # Pending verification submissions
+    pending_verifications = ProviderVerification.query.filter_by(
+        status="pending_review"
+    ).count()
+
+    # Open service requests (client requests)
+    open_service_requests = ServiceRequest.query.filter_by(
+        status="open"
+    ).count()
+
+    # Hidden services (not active)
+    hidden_services = Service.query.filter(Service.is_active.is_(False)).count()
+
+    # Disabled users
+    disabled_users = User.query.filter(User.is_active.is_(False)).count()
+
+    # Refund requests (SAFE: do not assume schema fields exist)
+    refund_requests = 0
+    if hasattr(Booking, "refund_requested"):
+        refund_requests = Booking.query.filter(Booking.refund_requested.is_(True)).count()
+    elif hasattr(Booking, "client_requested_refund"):
+        refund_requests = Booking.query.filter(Booking.client_requested_refund.is_(True)).count()
+    elif hasattr(Booking, "status"):
+        refund_requests = Booking.query.filter(
+            Booking.status.in_(["refund_requested", "refund_request"])
+        ).count()
+
+    notif = {
+        "refund_requests": refund_requests,
+        "pending_verifications": pending_verifications,
+        "open_service_requests": open_service_requests,
+        "hidden_services": hidden_services,
+        "disabled_users": disabled_users,
+    }
+
+    return render_template("admin/admin_moderation.html", notif=notif)
 
 # --------------------
 # Users (Admin Moderation)
