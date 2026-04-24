@@ -5,25 +5,28 @@
 <style>
   /* Page-specific layout overrides (keeps other pages unchanged) */
   .container{
-    padding-top: 28px;
+    padding-top: 24px;
     padding-bottom: 28px;
     max-width: 1400px;
   }
 
+  /* One consistent column system for the whole page */
   .services-page {
-    max-width: 1200px;
+    --content-max: 1200px;    /* everything aligns to this */
+    --controls-max: 1040px;   /* filters + quick access align to this */
+    max-width: var(--content-max);
     margin: 0 auto;
   }
 
   .services-hero {
     text-align: center;
-    margin: 6px 0 18px 0;
+    margin: 6px 0 16px 0;
   }
 
   .services-hero h1 {
     margin-bottom: 8px;
     font-weight: 800;
-    font-size: 2.4rem;
+    font-size: 2.35rem;
     letter-spacing: -0.02em;
   }
 
@@ -38,8 +41,8 @@
     flex-wrap: wrap;
     justify-content: center;
     gap: 10px;
-    margin: 0 auto 20px auto;
-    max-width: 900px;
+    margin: 0 auto 16px auto;
+    max-width: var(--controls-max);
   }
 
   .category-pill {
@@ -67,44 +70,86 @@
     color: #fff;
   }
 
+  /* Filters row: use a clean grid so it stays symmetric */
   .controls-row{
-    max-width: 900px;
-    margin: 0 auto 22px auto;
-    display:flex;
-    gap: 12px;
-    justify-content:center;
-    flex-wrap:wrap;
+    max-width: var(--controls-max);
+    margin: 0 auto 14px auto;
   }
 
-  .controls-row .form-control,
-  .controls-row .form-select,
-  .controls-row .btn{
+  .controls-form{
+    display: grid;
+    grid-template-columns: 1fr 240px auto auto;
+    gap: 12px;
+    align-items: center;
+  }
+
+  @media (max-width: 992px){
+    .controls-form{
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .controls-form .form-control,
+  .controls-form .form-select,
+  .controls-form .btn{
     height: 48px;
     border-radius: 12px;
   }
 
-  .controls-row .form-control{
-    flex: 1 1 420px;
-    min-width: 260px;
-  }
-
-  .controls-row .form-select{
-    flex: 0 0 220px;
-    min-width: 200px;
+  .controls-form .btn{
+    font-weight: 800;
+    padding-left: 16px;
+    padding-right: 16px;
   }
 
   .services-results {
     text-align: center;
     color: #6c757d;
-    margin-bottom: 20px;
+    margin: 8px 0 16px 0;
     font-size: 0.95rem;
   }
 
+  /* Quick access aligned to controls, not wider/narrower */
+  .quick-access-wrap {
+    max-width: var(--controls-max);
+    margin: 0 auto 18px auto;
+  }
+
+  .quick-access {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    border: 1px solid #dee2e6;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
+
+  .quick-access .btn{
+    height: 44px;
+    border-radius: 12px;
+    font-weight: 800;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  /* Cards grid: consistent columns + equal heights */
   .services-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 18px;
     align-items: stretch;
+  }
+
+  @media (max-width: 1200px){
+    .services-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 768px){
+    .services-grid { grid-template-columns: 1fr; }
   }
 
   .service-card {
@@ -115,7 +160,7 @@
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
     display: flex;
     flex-direction: column;
-    min-height: 280px;
+    min-height: 320px;
     height: 100%;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
@@ -130,12 +175,12 @@
     justify-content: space-between;
     align-items: flex-start;
     gap: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   }
 
   .service-title {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 1.22rem;
     line-height: 1.25;
     font-weight: 800;
   }
@@ -145,9 +190,7 @@
     color: #0f172a;
   }
 
-  .service-title a:hover {
-    text-decoration: underline;
-  }
+  .service-title a:hover { text-decoration: underline; }
 
   .service-price {
     white-space: nowrap;
@@ -161,29 +204,32 @@
     font-size: 0.9rem;
     color: #6c757d;
     font-weight: 600;
-    margin-left: 4px;
+    margin-left: 6px;
   }
 
   .service-provider {
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     color: #495057;
     font-size: 0.97rem;
   }
 
   .service-category-badge {
-    display: inline-block;
-    margin-bottom: 14px;
-    padding: 4px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+    padding: 6px 12px;
     font-size: 0.85rem;
-    font-weight: 700;
+    font-weight: 800;
     border-radius: 999px;
     background: #eef2ff;
     color: #0d6efd;
+    width: fit-content;
   }
 
   .service-description {
     color: #212529;
-    margin-bottom: 18px;
+    margin-bottom: 14px;
     flex-grow: 1;
   }
 
@@ -192,7 +238,7 @@
   .read-more-link {
     display: inline-block;
     margin-top: 8px;
-    font-weight: 700;
+    font-weight: 800;
     text-decoration: none;
   }
 
@@ -207,12 +253,15 @@
   }
 
   .service-actions .btn {
+    height: 44px;
     border-radius: 12px;
     font-weight: 800;
+    padding-left: 16px;
+    padding-right: 16px;
   }
 
   .empty-state {
-    max-width: 720px;
+    max-width: var(--controls-max);
     margin: 0 auto;
     background: #fff;
     border: 1px solid #dee2e6;
@@ -229,7 +278,7 @@
   }
 </style>
 
-<div class="container mt-4 services-page">
+<div class="container services-page">
   <div class="services-hero">
     <h1>Services</h1>
     <p>Browse provider offerings, compare options, and book a service that fits your needs.</p>
@@ -256,7 +305,7 @@
   {% endif %}
 
   <div class="controls-row">
-    <form method="GET" action="{{ url_for('main.services') }}" class="d-flex gap-2 flex-wrap justify-content-center w-100">
+    <form method="GET" action="{{ url_for('main.services') }}" class="controls-form">
 
       {# preserve category when searching/sorting #}
       {% if selected_category %}
@@ -282,22 +331,23 @@
 
       {% if search or selected_category or sort %}
         <a href="{{ url_for('main.services') }}" class="btn btn-outline-secondary">Clear</a>
+      {% else %}
+        <span></span>
       {% endif %}
     </form>
   </div>
 
   {% if current_user.is_authenticated and current_user.has_role('client') %}
-  <div class="mt-2 mb-3" style="max-width: 900px; margin-left:auto; margin-right:auto;">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 p-3 rounded-4 border bg-white"
-         style="box-shadow: 0 1px 2px rgba(0,0,0,0.06);">
-      <div>
-        <div class="fw-bold">Quick access</div>
-        <div class="text-muted small">View upcoming sessions, checkout, and messages.</div>
+    <div class="quick-access-wrap">
+      <div class="quick-access">
+        <div>
+          <div class="fw-bold">Quick access</div>
+          <div class="text-muted small">View upcoming sessions, checkout, and messages.</div>
+        </div>
+        <a class="btn btn-primary" href="{{ url_for('main.my_bookings') }}">My Sessions</a>
       </div>
-      <a class="btn btn-primary" href="{{ url_for('main.my_bookings') }}">My Sessions</a>
     </div>
-  </div>
-{% endif %}
+  {% endif %}
 
   {% if search %}
     <div class="services-results">
@@ -325,7 +375,11 @@
             </h2>
 
             <div class="service-price">
-              ${{ '%.2f'|format(s.price) }}
+              {% if s.price is not none %}
+                ${{ '%.2f'|format(s.price) }}
+              {% else %}
+                <span class="text-muted">Message</span>
+              {% endif %}
               {% if s.duration_minutes %}
                 <span class="service-duration">• {{ s.duration_minutes }} min</span>
               {% endif %}
