@@ -25,25 +25,114 @@
     </div>
   </div>
 
-  <!-- Guidance + quick jump -->
+  {# Safe defaults if route didn't pass them yet #}
+  {% set refund_bookings = refund_bookings if refund_bookings is defined else [] %}
+  {% set refund_total = refund_total if refund_total is defined else (refund_bookings|length) %}
+
+  <!-- Search + summary -->
+  <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
+    <div class="card-body py-3">
+      <div class="row g-2 align-items-center">
+        <div class="col-12 col-lg-8">
+          <label class="form-label small text-muted mb-1" for="refundSearch">Search</label>
+          <input id="refundSearch"
+                 type="text"
+                 class="form-control"
+                 placeholder="Search by service, client email, provider email, or booking #..."
+                 autocomplete="off">
+          <div class="form-text small">
+            Tip: try "marcus", "ethan", or a booking number like "3".
+          </div>
+        </div>
+
+        <div class="col-12 col-lg-4 d-flex justify-content-lg-end gap-2 flex-wrap">
+          <span class="badge bg-light text-dark border align-self-center">Total: <span id="refundTotal">{{ refund_total }}</span></span>
+          <span class="badge bg-light text-dark border align-self-center">Showing: <span id="refundShowing">{{ refund_total }}</span></span>
+          <button class="btn btn-sm btn-outline-secondary" type="button" id="refundClear">Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Queue + quick actions -->
   <div class="row g-3">
 
     <div class="col-12 col-lg-8">
       <div class="card shadow-sm border-0" style="border-radius: 18px;">
         <div class="card-body py-3">
-          <div class="fw-semibold mb-1">What counts as a refund request?</div>
+          <div class="fw-semibold mb-1">Refund queue</div>
           <div class="text-muted small mb-3">
-            A booking should appear in this queue when the client requests a refund/cancel action
-            and the system records it in the booking’s admin note (ex: <code>[REFUND_REQUEST]</code>).
+            A booking appears here when the client requests a refund/cancel and the system records it in the booking admin note
+            (ex: <code>[REFUND_REQUEST]</code>).
           </div>
 
-          <div class="fw-semibold mb-1">Recommended workflow</div>
-          <ol class="small text-muted mb-0 ps-3" style="line-height: 1.55;">
-            <li class="mb-1">Open the booking in the Bookings console.</li>
-            <li class="mb-1">Review service context, client/provider notes, and conversation.</li>
-            <li class="mb-1">If appropriate, force-cancel pending/accepted bookings with an admin note.</li>
-            <li>Leave a clear reason in the admin note for auditability.</li>
-          </ol>
+          {% if refund_bookings and refund_bookings|length > 0 %}
+            <div class="table-responsive">
+              <table class="table align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th style="min-width: 260px;">Booking</th>
+                    <th style="min-width: 280px;">Client / Provider</th>
+                    <th style="min-width: 150px;">Created</th>
+                    <th style="min-width: 240px;">Reason</th>
+                    <th class="text-end" style="min-width: 140px;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="refundRows">
+                  {% for b in refund_bookings %}
+                    {% set svc_title = b.service.title if b.service else "Service" %}
+                    {% set client_email = b.client.email if b.client else "—" %}
+                    {% set provider_email = b.provider.email if b.provider else "—" %}
+                    {% set raw_note = (b.admin_note or "") %}
+                    {% set reason = raw_note.replace("[REFUND_REQUEST]", "").strip() %}
+                    <tr class="refund-row"
+                        data-haystack="{{ (svc_title ~ ' ' ~ client_email ~ ' ' ~ provider_email ~ ' ' ~ b.id)|lower }}">
+                      <td>
+                        <div class="fw-semibold">{{ svc_title }}</div>
+                        <div class="text-muted small">Booking #{{ b.id }}</div>
+                        <span class="badge bg-warning-subtle text-warning-emphasis border mt-2">Refund request</span>
+                      </td>
+
+                      <td>
+                        <div class="small"><span class="text-muted">Client:</span> <span class="fw-semibold">{{ client_email }}</span></div>
+                        <div class="small"><span class="text-muted">Provider:</span> <span class="fw-semibold">{{ provider_email }}</span></div>
+                      </td>
+
+                      <td>
+                        <div class="small text-muted">Created</div>
+                        <div class="fw-semibold small">
+                          {% if b.created_at %}{{ b.created_at.strftime("%Y-%m-%d %I:%M %p") }}{% else %}—{% endif %}
+                        </div>
+                      </td>
+
+                      <td>
+                        {% if reason %}
+                          <div class="small">{{ reason }}</div>
+                        {% else %}
+                          <div class="text-muted small">No reason provided</div>
+                        {% endif %}
+                      </td>
+
+                      <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary"
+                           href="{{ url_for('admin.bookings') }}">
+                          Open →
+                        </a>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+            <div class="text-muted small mt-2">
+              Tip: In <strong>Bookings</strong>, check “Show refund requests only” to action these quickly.
+            </div>
+          {% else %}
+            <div class="text-muted">
+              No refund requests yet. When a client requests a refund, it will appear here automatically.
+            </div>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -51,21 +140,22 @@
     <div class="col-12 col-lg-4">
       <div class="card shadow-sm border-0" style="border-radius: 18px;">
         <div class="card-body py-3">
-          <div class="fw-semibold mb-2">Quick actions</div>
+          <div class="fw-semibold mb-2">Recommended workflow</div>
+          <ol class="small text-muted mb-3 ps-3" style="line-height: 1.55;">
+            <li class="mb-1">Open the booking in the Bookings console.</li>
+            <li class="mb-1">Review service context, client/provider notes, and conversation.</li>
+            <li class="mb-1">If appropriate, force-cancel pending/accepted bookings with an admin note.</li>
+            <li>Leave a clear reason in the admin note for auditability.</li>
+          </ol>
 
+          <div class="fw-semibold mb-2">Quick actions</div>
           <div class="d-grid gap-2">
             <a class="btn btn-sm btn-outline-primary text-start" href="{{ url_for('admin.bookings') }}">
               Open Bookings Console →
             </a>
-
-            {# Optional: keep this as a future link if you later support URL prefilter #}
             <a class="btn btn-sm btn-outline-secondary text-start" href="{{ url_for('admin.bookings') }}">
-              Review refund requests →
+              Use “Show refund requests only” →
             </a>
-          </div>
-
-          <div class="form-text small mt-2">
-            In Bookings, use the “Show refund requests only” checkbox to filter.
           </div>
         </div>
       </div>
@@ -74,4 +164,41 @@
   </div>
 
 </div>
+
+<script>
+(function () {
+  const input = document.getElementById("refundSearch");
+  const clearBtn = document.getElementById("refundClear");
+  const rows = Array.from(document.querySelectorAll(".refund-row"));
+  const showingEl = document.getElementById("refundShowing");
+  const totalEl = document.getElementById("refundTotal");
+
+  function applyFilter() {
+    const q = (input.value || "").trim().toLowerCase();
+    let showing = 0;
+
+    rows.forEach((row) => {
+      const hay = row.getAttribute("data-haystack") || "";
+      const match = !q || hay.includes(q);
+      row.style.display = match ? "" : "none";
+      if (match) showing += 1;
+    });
+
+    if (showingEl) showingEl.textContent = String(showing);
+    if (totalEl) totalEl.textContent = String(rows.length);
+  }
+
+  if (input) input.addEventListener("input", applyFilter);
+
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
+      input.value = "";
+      input.focus();
+      applyFilter();
+    });
+  }
+
+  applyFilter();
+})();
+</script>
 {% endblock %}
