@@ -1,5 +1,8 @@
 # app/__init__.py
 import os
+from datetime import timezone
+from zoneinfo import ZoneInfo
+
 from flask import Flask, render_template
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -16,6 +19,7 @@ class URLPrefixMiddleware:
     Apache ProxyPass typically strips the prefix before forwarding to gunicorn,
     so we set SCRIPT_NAME but DO NOT rewrite PATH_INFO.
     """
+
     def __init__(self, app, prefix: str):
         self.app = app
         self.prefix = prefix.rstrip("/")
@@ -54,6 +58,28 @@ def create_app():
             raise RuntimeError("SECRET_KEY must be set to a strong value in production.")
     else:
         app.config.from_object(DevelopmentConfig)
+
+    # ---- Display timezone (for UI formatting) ----
+    # Keep DB timestamps in UTC, but render in local timezone.
+    app.config.setdefault("DISPLAY_TIMEZONE", os.getenv("DISPLAY_TIMEZONE", "America/Chicago"))
+
+    @app.template_filter("fmt_local_dt")
+    def fmt_local_dt(value, fmt="%b %d, %I:%M %p"):
+        """
+        Treat naive datetimes as UTC, convert to DISPLAY_TIMEZONE, then format.
+        """
+        if not value:
+            return ""
+        if getattr(value, "tzinfo", None) is None:
+            value = value.replace(tzinfo=timezone.utc)
+
+        tz_name = app.config.get("DISPLAY_TIMEZONE", "America/Chicago")
+        try:
+            tz = ZoneInfo(tz_name)
+        except Exception:
+            tz = ZoneInfo("UTC")
+
+        return value.astimezone(tz).strftime(fmt)
 
     # Ensure upload directory exists (instance/uploads)
     upload_dir = app.config.get("UPLOAD_DIR")

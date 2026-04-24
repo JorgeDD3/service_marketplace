@@ -286,8 +286,11 @@
             {% if not is_inquiry %}
               <span>•</span>
               <span>
-                <strong>When:</strong>
-                {{ convo.booking.booking_datetime.strftime("%b %d, %Y • %I:%M %p") if convo.booking.booking_datetime else "—" }}
+                <span>
+  <strong>When:</strong>
+  {{ convo.booking.booking_datetime|fmt_local_dt("%b %d, %Y • %I:%M %p") if convo.booking.booking_datetime else "—" }}
+</span>
+                
               </span>
             {% endif %}
           </div>
@@ -318,7 +321,7 @@
                 {% endif %}
               </div>
               <div class="text">{{ m.body }}</div>
-              <div class="time">{{ m.created_at.strftime("%b %d, %I:%M %p") }}</div>
+              <div class="time">{{ m.created_at|fmt_local_dt("%b %d, %I:%M %p") }}</div>
             </div>
           </div>
         {% endfor %}
