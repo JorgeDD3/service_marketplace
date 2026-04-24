@@ -2,22 +2,23 @@
 {% block title %}Admin: Bookings{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width: 1100px;">
+<div class="container-dashboard" style="max-width: 1400px;">
 
-  <!-- Header card -->
+  <!-- Header -->
   <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
     <div class="card-body py-3">
-      <div class="d-flex align-items-start justify-content-between gap-3">
+      <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
         <div>
+          <div class="text-muted small mb-1">Admin Console</div>
           <h1 class="h3 mb-1">Bookings</h1>
-          <div class="text-muted small">
-            Review activity, see provider/client context, and force-cancel when necessary.
+          <div class="text-muted">
+            Search bookings, review context, and force-cancel when necessary.
           </div>
         </div>
 
         <div class="d-flex align-items-center gap-2 flex-shrink-0">
           <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.moderation') }}">
-            Back to Moderation
+            ← Back to Moderation
           </a>
         </div>
       </div>
@@ -25,125 +26,147 @@
   </div>
 
   {% if bookings %}
-    <div class="d-flex flex-column gap-2">
-      {% for b in bookings %}
-        <div class="card shadow-sm border-0" style="border-radius: 18px;">
-          <div class="card-body py-3">
-            <div class="d-flex align-items-start justify-content-between gap-3">
+    {# Precompute counts (template only) #}
+    {% set pending_count = 0 %}
+    {% set accepted_count = 0 %}
+    {% set other_count = 0 %}
+    {% set refund_count = 0 %}
+    {% for b in bookings %}
+      {% if b.status == 'pending' %}{% set pending_count = pending_count + 1 %}{% endif %}
+      {% if b.status == 'accepted' %}{% set accepted_count = accepted_count + 1 %}{% endif %}
+      {% if b.status not in ['pending','accepted'] %}{% set other_count = other_count + 1 %}{% endif %}
+      {% if b.admin_note and '[REFUND_REQUEST]' in b.admin_note %}{% set refund_count = refund_count + 1 %}{% endif %}
+    {% endfor %}
 
-              <!-- Left: booking info -->
-              <div class="flex-grow-1">
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                  <div class="fw-semibold">
-                    {% if b.service %}
-                      {{ b.service.title }}
-                    {% else %}
-                      —
+    <!-- Search + Filters -->
+    <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
+      <div class="card-body py-3">
+        <div class="row g-2 align-items-end">
+          <div class="col-12 col-lg-6">
+            <label class="form-label small text-muted mb-1" for="bkSearch">Search</label>
+            <input id="bkSearch" type="text" class="form-control"
+                   placeholder="Search by service, client email, provider email, or booking #…"
+                   autocomplete="off">
+            <div class="form-text small">Tip: try “refund”, “inquiry”, or an email address.</div>
+          </div>
+
+          <div class="col-12 col-md-6 col-lg-3">
+            <label class="form-label small text-muted mb-1" for="bkStatus">Status</label>
+            <select id="bkStatus" class="form-select">
+              <option value="all" selected>All statuses</option>
+              <option value="pending">Pending</option>
+              <option value="accepted">Accepted</option>
+              <option value="declined">Declined</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+
+          <div class="col-12 col-md-6 col-lg-3">
+            <div class="d-flex gap-2 justify-content-lg-end flex-wrap">
+              <span class="badge bg-light text-dark border align-self-center">Pending: <span id="cPending">{{ pending_count }}</span></span>
+              <span class="badge bg-light text-dark border align-self-center">Accepted: <span id="cAccepted">{{ accepted_count }}</span></span>
+              <span class="badge bg-light text-dark border align-self-center">Refunds: <span id="cRefund">{{ refund_count }}</span></span>
+              <span class="badge bg-light text-dark border align-self-center">Showing: <span id="bkShowing">0</span></span>
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="bkClear">Clear</button>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="form-check mt-1">
+              <input class="form-check-input" type="checkbox" id="bkRefundOnly">
+              <label class="form-check-label small text-muted" for="bkRefundOnly">
+                Show refund requests only
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compact list -->
+    <div class="card shadow-sm border-0" style="border-radius: 18px;">
+      <div class="card-body p-0">
+
+        <div class="d-none d-lg-block px-3 py-2 border-bottom"
+             style="background:#f8f9fa; border-top-left-radius:18px; border-top-right-radius:18px;">
+          <div class="row align-items-center small text-muted">
+            <div class="col-lg-5">Booking</div>
+            <div class="col-lg-4">Client / Provider</div>
+            <div class="col-lg-2">Status</div>
+            <div class="col-lg-1 text-end">Edit</div>
+          </div>
+        </div>
+
+        <div class="list-group list-group-flush" id="bkList">
+          {% for b in bookings %}
+            {% set service_title = (b.service.title if b.service else '—') %}
+            {% set client_email = (b.client.email if b.client else '—') %}
+            {% set provider_email = (b.provider.email if b.provider else '—') %}
+            {% set created_str = (b.created_at.strftime("%Y-%m-%d %H:%M") if b.created_at else "—") %}
+            {% set refund_flag = (1 if (b.admin_note and '[REFUND_REQUEST]' in b.admin_note) else 0) %}
+            {% set admin_note = (b.admin_note or '') %}
+            {% set provider_note = (b.provider_note or '') %}
+
+            <div class="list-group-item px-3 py-3 bk-row"
+                 data-search="{{ (service_title ~ ' ' ~ client_email ~ ' ' ~ provider_email ~ ' ' ~ b.id ~ ' ' ~ b.status ~ ' ' ~ admin_note ~ ' ' ~ provider_note)|lower }}"
+                 data-status="{{ (b.status or '')|lower }}"
+                 data-refund="{{ refund_flag }}"
+                 data-booking-id="{{ b.id }}"
+                 data-service-title="{{ service_title|e }}"
+                 data-client-email="{{ client_email|e }}"
+                 data-provider-email="{{ provider_email|e }}"
+                 data-created-at="{{ created_str }}"
+                 data-provider-note="{{ provider_note|e }}"
+                 data-admin-note="{{ admin_note|e }}"
+                 data-force-cancel-url="{{ url_for('admin.force_cancel_booking', booking_id=b.id) }}"
+                 data-messages-url="{{ url_for('messages.booking_thread', booking_id=b.id) }}">
+
+              <div class="row g-2 align-items-start">
+                <div class="col-12 col-lg-5">
+                  <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div class="fw-semibold">{{ service_title }}</div>
+                    <span class="text-muted small">#{{ b.id }}</span>
+                    {% if refund_flag %}
+                      <span class="badge bg-warning-subtle text-warning border">Refund request</span>
                     {% endif %}
                   </div>
-
-                  <span class="badge badge-{{ b.status }}">{{ b.status }}</span>
-
-                  <span class="text-muted small">#{{ b.id }}</span>
+                  <div class="text-muted small mt-1">
+                    <span class="text-muted">Created:</span> {{ created_str }}
+                  </div>
                 </div>
 
-                <div class="text-muted small mt-1">
-                  <span class="me-3">
-                    <span class="text-muted">Client:</span>
-                    <span class="fw-semibold">{{ b.client.email if b.client else "—" }}</span>
-                  </span>
-                  <span class="me-3">
-                    <span class="text-muted">Provider:</span>
-                    <span class="fw-semibold">{{ b.provider.email if b.provider else "—" }}</span>
-                  </span>
-                  <span class="me-3">
-                    <span class="text-muted">Created:</span>
-                    {{ b.created_at.strftime("%Y-%m-%d %H:%M") if b.created_at else "—" }}
-                  </span>
-                </div>
-
-                <div class="mt-2">
-                  <div class="text-muted small">Provider note</div>
+                <div class="col-12 col-lg-4">
                   <div class="small">
-                    {% if b.provider_note %}
-                      <span style="white-space: pre-wrap;">{{ b.provider_note }}</span>
-                    {% else %}
-                      <span class="text-muted">—</span>
-                    {% endif %}
+                    <div><span class="text-muted">Client:</span> <span class="fw-semibold">{{ client_email }}</span></div>
+                    <div><span class="text-muted">Provider:</span> <span class="fw-semibold">{{ provider_email }}</span></div>
                   </div>
                 </div>
 
-                <div class="mt-2">
-                  <div class="text-muted small">Admin action</div>
-                  <div class="small">
-                    {% if b.admin_note %}
-                      <span style="white-space: pre-wrap;">{{ b.admin_note }}</span>
-                    {% else %}
-                      <span class="text-muted">—</span>
-                    {% endif %}
-                    {% if b.admin_action_at %}
-                      <div class="text-muted small mt-1">
-                        {{ b.admin_action_at.strftime("%Y-%m-%d %H:%M") }}
-                      </div>
-                    {% endif %}
-                  </div>
+                <div class="col-8 col-lg-2">
+                  <span class="status-badge {{ (b.status or '')|lower }}">{{ b.status }}</span>
                 </div>
 
-                <div class="mt-3">
-                  <a class="btn btn-sm btn-outline-primary"
-                     href="{{ url_for('messages.booking_thread', booking_id=b.id) }}">
-                    Open messages
-                  </a>
-                </div>
-              </div>
-
-              <!-- Right: actions -->
-              <div class="flex-shrink-0" style="min-width: 280px;">
-                <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
-                  <div class="card-body py-2">
-                    <div class="d-flex align-items-center justify-content-between">
-                      <div class="fw-semibold">Admin controls</div>
-                      <span class="badge bg-light text-dark">Booking</span>
-                    </div>
-
-                    {% if b.status in ["pending", "accepted"] %}
-                      <div class="text-muted small mt-1">
-                        Force-cancel is available for pending/accepted bookings.
-                      </div>
-
-                      <form method="POST"
-                            action="{{ url_for('admin.force_cancel_booking', booking_id=b.id) }}"
-                            class="mt-2"
-                            onsubmit="return confirm('Force-cancel this booking?');">
-                        <label class="form-label small text-muted mb-1" for="adminNote{{ b.id }}">
-                          Reason (optional)
-                        </label>
-                        <input id="adminNote{{ b.id }}"
-                               type="text"
-                               name="admin_note"
-                               class="form-control form-control-sm"
-                               placeholder="e.g., policy violation, spam, dispute">
-
-                        <div class="d-flex justify-content-end mt-2">
-                          <button type="submit" class="btn btn-sm btn-outline-danger">
-                            Force Cancel
-                          </button>
-                        </div>
-                      </form>
-                    {% else %}
-                      <div class="text-muted small mt-2">
-                        No admin action available for this status.
-                      </div>
-                    {% endif %}
-                  </div>
+                <div class="col-4 col-lg-1 text-end">
+                  <button type="button"
+                          class="bk-edit border-0 bg-transparent p-0 text-secondary"
+                          title="View / Edit"
+                          aria-label="View / Edit"
+                          data-bs-toggle="modal"
+                          data-bs-target="#bkModal"
+                          style="font-size: 1.05rem; line-height: 1;">
+                    ✏️
+                  </button>
                 </div>
               </div>
 
             </div>
-          </div>
+          {% endfor %}
         </div>
-      {% endfor %}
+
+      </div>
     </div>
+
   {% else %}
     <div class="card border-0 shadow-sm" style="border-radius: 18px;">
       <div class="card-body py-3">
@@ -154,4 +177,182 @@
   {% endif %}
 
 </div>
+
+<!-- Single reusable modal -->
+<div class="modal fade" id="bkModal" tabindex="-1" aria-labelledby="bkModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content" style="border-radius: 18px;">
+      <div class="modal-header">
+        <div>
+          <div class="text-muted small">Booking</div>
+          <h5 class="modal-title mb-0" id="bkModalLabel">Details</h5>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+          <div>
+            <div class="fw-semibold" id="mServiceTitle">—</div>
+            <div class="text-muted small" id="mMeta">—</div>
+          </div>
+          <span class="badge bg-light text-dark border" id="mStatus">—</span>
+        </div>
+
+        <hr class="my-3">
+
+        <div class="row g-3">
+          <div class="col-12 col-md-6">
+            <div class="text-muted small mb-1">Provider note</div>
+            <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
+              <div class="card-body py-2">
+                <div class="small" id="mProviderNote" style="white-space: pre-wrap;">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <div class="text-muted small mb-1">Admin note</div>
+            <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
+              <div class="card-body py-2">
+                <div class="small" id="mAdminNote" style="white-space: pre-wrap;">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12" id="mCancelWrap">
+            <div class="fw-semibold mb-1">Admin controls</div>
+            <div class="text-muted small mb-2" id="mCancelHint">—</div>
+
+            <form method="POST" id="mCancelForm" action="" onsubmit="return confirm('Force-cancel this booking?');">
+              <label class="form-label small text-muted mb-1" for="mCancelNote">Reason (optional)</label>
+              <input id="mCancelNote" type="text" name="admin_note" class="form-control"
+                     placeholder="e.g., policy violation, spam, dispute">
+              <div class="d-flex justify-content-end mt-2">
+                <button type="submit" class="btn btn-outline-danger" id="mCancelBtn">Force cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer d-flex justify-content-between">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+        <a href="#" class="btn btn-outline-primary" id="mMessagesBtn">Open messages</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const search = document.getElementById('bkSearch');
+  const statusSel = document.getElementById('bkStatus');
+  const refundOnly = document.getElementById('bkRefundOnly');
+  const clearBtn = document.getElementById('bkClear');
+  const rows = Array.from(document.querySelectorAll('.bk-row'));
+  const showingEl = document.getElementById('bkShowing');
+
+  function applyFilter() {
+    const q = (search?.value || '').trim().toLowerCase();
+    const status = (statusSel?.value || 'all').toLowerCase();
+    const onlyRefund = !!refundOnly?.checked;
+
+    let shown = 0;
+    rows.forEach((row) => {
+      const hay = row.dataset.search || '';
+      const rowStatus = row.dataset.status || '';
+      const rowRefund = row.dataset.refund === '1';
+
+      const matchQ = !q || hay.includes(q);
+      const matchStatus = (status === 'all') || (rowStatus === status);
+      const matchRefund = (!onlyRefund) || rowRefund;
+
+      const match = matchQ && matchStatus && matchRefund;
+      row.style.display = match ? '' : 'none';
+      if (match) shown += 1;
+    });
+
+    if (showingEl) showingEl.textContent = String(shown);
+  }
+
+  applyFilter();
+
+  search?.addEventListener('input', applyFilter);
+  statusSel?.addEventListener('change', applyFilter);
+  refundOnly?.addEventListener('change', applyFilter);
+
+  clearBtn?.addEventListener('click', () => {
+    if (search) search.value = '';
+    if (statusSel) statusSel.value = 'all';
+    if (refundOnly) refundOnly.checked = false;
+    search?.focus();
+    applyFilter();
+  });
+
+  // Modal wiring
+  const mServiceTitle = document.getElementById('mServiceTitle');
+  const mMeta = document.getElementById('mMeta');
+  const mStatus = document.getElementById('mStatus');
+  const mProviderNote = document.getElementById('mProviderNote');
+  const mAdminNote = document.getElementById('mAdminNote');
+  const mCancelWrap = document.getElementById('mCancelWrap');
+  const mCancelHint = document.getElementById('mCancelHint');
+  const mCancelForm = document.getElementById('mCancelForm');
+  const mCancelBtn = document.getElementById('mCancelBtn');
+  const mMessagesBtn = document.getElementById('mMessagesBtn');
+
+  const setText = (el, val) => { if (el) el.textContent = val; };
+
+  function setStatusBadge(status) {
+    if (!mStatus) return;
+    mStatus.textContent = status || '—';
+    let cls = 'badge border bg-light text-dark';
+    if (status === 'pending') cls = 'badge border bg-warning-subtle text-warning';
+    if (status === 'accepted') cls = 'badge border bg-success-subtle text-success';
+    if (status === 'cancelled') cls = 'badge border bg-secondary-subtle text-secondary';
+    if (status === 'declined') cls = 'badge border bg-danger-subtle text-danger';
+    if (status === 'completed') cls = 'badge border bg-success-subtle text-success';
+    mStatus.className = cls;
+  }
+
+  document.querySelectorAll('.bk-edit').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const row = btn.closest('.bk-row');
+      if (!row) return;
+
+      const id = row.dataset.bookingId;
+      const title = row.dataset.serviceTitle || '—';
+      const client = row.dataset.clientEmail || '—';
+      const provider = row.dataset.providerEmail || '—';
+      const created = row.dataset.createdAt || '—';
+      const status = row.dataset.status || '';
+      const providerNote = row.dataset.providerNote || '';
+      const adminNote = row.dataset.adminNote || '';
+      const cancelUrl = row.dataset.forceCancelUrl || '';
+      const messagesUrl = row.dataset.messagesUrl || '#';
+
+      setText(mServiceTitle, title);
+      setText(mMeta, `Client: ${client} • Provider: ${provider} • Created: ${created} • #${id}`);
+      setStatusBadge(status);
+
+      setText(mProviderNote, providerNote.trim() ? providerNote : '—');
+      setText(mAdminNote, adminNote.trim() ? adminNote : '—');
+
+      if (mMessagesBtn) mMessagesBtn.href = messagesUrl;
+
+      // Only allow cancel for pending/accepted (matches backend guard)
+      const canCancel = (status === 'pending' || status === 'accepted');
+      if (mCancelWrap) mCancelWrap.style.display = canCancel ? '' : 'none';
+
+      if (canCancel) {
+        if (mCancelForm && cancelUrl) mCancelForm.action = cancelUrl;
+        if (mCancelHint) mCancelHint.textContent = 'Force-cancel is available for pending/accepted bookings.';
+        if (mCancelBtn) mCancelBtn.disabled = false;
+      }
+    });
+  });
+
+})();
+</script>
 {% endblock %}

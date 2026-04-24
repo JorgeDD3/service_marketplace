@@ -35,10 +35,16 @@ def dashboard():
 @role_required("admin")
 def moderation():
     """
-    Admin moderation hub (single entry point).
-    Uses existing admin pages; no schema changes.
+    Admin moderation hub.
     """
-    return render_template("admin/admin_moderation.html")
+    notif = {
+        "refund_requests": 0,
+        "pending_verifications": 0,
+        "open_service_requests": 0,
+        "hidden_services": 0,
+        "disabled_users": 0,
+    }
+    return render_template("admin/admin_moderation.html", notif=notif)
 
 
 # --------------------
@@ -114,16 +120,24 @@ def services():
 def toggle_service(service_id: int):
     svc = Service.query.get_or_404(service_id)
 
-    svc.is_active = not bool(svc.is_active)
+    action = (request.form.get("action") or "toggle").strip().lower()
+    note = (request.form.get("moderation_note") or "").strip()
 
-    note = request.form.get("moderation_note", "").strip()
-    if note:
-        svc.moderation_note = note
-
+    # Always allow updating the note (including clearing it)
+    svc.moderation_note = note or None
     svc.moderated_at = datetime.utcnow()
+
+    # Only toggle visibility when explicitly requested
+    if action == "toggle":
+        svc.is_active = not bool(svc.is_active)
+
     db.session.commit()
 
-    flash(f"Service {'activated' if svc.is_active else 'hidden'}.", "success")
+    if action == "save":
+        flash("Moderation note saved.", "success")
+    else:
+        flash(f"Service {'activated' if svc.is_active else 'hidden'}.", "success")
+
     return redirect(url_for("admin.services"))
 
 
@@ -137,6 +151,16 @@ def toggle_service(service_id: int):
 def bookings():
     bookings = Booking.query.order_by(Booking.created_at.desc()).all()
     return render_template("admin/bookings.html", bookings=bookings)
+
+@admin_bp.route("/refund-requests")
+@login_required
+@role_required("admin")
+def refund_requests():
+    """
+    Dedicated admin view for refund/cancel requests.
+    Template-only page (links into bookings for action).
+    """
+    return render_template("admin/refund_requests.html")
 
 
 @admin_bp.route("/bookings/<int:booking_id>/force-cancel", methods=["POST"])

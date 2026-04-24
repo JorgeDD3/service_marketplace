@@ -1,348 +1,586 @@
 {% extends "base.html" %}
+{% block container_class %}container-wide{% endblock %}
 {% block title %}Booking Requests{% endblock %}
 
 {% block content %}
 <style>
-  .pb-wrap { max-width: 1100px; margin: 0 auto; }
-  .pb-card { border-radius: 18px; }
-  .pb-tight h1 { font-size: 34px; line-height: 1.1; margin: 0; }
-  .pb-tight .muted { color: #6b7280; }
-  .pb-tight .btn { padding: 8px 12px; }
-  .pb-tight .btn-sm { padding: 6px 10px; }
+  :root{
+    --ink:#0b1220;
+    --muted:#64748b;
+    --line:#e5e7eb;
+    --bg:#f6f7fb;
+    --blue:#2563eb;
+    --green:#15803d;
+    --yellow:#b45309;
+    --red:#dc2626;
+  }
 
-  .pb-item{
-    border:1px solid #e5e7eb;
-    border-radius:14px;
-    padding:14px;
+  body{ background:var(--bg); }
+
+  .pb-wrap{
+    width:min(1220px, calc(100vw - 42px));
+    margin:18px auto;
+  }
+
+  .pb-card{
     background:#fff;
+    border:1px solid rgba(15,23,42,.08);
+    border-radius:20px;
+    box-shadow:0 14px 32px rgba(15,23,42,.055);
+  }
+
+  .pb-header{
+    padding:20px 22px;
+    margin-bottom:12px;
+  }
+
+  .pb-title{
+    margin:0;
+    font-size:36px;
+    line-height:1;
+    font-weight:950;
+    letter-spacing:-.035em;
+    color:var(--ink);
+  }
+
+  .pb-sub{
+    margin-top:7px;
+    color:var(--muted);
+    font-weight:700;
+    font-size:15px;
+  }
+
+  .pb-nav{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+
+  .pb-nav .btn,
+  .btn{
+    border-radius:12px;
+    font-weight:900;
+  }
+
+  .pb-summary{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:10px;
+    margin-bottom:12px;
+  }
+
+  .stat-card{
+    padding:14px 16px;
+  }
+
+  .stat-label{
+    color:var(--muted);
+    font-size:12px;
+    font-weight:950;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+
+  .stat-value{
+    color:var(--ink);
+    font-size:30px;
+    line-height:1;
+    font-weight:950;
+    margin-top:7px;
+  }
+
+  .stat-note{
+    color:var(--muted);
+    font-size:13px;
+    font-weight:700;
+    margin-top:5px;
   }
 
   .pb-grid{
     display:grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px 18px;
-    margin-top: 10px;
-  }
-  @media (max-width: 768px){
-    .pb-grid{ grid-template-columns: 1fr; }
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    align-items:start;
   }
 
-  .pb-k{ font-size:12px; color:#6b7280; }
-  .pb-v{ font-weight:600; }
+  .pb-section{
+    padding:16px;
+  }
 
-  /* highlight if navigated via #booking-123 */
-  li:target {
-    outline: 2px solid rgba(13,110,253,.35);
-    border-radius: 14px;
-    background: rgba(13,110,253,.05);
+  .pb-section.full{
+    margin-top:12px;
+  }
+
+  .section-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+    margin-bottom:10px;
+  }
+
+  .section-title{
+    margin:0;
+    font-size:20px;
+    font-weight:950;
+    color:var(--ink);
+  }
+
+  .section-sub{
+    margin-top:3px;
+    color:var(--muted);
+    font-size:13px;
+    font-weight:700;
+  }
+
+  .count-pill{
+    min-width:28px;
+    height:28px;
+    border-radius:999px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    font-size:13px;
+    font-weight:950;
+    background:#eff6ff;
+    color:#1d4ed8;
+  }
+
+  .count-pill.warn{
+    background:#fffbeb;
+    color:#b45309;
+  }
+
+  .count-pill.light{
+    background:#f8fafc;
+    color:#475569;
+    border:1px solid var(--line);
+  }
+
+  .booking-list{
+    display:grid;
+    gap:8px;
+  }
+
+  .booking-item{
+    border:1px solid rgba(15,23,42,.09);
+    border-radius:16px;
+    padding:12px;
+    background:#fff;
+  }
+
+  .booking-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+
+  .service-link{
+    font-weight:950;
+    color:#0d6efd;
+    text-decoration:underline;
+    text-underline-offset:2px;
+    font-size:16px;
+  }
+
+  .client-line{
+    margin-top:2px;
+    color:var(--muted);
+    font-size:13px;
+    font-weight:700;
+  }
+
+  .badge-row{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+  }
+
+  .pb-pill{
+    display:inline-flex;
+    align-items:center;
+    padding:5px 9px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:950;
+    border:1px solid var(--line);
+    background:#f8fafc;
+    color:#334155;
+  }
+
+  .pb-pill.paid{
+    background:#ecfdf5;
+    border-color:#bbf7d0;
+    color:#166534;
+  }
+
+  .pb-pill.pending{
+    background:#fffbeb;
+    border-color:#fde68a;
+    color:#92400e;
+  }
+
+  .pb-pill.bad{
+    background:#fef2f2;
+    border-color:#fecaca;
+    color:#991b1b;
+  }
+
+  .compact-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-top:10px;
+  }
+
+  .compact-box{
+    background:#f8fafc;
+    border:1px solid rgba(15,23,42,.08);
+    border-radius:13px;
+    padding:8px 10px;
+  }
+
+  .compact-label{
+    color:#64748b;
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    font-weight:950;
+  }
+
+  .compact-value{
+    color:#0f172a;
+    font-size:13px;
+    font-weight:900;
+    margin-top:2px;
+    line-height:1.25;
+  }
+
+    .action-row{
+    display:grid;
+    grid-template-columns:auto 1fr 1fr;
+    gap:10px;
+    align-items:end;
+    margin-top:12px;
+  }
+
+  .action-row .btn{
+    padding:8px 12px;
+    white-space:nowrap;
+  }
+
+  .decision-form{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:8px;
+    align-items:end;
+  }
+
+  .note-input{
+    width:100%;
+    border-radius:12px;
+    font-weight:650;
+    padding:8px 10px;
+  }
+
+  @media(max-width:980px){
+    .action-row{
+      grid-template-columns:1fr;
+    }
+
+    .decision-form{
+      grid-template-columns:1fr;
+    }
+  }
+
+  .empty-box{
+    border:1px dashed #cbd5e1;
+    border-radius:16px;
+    padding:16px;
+    color:#64748b;
+    font-weight:750;
+    background:#f8fafc;
+  }
+
+  .history-toggle{
+    width:100%;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    border:0;
+    background:transparent;
+    padding:0;
+    text-align:left;
+  }
+
+  .history-toggle:hover .section-title{
+    text-decoration:underline;
+    text-underline-offset:3px;
+  }
+
+  .history-item{
+    display:grid;
+    grid-template-columns:1.1fr 1fr auto;
+    gap:10px;
+    align-items:center;
+    border:1px solid rgba(15,23,42,.09);
+    border-radius:14px;
+    padding:10px 12px;
+    background:#fff;
+  }
+
+  .history-meta{
+    color:#64748b;
+    font-size:12px;
+    font-weight:750;
+  }
+
+  @media(max-width:980px){
+    .pb-wrap{ width:min(1220px, calc(100vw - 24px)); }
+    .pb-summary{ grid-template-columns:1fr; }
+    .pb-grid{ grid-template-columns:1fr; }
+    .compact-row{ grid-template-columns:1fr; }
+    .history-item{ grid-template-columns:1fr; }
   }
 </style>
 
-<div class="container pb-tight" style="padding-top: 24px; padding-bottom: 24px;">
-  <div class="pb-wrap">
+<div class="pb-wrap">
 
-    <!-- Header card -->
-    <div class="card shadow-sm pb-card mb-3">
-      <div class="card-body" style="padding:16px;">
-        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-          <div>
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-              <h1>Booking Requests</h1>
-              <span class="badge text-bg-light">Provider</span>
-            </div>
-            <div class="muted mt-1">
-              Review requests, respond, and message clients (unlocks after payment).
-            </div>
-          </div>
-          <div class="d-flex gap-2">
-            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('provider.dashboard') }}">Dashboard</a>
-            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('provider.calendar_view') }}">Calendar</a>
-          </div>
+  <div class="pb-card pb-header">
+    <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+      <div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <h1 class="pb-title">Booking Requests</h1>
+          <span class="pb-pill">Provider</span>
         </div>
+        <div class="pb-sub">
+          Review paid requests, track unpaid bookings, and message clients after payment.
+        </div>
+      </div>
+
+      <div class="pb-nav">
+        <a class="btn btn-outline-secondary" href="{{ url_for('provider.dashboard') }}">Dashboard</a>
+        <a class="btn btn-outline-secondary" href="{{ url_for('provider.calendar_view') }}">Calendar</a>
+      </div>
+    </div>
+  </div>
+
+  {% if not bookings %}
+    <div class="pb-card p-4">
+      <div class="empty-box">No booking requests yet.</div>
+    </div>
+  {% else %}
+
+    {% set needs_action = [] %}
+    {% set waiting_payment = [] %}
+    {% set history = [] %}
+
+    {% for b in bookings %}
+      {% if b.status == "pending" and b.payment_status == "paid" %}
+        {% set _ = needs_action.append(b) %}
+      {% elif b.status == "pending" and b.payment_status != "paid" %}
+        {% set _ = waiting_payment.append(b) %}
+      {% else %}
+        {% set _ = history.append(b) %}
+      {% endif %}
+    {% endfor %}
+
+    <div class="pb-summary">
+      <div class="pb-card stat-card">
+        <div class="stat-label">Needs action</div>
+        <div class="stat-value">{{ needs_action|length }}</div>
+        <div class="stat-note">Paid requests ready for decision</div>
+      </div>
+
+      <div class="pb-card stat-card">
+        <div class="stat-label">Waiting payment</div>
+        <div class="stat-value">{{ waiting_payment|length }}</div>
+        <div class="stat-note">Locked until client checkout</div>
+      </div>
+
+      <div class="pb-card stat-card">
+        <div class="stat-label">History</div>
+        <div class="stat-value">{{ history|length }}</div>
+        <div class="stat-note">Click history below to expand</div>
       </div>
     </div>
 
-    {% if not bookings %}
-      <div class="alert alert-info">No booking requests yet.</div>
-    {% else %}
+    <div class="pb-grid">
 
-      {# Split into sections using your existing fields #}
-      {% set needs_action = [] %}
-      {% set waiting_payment = [] %}
-      {% set history = [] %}
+      <div class="pb-card pb-section">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Needs action</h2>
+            <div class="section-sub">Paid requests ready for your response.</div>
+          </div>
+          <span class="count-pill">{{ needs_action|length }}</span>
+        </div>
 
-      {% for b in bookings %}
-        {% if b.status == "pending" and b.payment_status == "paid" %}
-          {% set _ = needs_action.append(b) %}
-        {% elif b.status == "pending" and b.payment_status != "paid" %}
-          {% set _ = waiting_payment.append(b) %}
+        {% if needs_action|length == 0 %}
+          <div class="empty-box">Nothing needs action right now.</div>
         {% else %}
-          {% set _ = history.append(b) %}
+          <div class="booking-list">
+            {% for b in needs_action %}
+              <div class="booking-item" id="booking-{{ b.id }}">
+                <div class="booking-top">
+                  <div>
+                    <a class="service-link" href="{{ url_for('main.service_detail', service_id=b.service.id) }}">
+                      {{ b.service.title }}
+                    </a>
+                    <div class="client-line">Client: {{ b.client.first_name }} {{ b.client.last_name }}</div>
+                  </div>
+                  <div class="badge-row">
+                    <span class="pb-pill pending">pending</span>
+                    <span class="pb-pill paid">paid</span>
+                  </div>
+                </div>
+
+                <div class="compact-row">
+                  <div class="compact-box">
+                    <div class="compact-label">Session time</div>
+                    <div class="compact-value">{{ b.booking_datetime.strftime("%a, %b %d • %I:%M %p") if b.booking_datetime else "—" }}</div>
+                  </div>
+                  <div class="compact-box">
+                    <div class="compact-label">Requested</div>
+                    <div class="compact-value">{{ b.created_at.strftime("%b %d • %I:%M %p") if b.created_at else "—" }}</div>
+                  </div>
+                </div>
+
+                <div class="action-row">
+                  <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">
+                    Message client
+                  </a>
+
+                  <form method="POST" action="{{ url_for('main.update_booking_status', booking_id=b.id) }}">
+                    <input type="hidden" name="status" value="accepted">
+                    <button class="btn btn-success btn-sm" type="submit">Accept request</button>
+                  </form>
+
+                  <form method="POST" action="{{ url_for('main.update_booking_status', booking_id=b.id) }}">
+                    <input type="hidden" name="status" value="declined">
+                    <button class="btn btn-outline-danger btn-sm" type="submit">Decline request</button>
+                  </form>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
         {% endif %}
-      {% endfor %}
-
-      <!-- Needs action -->
-      <div class="card shadow-sm pb-card mb-3">
-        <div class="card-body" style="padding:16px;">
-          <div class="d-flex justify-content-between align-items-center">
-            <div class="fw-semibold">Needs action</div>
-            <span class="badge text-bg-primary">{{ needs_action|length }}</span>
-          </div>
-          <div class="muted small mt-1 mb-3">Pending + paid requests you can accept or decline.</div>
-
-          {% if needs_action|length == 0 %}
-            <div class="muted">Nothing needs action right now.</div>
-          {% else %}
-            <div class="d-grid gap-2">
-              {% for b in needs_action %}
-                <div class="pb-item" id="booking-{{ b.id }}">
-                  <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
-                    <div>
-                      <div class="fw-semibold">
-                        <a href="{{ url_for('main.service_detail', service_id=b.service.id) }}">
-                          {{ b.service.title }}
-                        </a>
-                      </div>
-                      <div class="muted small">Client: {{ b.client.first_name }} {{ b.client.last_name }}</div>
-                    </div>
-                    <div class="d-flex gap-2">
-                      <span class="badge text-bg-warning">pending</span>
-                      <span class="badge text-bg-success">paid</span>
-                    </div>
-                  </div>
-
-                  <div class="pb-grid">
-                    <div>
-                      <div class="pb-k">Scheduled for</div>
-                      <div class="pb-v">{{ b.booking_datetime.strftime("%a %b %d, %Y %I:%M %p") if b.booking_datetime else "—" }}</div>
-                    </div>
-                    <div>
-                      <div class="pb-k">Requested at</div>
-                      <div class="pb-v">{{ b.created_at.strftime("%a %b %d, %Y %I:%M %p") if b.created_at else "—" }}</div>
-                    </div>
-                  </div>
-
-                  {% if b.provider_note %}
-                    <div class="muted small mt-2">
-                      <strong>Note:</strong> {{ b.provider_note }}
-                    </div>
-                  {% endif %}
-
-                  <div class="d-flex gap-2 mt-3 flex-wrap">
-                    <a class="btn btn-outline-secondary btn-sm"
-                       href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">
-                      Messages
-                    </a>
-
-                    <form method="POST" action="{{ url_for('main.update_booking_status', booking_id=b.id) }}" class="d-flex gap-2 flex-wrap">
-                      <input type="hidden" name="status" value="accepted">
-                      <input class="form-control form-control-sm" type="text" name="provider_note"
-                             style="max-width: 340px;"
-                             placeholder="Optional note (e.g., can you do Tue at 6pm?)" />
-                      <button class="btn btn-success btn-sm" type="submit">Accept</button>
-                    </form>
-
-                    <form method="POST" action="{{ url_for('main.update_booking_status', booking_id=b.id) }}" class="d-flex gap-2 flex-wrap">
-                      <input type="hidden" name="status" value="declined">
-                      <input class="form-control form-control-sm" type="text" name="provider_note"
-                             style="max-width: 340px;"
-                             placeholder="Optional note (e.g., not available this week)" />
-                      <button class="btn btn-outline-danger btn-sm" type="submit">Decline</button>
-                    </form>
-                  </div>
-                </div>
-              {% endfor %}
-            </div>
-          {% endif %}
-        </div>
       </div>
 
-      <!-- Waiting on payment -->
-      <div class="card shadow-sm pb-card mb-3">
-        <div class="card-body" style="padding:16px;">
-          <div class="d-flex justify-content-between align-items-center">
-            <div class="fw-semibold">Waiting on payment</div>
-            <span class="badge text-bg-warning">{{ waiting_payment|length }}</span>
+      <div class="pb-card pb-section">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Waiting on payment</h2>
+            <div class="section-sub">Client must pay before you respond.</div>
           </div>
-          <div class="muted small mt-1 mb-3">Requests are locked until the client completes payment.</div>
-
-          {% if waiting_payment|length == 0 %}
-            <div class="muted">No unpaid pending requests.</div>
-          {% else %}
-            <div class="d-grid gap-2">
-              {% for b in waiting_payment %}
-                <div class="pb-item" id="booking-{{ b.id }}">
-                  <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
-                    <div>
-                      <div class="fw-semibold">
-                        <a href="{{ url_for('main.service_detail', service_id=b.service.id) }}">
-                          {{ b.service.title }}
-                        </a>
-                      </div>
-                      <div class="muted small">Client: {{ b.client.first_name }} {{ b.client.last_name }}</div>
-                    </div>
-                    <div class="d-flex gap-2">
-                      <span class="badge text-bg-warning">pending</span>
-                      <span class="badge bg-warning text-dark">unpaid</span>
-                    </div>
-                  </div>
-
-                  <div class="pb-grid">
-                    <div>
-                      <div class="pb-k">Scheduled for</div>
-                      <div class="pb-v">{{ b.booking_datetime.strftime("%a %b %d, %Y %I:%M %p") if b.booking_datetime else "—" }}</div>
-                    </div>
-                    <div>
-                      <div class="pb-k">Requested at</div>
-                      <div class="pb-v">{{ b.created_at.strftime("%a %b %d, %Y %I:%M %p") if b.created_at else "—" }}</div>
-                    </div>
-                  </div>
-
-                  <div class="d-flex gap-2 mt-3 flex-wrap align-items-center">
-                    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('main.checkout', booking_id=b.id) }}">
-                      View checkout
-                    </a>
-                    <span class="muted small">Messaging + accept/decline unlock after payment.</span>
-                  </div>
-                </div>
-              {% endfor %}
-            </div>
-          {% endif %}
+          <span class="count-pill warn">{{ waiting_payment|length }}</span>
         </div>
-      </div>
 
-      <!-- History -->
-      <div class="card shadow-sm pb-card">
-        <div class="card-body" style="padding:16px;">
-          <div class="d-flex justify-content-between align-items-center">
-            <div class="fw-semibold">History</div>
-            <span class="badge text-bg-light">{{ history|length }}</span>
-          </div>
-          <div class="muted small mt-1 mb-3">Accepted, declined, and cancelled bookings.</div>
-
-          {% if history|length == 0 %}
-            <div class="muted">No history yet.</div>
-          {% else %}
-
-            {% set recent_history = history[:3] %}
-            {% set older_history = history[3:] %}
-
-            <div class="d-grid gap-2">
-              {% for b in recent_history %}
-                <div class="pb-item" id="booking-{{ b.id }}">
-                  <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
-                    <div>
-                      <div class="fw-semibold">
-                        <a href="{{ url_for('main.service_detail', service_id=b.service.id) }}">
-                          {{ b.service.title }}
-                        </a>
-                      </div>
-                      <div class="muted small">Client: {{ b.client.first_name }} {{ b.client.last_name }}</div>
-                    </div>
-                    <div class="d-flex gap-2">
-                      <span class="badge text-bg-light">{{ b.status }}</span>
-                      <span class="badge text-bg-light">{{ b.payment_status }}</span>
+        {% if waiting_payment|length == 0 %}
+          <div class="empty-box">No unpaid pending requests.</div>
+        {% else %}
+          <div class="booking-list">
+            {% for b in waiting_payment %}
+              <div class="booking-item" id="booking-{{ b.id }}" style="padding:10px 12px;">
+                <div class="booking-top">
+                  <div>
+                    <a class="service-link" href="{{ url_for('main.service_detail', service_id=b.service.id) }}">
+                      {{ b.service.title }}
+                    </a>
+                    <div class="client-line">
+                      Client: {{ b.client.first_name }} {{ b.client.last_name }}
                     </div>
                   </div>
 
-                  <div class="pb-grid">
-                    <div>
-                      <div class="pb-k">Scheduled for</div>
-                      <div class="pb-v">{{ b.booking_datetime.strftime("%a %b %d, %Y %I:%M %p") if b.booking_datetime else "—" }}</div>
-                    </div>
-                    <div>
-                      <div class="pb-k">Decided at</div>
-                      <div class="pb-v">{{ b.decided_at.strftime("%a %b %d, %Y %I:%M %p") if b.decided_at else "—" }}</div>
-                    </div>
-                  </div>
-
-                  {% if b.payment_status == "paid" and b.paid_at %}
-                    <div class="muted small mt-2">
-                      <strong>Paid at:</strong> {{ b.paid_at.strftime("%a %b %d, %Y %I:%M %p") }}
-                      {% if b.payment_reference %}
-                        • <strong>Ref:</strong> {{ b.payment_reference }}
-                      {% endif %}
-                    </div>
-                  {% endif %}
-
-                  <div class="mt-3">
-                    {% if b.payment_status == "paid" %}
-                      <a class="btn btn-outline-secondary btn-sm"
-                         href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">
-                        Messages
-                      </a>
-                    {% else %}
-                      <a class="btn btn-outline-primary btn-sm" href="{{ url_for('main.checkout', booking_id=b.id) }}">
-                        View checkout
-                      </a>
-                    {% endif %}
+                  <div class="badge-row">
+                    <span class="pb-pill pending">pending</span>
+                    <span class="pb-pill pending">unpaid</span>
                   </div>
                 </div>
-              {% endfor %}
-            </div>
 
-            {% if older_history|length > 0 %}
-              <div class="mt-3">
-                <button class="btn btn-outline-secondary btn-sm" type="button"
-                        data-bs-toggle="collapse" data-bs-target="#historyCollapse"
-                        aria-expanded="false" aria-controls="historyCollapse">
-                  Show {{ older_history|length }} more
-                </button>
+                <div class="compact-row" style="margin-top:8px;">
+                  <div class="compact-box">
+                    <div class="compact-label">Session</div>
+                    <div class="compact-value">
+                      {{ b.booking_datetime.strftime("%b %d • %I:%M %p") if b.booking_datetime else "—" }}
+                    </div>
+                  </div>
 
-                <div class="collapse mt-2" id="historyCollapse">
-                  <div class="d-grid gap-2">
-                    {% for b in older_history %}
-                      <div class="pb-item" id="booking-{{ b.id }}">
-                        <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
-                          <div>
-                            <div class="fw-semibold">
-                              <a href="{{ url_for('main.service_detail', service_id=b.service.id) }}">
-                                {{ b.service.title }}
-                              </a>
-                            </div>
-                            <div class="muted small">Client: {{ b.client.first_name }} {{ b.client.last_name }}</div>
-                          </div>
-                          <div class="d-flex gap-2">
-                            <span class="badge text-bg-light">{{ b.status }}</span>
-                            <span class="badge text-bg-light">{{ b.payment_status }}</span>
-                          </div>
-                        </div>
-
-                        <div class="pb-grid">
-                          <div>
-                            <div class="pb-k">Scheduled for</div>
-                            <div class="pb-v">{{ b.booking_datetime.strftime("%a %b %d, %Y %I:%M %p") if b.booking_datetime else "—" }}</div>
-                          </div>
-                          <div>
-                            <div class="pb-k">Decided at</div>
-                            <div class="pb-v">{{ b.decided_at.strftime("%a %b %d, %Y %I:%M %p") if b.decided_at else "—" }}</div>
-                          </div>
-                        </div>
-
-                        <div class="mt-3">
-                          {% if b.payment_status == "paid" %}
-                            <a class="btn btn-outline-secondary btn-sm"
-                               href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">
-                              Messages
-                            </a>
-                          {% else %}
-                            <a class="btn btn-outline-primary btn-sm" href="{{ url_for('main.checkout', booking_id=b.id) }}">
-                              View checkout
-                            </a>
-                          {% endif %}
-                        </div>
-                      </div>
-                    {% endfor %}
+                  <div class="compact-box">
+                    <div class="compact-label">Status</div>
+                    <div class="compact-value">
+                      Waiting for client payment
+                    </div>
                   </div>
                 </div>
               </div>
-            {% endif %}
-
-          {% endif %}
-        </div>
+            {% endfor %}
+          </div>
+        {% endif %}
       </div>
 
-    {% endif %}
-  </div>
+    </div>
+
+    <div class="pb-card pb-section full">
+      <button class="history-toggle" type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#historyCollapse"
+              aria-expanded="false"
+              aria-controls="historyCollapse">
+        <div>
+          <h2 class="section-title">History</h2>
+          <div class="section-sub">Accepted, declined, cancelled, and completed records.</div>
+        </div>
+        <span class="count-pill light">{{ history|length }}</span>
+      </button>
+
+      <div class="collapse mt-3" id="historyCollapse">
+        {% if history|length == 0 %}
+          <div class="empty-box">No history yet.</div>
+        {% else %}
+          <div class="booking-list">
+            {% for b in history %}
+              <div class="history-item" id="booking-{{ b.id }}">
+                <div>
+                  <a class="service-link" href="{{ url_for('main.service_detail', service_id=b.service.id) }}">
+                    {{ b.service.title }}
+                  </a>
+                  <div class="history-meta">Client: {{ b.client.first_name }} {{ b.client.last_name }}</div>
+                </div>
+
+                <div>
+                  <div class="history-meta">
+                    Session:
+                    <strong>{{ b.booking_datetime.strftime("%b %d, %Y • %I:%M %p") if b.booking_datetime else "—" }}</strong>
+                  </div>
+                  <div class="history-meta">
+                    Decision:
+                    <strong>{{ b.decided_at.strftime("%b %d, %Y • %I:%M %p") if b.decided_at else "—" }}</strong>
+                  </div>
+                </div>
+
+                <div class="d-flex gap-2 flex-wrap justify-content-end">
+                  <span class="pb-pill {% if b.status in ['declined', 'cancelled'] %}bad{% endif %}">{{ b.status }}</span>
+                  <span class="pb-pill {% if b.payment_status == 'paid' %}paid{% elif b.payment_status != 'paid' %}pending{% endif %}">{{ b.payment_status }}</span>
+
+                  {% if b.payment_status == "paid" %}
+                          <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">
+                            Messages
+                          </a>
+                        {% else %}
+                          <span class="client-line">No provider action</span>
+                        {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+  {% endif %}
 </div>
 {% endblock %}

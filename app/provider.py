@@ -124,25 +124,27 @@ def verification():
 @role_required("provider")
 def profile():
     profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
-    nav_verification_status = get_provider_verification_status(current_user.id)
+
+    nav_verification_status = None
+    if profile:
+        verification = ProviderVerification.query.filter_by(provider_profile_id=profile.id).first()
+        nav_verification_status = verification.status if verification else None
 
     if request.method == "POST":
-        # --- NEW: allow updating the user's first/last name (stored on users table) ---
         first_name = (request.form.get("first_name") or "").strip()
         last_name = (request.form.get("last_name") or "").strip()
 
-        # Optional: only update if they provided something (prevents accidental blanking)
         if first_name:
             current_user.first_name = first_name
         if last_name:
             current_user.last_name = last_name
 
-        # Existing provider profile fields (provider_profiles table)
         bio = (request.form.get("bio") or "").strip()
         availability_notes = (request.form.get("availability_notes") or "").strip()
 
         hourly_rate_raw = (request.form.get("hourly_rate") or "").strip()
         hourly_rate = None
+
         if hourly_rate_raw:
             try:
                 hourly_rate = float(hourly_rate_raw)
@@ -175,10 +177,10 @@ def profile():
         return redirect(url_for("provider.profile"))
 
     return render_template(
-        "provider/profile.html",
-        profile=profile,
-        nav_verification_status=nav_verification_status,
-    )
+    "provider_profile.html",
+    profile=profile,
+    nav_verification_status=nav_verification_status,
+)
 
 @provider.route("/settings", methods=["GET", "POST"])
 @login_required
@@ -186,16 +188,14 @@ def profile():
 def settings():
     """
     Provider settings (NO ERD changes):
-    - Account update: email only (no password required)
-    - Password update: requires current password
-
-    IMPORTANT: This fixes the bug where changing email triggers
-    "All password fields are required."
+    - Account update: email only
+    - Password update: current/new/confirm password
     """
     from werkzeug.security import check_password_hash, generate_password_hash
     from app.models import User
 
     profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
+
     verification_status = None
     if profile:
         v = ProviderVerification.query.filter_by(provider_profile_id=profile.id).first()
@@ -204,9 +204,6 @@ def settings():
     if request.method == "POST":
         form_type = (request.form.get("form_type") or "").strip()
 
-        # ----------------------------
-        # Account update (email only)
-        # ----------------------------
         if form_type == "account_update":
             new_email = (request.form.get("account_email") or "").strip().lower()
 
@@ -214,22 +211,17 @@ def settings():
                 flash("Email is required.", "danger")
                 return redirect(url_for("provider.settings"))
 
-            # Enforce unique email (assuming you already rely on email uniqueness for login)
             existing = User.query.filter(User.email == new_email).first()
             if existing and existing.id != current_user.id:
                 flash("That email is already in use.", "danger")
                 return redirect(url_for("provider.settings"))
 
             current_user.email = new_email
-            db.session.add(current_user)
             db.session.commit()
 
             flash("Email updated.", "success")
             return redirect(url_for("provider.settings"))
 
-        # ----------------------------
-        # Password update
-        # ----------------------------
         if form_type == "password_update":
             current_pw = (request.form.get("current_password") or "").strip()
             new_pw = (request.form.get("new_password") or "").strip()
@@ -252,22 +244,18 @@ def settings():
                 return redirect(url_for("provider.settings"))
 
             current_user.password_hash = generate_password_hash(new_pw)
-            db.session.add(current_user)
             db.session.commit()
 
             flash("Password updated successfully.", "success")
             return redirect(url_for("provider.settings"))
 
-        # Unknown submission
         flash("Invalid settings submission.", "danger")
         return redirect(url_for("provider.settings"))
 
-    # GET
     return render_template(
         "provider/provider_settings.html",
         email=current_user.email,
         verification_status=verification_status,
-        # If your template displays username, you can pass user_id as the "username"
         username=str(current_user.id),
     )
 
@@ -391,6 +379,45 @@ def toggle_availability(rule_id: int):
     db.session.commit()
 
     flash(f"Availability {'enabled' if rule.is_active else 'disabled'}.", "success")
+    return redirect(url_for("provider.availability"))
+
+
+@provider.route("/availability/<int:rule_id>/update", methods=["POST"])
+@login_required
+@role_required("provider")
+def update_availability(rule_id: int):
+    profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
+    if not profile:
+        flash("Create your provider profile first.", "warning")
+        return redirect(url_for("provider.profile"))
+
+    rule = ProviderAvailability.query.get_or_404(rule_id)
+    if rule.provider_profile_id != profile.id:
+        flash("Not authorized to modify this availability.", "danger")
+        return redirect(url_for("provider.availability"))
+
+    start_time = (request.form.get("start_time") or "").strip()
+    end_time = (request.form.get("end_time") or "").strip()
+
+    try:
+        slot_minutes = int(request.form.get("slot_minutes") or 30)
+    except (TypeError, ValueError):
+        slot_minutes = 30
+
+    if not start_time or not end_time or start_time >= end_time:
+        flash("Invalid time window.", "danger")
+        return redirect(url_for("provider.availability"))
+
+    if slot_minutes < 15 or slot_minutes > 240 or (slot_minutes % 15 != 0):
+        flash("Slot minutes must be between 15 and 240, in 15-minute increments.", "danger")
+        return redirect(url_for("provider.availability"))
+
+    rule.start_time = start_time
+    rule.end_time = end_time
+    rule.slot_minutes = slot_minutes
+
+    db.session.commit()
+    flash("Availability updated.", "success")
     return redirect(url_for("provider.availability"))
 
 @provider.route("/calendar")

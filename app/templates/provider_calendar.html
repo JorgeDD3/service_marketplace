@@ -1,25 +1,23 @@
 {% extends "base.html" %}
+{% block title %}Provider Calendar{% endblock %}
 
 {% block content %}
 
-{# ---------- helpers ---------- #}
 {% macro hhmm(dt) -%}
   {{ dt.strftime("%-I:%M %p") }}
 {%- endmacro %}
 
 {% macro time_to_minutes(hhmm_str) -%}
-  {# "09:30" -> 570 #}
   {% set parts = hhmm_str.split(":") %}
   {{ (parts[0]|int * 60) + (parts[1]|int) }}
 {%- endmacro %}
 
 {% macro is_available_minute(rules_by_day, dow, minute_of_day) -%}
-  {# returns '1' if minute_of_day is inside any availability window for that day #}
   {% if rules_by_day.get(dow) %}
     {% for r in rules_by_day[dow] %}
       {% set start_m = (time_to_minutes(r.start_time) | int) %}
       {% set end_m = (time_to_minutes(r.end_time) | int) %}
-      {% if start_m <= minute_of_day and end_m > minute_of_day %}
+      {% if r.is_active and start_m <= minute_of_day and end_m > minute_of_day %}
         1
       {% endif %}
     {% endfor %}
@@ -33,400 +31,503 @@
   {% endif %}
 {%- endmacro %}
 
-{% macro palette_class(service_id) -%}
-  {# stable-ish color per service #}
-  {% set idx = (service_id|int) % 6 %}
-  p{{ idx }}
-{%- endmacro %}
-
 <style>
-  .cal-wrap { max-width: 1200px; margin: 0 auto; }
-  .cal-card { border-radius: 18px; }
-  .cal-tight { padding-top: 18px !important; padding-bottom: 18px !important; }
-  .cal-h1 { font-size: 34px; font-weight: 800; line-height: 1.1; margin: 0; }
-  .muted { color: #6b7280; }
+  body{ background:#f6f7fb; }
 
-  .btn-mini { padding: 6px 10px; font-size: 13px; }
-
-  .cal-grid {
-    display: grid;
-    grid-template-columns: 72px repeat(7, 1fr);
-    border: 1px solid #dee2e6;
-    border-radius: 12px;
-    overflow: hidden;
-    background: #fff;
+  .cal-wrap{
+    width:min(1320px, calc(100vw - 42px));
+    margin:12px auto;
   }
 
-  .cal-hdr {
-    background: #f8f9fa;
-    border-bottom: 1px solid #dee2e6;
-    padding: 10px 6px;
-    font-weight: 600;
-    text-align: center;
-    line-height: 1.1;
+  .cal-card{
+    background:#fff;
+    border:1px solid rgba(15,23,42,.08);
+    border-radius:22px;
+    box-shadow:0 14px 32px rgba(15,23,42,.055);
   }
 
-  .time-rail {
-    background: #f8f9fa;
-    border-right: 1px solid #dee2e6;
+  .cal-header{
+    padding:14px 18px;
+    margin-bottom:10px;
   }
 
-  .time-rail .tick {
-    height: 48px;              /* 60 minutes */
-    border-bottom: 1px solid #edf0f3;
-    padding: 6px 8px;
-    font-size: 0.82rem;
-    color: #6c757d;
-    display: flex;
-    justify-content: flex-end;
-    align-items: flex-start;
+  .cal-title{
+    margin:0;
+    font-size:31px;
+    line-height:1;
+    font-weight:950;
+    letter-spacing:-.035em;
+    color:#0b1220;
   }
 
-  .day-col { position: relative; border-right: 1px solid #f1f3f5; }
-  .day-col:last-child { border-right: none; }
-
-  .day-body {
-    position: relative;
-    height: var(--day-height);
-    background: #fff;
+  .cal-sub{
+    margin-top:7px;
+    color:#64748b;
+    font-weight:700;
+    font-size:15px;
   }
 
-  /* 30-min background slots */
-  .slot {
-    height: calc(var(--ppm) * 30);
-    border-bottom: 1px solid #f6f7f9;
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid #e5e7eb;
+    background:#f8fafc;
+    color:#334155;
+    font-size:12px;
+    font-weight:950;
   }
 
-  .slot.unavail { background: rgba(108, 117, 125, 0.10); }
-  .slot.past { background: rgba(108, 117, 125, 0.16); }
-
-  /* clickable empty slots */
-  .slot-link { display: block; height: 100%; width: 100%; position: relative; z-index: 1; }
-  .slot-link:hover { outline: 1px solid rgba(13,110,253,.25); outline-offset: -1px; }
-
-  /* overlays */
-  .overlay {
-    position: absolute;
-    left: 0; right: 0;
-    border-radius: 0;
-    pointer-events: none;
-    z-index: 2;
-  }
-  .overlay.busy { background: rgba(220, 53, 69, 0.18); }
-  .overlay.timeoff { background: rgba(108,117,125,0.18); }
-
-  /* blocks */
-  .block-link {
-    text-decoration: none;
-    color: inherit;
-    display: block;
-  }
-  .block {
-    position: absolute;
-    left: 6px;
-    right: 6px;
-    border-radius: 10px;
-    padding: 3px 6px;
-    font-size: 0.74rem;
-    line-height: 1.1;
-    overflow: hidden;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
-    border: 1px solid rgba(0,0,0,0.07);
-    cursor: pointer;
-    z-index: 3;
-  }
-  .block:hover { filter: brightness(0.98); }
-
-  .block .meta {
-    opacity: 0.85;
-    font-size: 0.75rem;
-    margin-top: 4px;
+  .pill.good{
+    background:#ecfdf5;
+    border-color:#bbf7d0;
+    color:#166534;
   }
 
-  .block.timeoff {
-    background: rgba(108,117,125,0.32);
-    border-color: rgba(108,117,125,0.30);
+  .top-actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
   }
 
-  .block.booking { color: #0b1320; border-left: 6px solid rgba(220, 53, 69, 0.55); }
-  .block.booking .title { font-weight: 700; }
-  .block.booking .sub { font-size: 0.75rem; opacity: 0.90; margin-top: 2px; }
-
-  /* booking palettes (service-colored) */
-  .p0 { background: rgba(13,110,253,0.22); border-color: rgba(13,110,253,0.30); }
-  .p1 { background: rgba(32,201,151,0.22); border-color: rgba(32,201,151,0.30); }
-  .p2 { background: rgba(255,193,7,0.26); border-color: rgba(255,193,7,0.34); }
-  .p3 { background: rgba(220,53,69,0.20); border-color: rgba(220,53,69,0.28); }
-  .p4 { background: rgba(111,66,193,0.20); border-color: rgba(111,66,193,0.28); }
-  .p5 { background: rgba(13,202,240,0.20); border-color: rgba(13,202,240,0.28); }
-
-  .legend {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    align-items: center;
-    font-size: 0.85rem;
+  .btn{
+    border-radius:12px;
+    font-weight:900;
   }
-  .legend .swatch {
-    width: 14px; height: 14px; border-radius: 4px; display: inline-block; margin-right: 6px;
-    border: 1px solid rgba(0,0,0,0.10);
+
+  .timeline-card{
+    overflow:hidden;
+  }
+
+  .timeline-head{
+    padding:10px 16px;
+    border-bottom:1px solid #eef2f7;
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+
+  .timeline-title{
+    font-size:20px;
+    font-weight:950;
+    color:#0b1220;
+  }
+
+  .timeline-sub{
+    color:#64748b;
+    font-weight:700;
+    font-size:14px;
+  }
+
+  .legend{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    color:#64748b;
+    font-size:13px;
+    font-weight:800;
+  }
+
+  .swatch{
+    width:13px;
+    height:13px;
+    border-radius:4px;
+    display:inline-block;
+    margin-right:5px;
+    border:1px solid rgba(15,23,42,.12);
+    vertical-align:-2px;
+  }
+
+  .calendar-scroll{
+    overflow:hidden;
+    padding:12px 16px 8px;
+  }
+
+    .cal-grid{
+    display:grid;
+    grid-template-columns:64px repeat(7, minmax(130px, 1fr));
+    border:1px solid #e5e7eb;
+    border-radius:18px;
+    overflow:hidden;
+    min-width:1040px;
+    background:#fff;
+  }
+
+  .cal-hdr{
+    background:#f8fafc;
+    border-bottom:1px solid #e5e7eb;
+    border-right:1px solid #eef2f7;
+    padding:9px 8px;
+    text-align:center;
+    line-height:1.1;
+    font-weight:950;
+    color:#0f172a;
+  }
+
+  .cal-hdr:last-child{ border-right:none; }
+
+  .cal-date{
+    display:block;
+    margin-top:4px;
+    color:#64748b;
+    font-weight:750;
+    font-size:13px;
+  }
+
+    .time-rail{
+    background:#f8fafc;
+    border-right:1px solid rgba(148,163,184,.35);
+  }
+
+  .tick{
+    height:37px;
+    border-bottom:1px solid #eef2f7;
+    padding:7px 8px;
+    font-size:13px;
+    color:#64748b;
+    display:flex;
+    justify-content:flex-end;
+    align-items:flex-start;
+    font-weight:750;
+  }
+
+      .day-col{
+    position:relative;
+    border-right:1px solid rgba(148,163,184,.28);
+  }
+
+  .day-col:last-child{ border-right:none; }
+
+  .day-body{
+    position:relative;
+    height:407px;
+    background:#fff;
+  }
+
+      .slot{
+    height:18.5px;
+    border-bottom:1px solid rgba(148,163,184,.22);
+  }
+
+  .slot:nth-child(2n){
+    border-bottom:1px solid rgba(100,116,139,.38);
+  }
+
+    .slot.unavail{ background:#f1f5f9; }
+  .slot.past{ background:#e0f2fe; }
+
+  .slot-link{
+    display:block;
+    height:100%;
+    width:100%;
+    position:relative;
+    z-index:1;
+  }
+
+  .slot-link:hover{
+    outline:2px solid rgba(37,99,235,.25);
+    outline-offset:-2px;
+    background:rgba(37,99,235,.06);
+  }
+
+  .overlay{
+    position:absolute;
+    top:var(--top-px);
+    height:var(--height-px);
+    left:0;
+    right:0;
+    pointer-events:none;
+    z-index:2;
+  }
+
+  .overlay.busy{ background:#fecaca; }
+  .overlay.completed{ background:#bbf7d0; }
+  .overlay.timeoff{ background:#ddd6fe; }
+
+  .block-link{
+    text-decoration:none;
+    color:inherit;
+    display:block;
+  }
+
+  .block{
+    position:absolute;
+    top:var(--top-px);
+    height:var(--height-px);
+    left:6px;
+    right:6px;
+    border-radius:12px;
+    padding:6px 8px;
+    font-size:12px;
+    line-height:1.15;
+    overflow:hidden;
+    box-shadow:0 2px 8px rgba(15,23,42,.08);
+    border:1px solid rgba(15,23,42,.10);
+    cursor:pointer;
+    z-index:3;
+  }
+
+  .block:hover{ filter:brightness(.98); }
+
+  .block .title{
+    font-weight:950;
+    color:#0f172a;
+  }
+
+  .block .sub{
+    font-size:11px;
+    opacity:.85;
+    margin-top:2px;
+    font-weight:750;
+  }
+
+  .block .meta{
+    opacity:.8;
+    font-size:11px;
+    margin-top:4px;
+    font-weight:750;
+  }
+
+  .block.timeoff{
+    background:#ede9fe;
+    border-color:#c4b5fd;
+  }
+
+  .block.booking{
+    background:#fee2e2;
+    border-left:5px solid #ef4444;
+    color:#0f172a;
+  }
+
+  .block.completed{
+    background:#dcfce7;
+    border-left:5px solid #22c55e;
+    color:#0f172a;
+  }
+
+  .tip{
+    padding:0 16px 14px;
+    color:#64748b;
+    font-size:13px;
+    font-weight:700;
+  }
+
+  @media(max-width:750px){
+    .cal-wrap{ width:min(1320px, calc(100vw - 24px)); }
+    .calendar-scroll{ overflow:auto; }
   }
 </style>
 
-{# ---------- build availability map ---------- #}
 {% set rules_by_day = {} %}
 {% for r in rules %}
   {% set _ = rules_by_day.setdefault(r.day_of_week, []).append(r) %}
 {% endfor %}
 
-{# slot size by day (used ONLY for end-time prefill) #}
 {% set slot_minutes_by_day = {} %}
 {% for dow, rs in rules_by_day.items() %}
-  {% set mins = (rs | map(attribute="slot_minutes") | list) %}
   {% set mins_clean = [] %}
-  {% for m in mins %}
-    {% if m %}{% set _ = mins_clean.append(m|int) %}{% endif %}
+  {% for r in rs %}
+    {% if r.slot_minutes and r.is_active %}
+      {% set _ = mins_clean.append(r.slot_minutes|int) %}
+    {% endif %}
   {% endfor %}
   {% set _ = slot_minutes_by_day.update({dow: (mins_clean|min if mins_clean else 30)}) %}
 {% endfor %}
 
-{# timeline settings #}
 {% set day_start_hour = 8 %}
-{% set day_end_hour = 19 %} {# exclusive #}
+{% set day_end_hour = 19 %}
 {% set total_minutes = (day_end_hour - day_start_hour) * 60 %}
-{% set ppm = 0.8 %} {# pixels per minute (48px/hour) #}
-{% set day_height = (total_minutes * ppm) %}
-
-{# past shading values #}
+{% set ppm = 0.8 %}
 {% set has_now = (now_local is defined and now_local is not none) %}
 {% set today = (now_local.date() if has_now else None) %}
 {% set now_minute_of_day = ((now_local.hour * 60 + now_local.minute) if has_now else 0) %}
 
-<div class="container cal-tight">
-  <div class="cal-wrap">
+<div class="cal-wrap">
 
-    <!-- App-like header card -->
-    <div class="card shadow-sm cal-card mb-3">
-      <div class="card-body" style="padding:14px 16px;">
-        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-          <div>
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-              <div class="cal-h1">Provider Calendar</div>
-              <span class="badge text-bg-light">Provider</span>
-              {% if nav_verification_status == "verified" %}
-                <span class="badge text-bg-success">✓ Verified</span>
-              {% elif nav_verification_status == "pending_review" %}
-                <span class="badge text-bg-warning">⏳ Pending</span>
-              {% else %}
-                <span class="badge text-bg-secondary">Not verified</span>
-              {% endif %}
-            </div>
-            {% if week_days %}
-              <div class="muted mt-1">
-                Week of {{ week_days[0].strftime("%b %-d, %Y") }} – {{ week_days[6].strftime("%b %-d, %Y") }}
-              </div>
-            {% endif %}
-          </div>
+  <div class="cal-card cal-header">
+    <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+      <div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <h1 class="cal-title">Provider Calendar</h1>
+          <span class="pill">Provider</span>
 
-          <div class="d-flex gap-2 align-items-center flex-wrap">
-            {% if week_start %}
-              <a class="btn btn-outline-secondary btn-mini"
-                 href="{{ url_for('provider.calendar_view', week=(week_start - timedelta(days=7)).strftime('%Y-%m-%d')) }}">
-                ‹ Prev
-              </a>
-              <a class="btn btn-outline-secondary btn-mini"
-                 href="{{ url_for('provider.calendar_view', week=(week_start + timedelta(days=7)).strftime('%Y-%m-%d')) }}">
-                Next ›
-              </a>
-            {% endif %}
-            <a class="btn btn-outline-secondary btn-mini" href="{{ url_for('provider.availability') }}">Availability</a>
-            <a class="btn btn-outline-secondary btn-mini" href="{{ url_for('provider.time_off') }}">Time Off</a>
-          </div>
+          {% if nav_verification_status == "verified" %}
+            <span class="pill good">✓ Verified</span>
+          {% elif nav_verification_status == "pending_review" %}
+            <span class="pill">Pending review</span>
+          {% else %}
+            <span class="pill">Not verified</span>
+          {% endif %}
         </div>
+
+        {% if week_days %}
+          <div class="cal-sub">
+            Week of {{ week_days[0].strftime("%b %-d, %Y") }} – {{ week_days[6].strftime("%b %-d, %Y") }}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="top-actions">
+        {% if week_start %}
+          <a class="btn btn-outline-secondary" href="{{ url_for('provider.calendar_view', week=(week_start - timedelta(days=7)).strftime('%Y-%m-%d')) }}">‹ Prev</a>
+          <a class="btn btn-outline-secondary" href="{{ url_for('provider.calendar_view', week=(week_start + timedelta(days=7)).strftime('%Y-%m-%d')) }}">Next ›</a>
+        {% endif %}
+        <a class="btn btn-outline-secondary" href="{{ url_for('provider.availability') }}">Availability</a>
+        <a class="btn btn-outline-secondary" href="{{ url_for('provider.time_off') }}">Time Off</a>
       </div>
     </div>
-
-    <!-- Timeline card -->
-    <div class="card shadow-sm cal-card mb-4">
-      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <div>
-          <strong>Week Timeline</strong>
-          <span class="text-muted ms-2">(click a future slot to add time off)</span>
-        </div>
-
-        <div class="legend text-muted">
-          <span><span class="swatch" style="background: rgba(108,117,125,0.10)"></span>Unavailable</span>
-          <span><span class="swatch" style="background: rgba(108,117,125,0.16)"></span>Past</span>
-          <span><span class="swatch" style="background: rgba(220, 53, 69, 0.18)"></span>Booked</span>
-          <span><span class="swatch" style="background: rgba(108,117,125,0.18)"></span>Time Off</span>
-          <span class="ms-2 small">(Bookings colored by service)</span>
-        </div>
-      </div>
-
-      <div class="card-body">
-        <div class="cal-grid" style="--ppm: {{ ppm }}px; --day-height: {{ day_height }}px;">
-          <!-- header row -->
-          <div class="cal-hdr"></div>
-          {% for d in week_days %}
-            <div class="cal-hdr">
-              {{ d.strftime("%a") }}<br>
-              <span class="text-muted fw-normal">{{ d.strftime("%b %-d") }}</span>
-            </div>
-          {% endfor %}
-
-          <!-- time rail -->
-          <div class="time-rail">
-            {% for h in range(day_start_hour, day_end_hour) %}
-              <div class="tick">{{ hour_label(h) }}</div>
-            {% endfor %}
-          </div>
-
-          <!-- day columns -->
-          {% for d in week_days %}
-            {% set dow = d.weekday() %}
-            {% set is_today = (has_now and d == today) %}
-            {% set is_past_day = (has_now and d < today) %}
-            {% set step = slot_minutes_by_day.get(dow, 30) %}
-
-            <div class="day-col">
-              <div class="day-body">
-
-                {# background slots always 30 min; end time uses step #}
-                {% for m in range(0, total_minutes, 30) %}
-                  {% set minute_of_day = (day_start_hour * 60) + m %}
-                  {% set avail_flag = is_available_minute(rules_by_day, dow, minute_of_day) | trim %}
-                  {% set is_past = (is_past_day or (is_today and ((minute_of_day|int) < (now_minute_of_day|int)))) %}
-
-                  {% set slot_start_hour = ((minute_of_day // 60) | int) %}
-                  {% set slot_start_min = ((minute_of_day % 60) | int) %}
-                  {% set slot_start_iso = d.strftime("%Y-%m-%d") ~ "T" ~ ("%02d"|format(slot_start_hour)) ~ ":" ~ ("%02d"|format(slot_start_min)) %}
-
-                  {% set slot_end_minute_of_day = minute_of_day + step %}
-                  {% set slot_end_minute_of_day = (day_end_hour*60) if slot_end_minute_of_day > (day_end_hour*60) else slot_end_minute_of_day %}
-                  {% set slot_end_hour = ((slot_end_minute_of_day // 60) | int) %}
-                  {% set slot_end_min = ((slot_end_minute_of_day % 60) | int) %}
-                  {% set slot_end_iso = d.strftime("%Y-%m-%d") ~ "T" ~ ("%02d"|format(slot_end_hour)) ~ ":" ~ ("%02d"|format(slot_end_min)) %}
-
-                  <div class="slot{% if avail_flag != '1' %} unavail{% endif %}{% if is_past %} past{% endif %}">
-                    {% if not is_past %}
-                      <a class="slot-link"
-                         href="{{ url_for('provider.time_off') }}?start={{ slot_start_iso }}&end={{ slot_end_iso }}"
-                         title="Block time ({{ slot_start_iso }} – {{ slot_end_iso }})"></a>
-                    {% endif %}
-                  </div>
-                {% endfor %}
-
-                {# TIME OFF blocks #}
-                {% for t in time_off_entries %}
-                  {% if t.start_datetime.date() <= d and t.end_datetime.date() >= d %}
-                    {% set start_m = (0 if t.start_datetime.date() < d else (t.start_datetime.hour*60 + t.start_datetime.minute)) %}
-                    {% set end_m = ((24*60) if t.end_datetime.date() > d else (t.end_datetime.hour*60 + t.end_datetime.minute)) %}
-                    {% set start_vis = start_m - (day_start_hour*60) %}
-                    {% set end_vis = end_m - (day_start_hour*60) %}
-                    {% set start_vis = 0 if start_vis < 0 else start_vis %}
-                    {% set end_vis = total_minutes if end_vis > total_minutes else end_vis %}
-
-                    {% if end_vis > start_vis %}
-                      {% set top_px = (start_vis * ppm) %}
-                      {% set height_px = ((end_vis - start_vis) * ppm) %}
-                      {% set qstart = t.start_datetime.strftime("%Y-%m-%dT%H:%M") %}
-                      {% set qend = t.end_datetime.strftime("%Y-%m-%dT%H:%M") %}
-
-                      <div class="overlay timeoff" style="top: {{ top_px }}px; height: {{ height_px }}px;"></div>
-
-                      <a class="block-link" href="{{ url_for('provider.time_off') }}?start={{ qstart }}&end={{ qend }}">
-                        <div class="block timeoff"
-                             style="top: {{ top_px }}px; height: {{ height_px }}px;"
-                             data-bs-toggle="tooltip"
-                             data-bs-html="true"
-                             data-bs-placement="top"
-                             data-bs-title="<strong>Time Off</strong><br>{{ hhmm(t.start_datetime) }} – {{ hhmm(t.end_datetime) }}{% if t.reason %}<br>{{ t.reason }}{% endif %}">
-                          <strong>Time Off</strong>
-                          <div class="meta">
-                            {{ hhmm(t.start_datetime) }} – {{ hhmm(t.end_datetime) }}
-                            {% if t.reason %}<br>{{ t.reason }}{% endif %}
-                          </div>
-                        </div>
-                      </a>
-                    {% endif %}
-                  {% endif %}
-                {% endfor %}
-
-                {# BOOKING blocks #}
-                {% for b in bookings %}
-                  {% if b.booking_datetime.date() == d %}
-                    {% set start_m = (b.booking_datetime.hour*60 + b.booking_datetime.minute) %}
-                    {% set end_m = start_m + (b.duration_minutes or 60) %}
-                    {% set start_vis = start_m - (day_start_hour*60) %}
-                    {% set end_vis = end_m - (day_start_hour*60) %}
-                    {% set start_vis = 0 if start_vis < 0 else start_vis %}
-                    {% set end_vis = total_minutes if end_vis > total_minutes else end_vis %}
-
-                    {% if end_vis > start_vis %}
-                      {% set top_px = (start_vis * ppm) %}
-                      {% set height_px = ((end_vis - start_vis) * ppm) %}
-                      {% set svc_title = (b.service.title if b.service and b.service.title is defined else ('Service #' ~ b.service_id)) %}
-
-                      <div class="overlay busy" style="top: {{ top_px }}px; height: {{ height_px }}px;"></div>
-
-                      <a class="block-link" href="{{ url_for('main.provider_bookings') }}#booking-{{ b.id }}">
-                        <div class="block booking {{ palette_class(b.service_id) }}"
-                             style="top: {{ top_px }}px; height: {{ height_px }}px;"
-                             data-bs-toggle="tooltip"
-                             data-bs-html="true"
-                             data-bs-placement="top"
-                             data-bs-title="<strong>{{ svc_title }}</strong><br>
-                               {{ hhmm(b.booking_datetime) }} – {{ (b.booking_datetime + timedelta(minutes=b.duration_minutes or 60)).strftime('%-I:%M %p') }}<br>
-                               {% if b.client and b.client.first_name is defined %}
-                                 {{ b.client.first_name }} {{ b.client.last_name }}
-                               {% elif b.client and b.client.email is defined and b.client.email %}
-                                 {{ b.client.email }}
-                               {% else %}
-                                 Client #{{ b.client_id }}
-                               {% endif %}<br>
-                               Status: {{ b.status }}{% if b.provider_note %}<br><em>Note:</em> {{ b.provider_note }}{% endif %}">
-                          <div class="title">{{ svc_title }}</div>
-                          <div class="sub">
-                            {% if b.client and b.client.first_name is defined %}
-                              {{ b.client.first_name }} {{ b.client.last_name }}
-                            {% elif b.client and b.client.email is defined and b.client.email %}
-                              {{ b.client.email }}
-                            {% else %}
-                              Client #{{ b.client_id }}
-                            {% endif %}
-                          </div>
-                          <div class="meta">
-                            {{ hhmm(b.booking_datetime) }} – {{ (b.booking_datetime + timedelta(minutes=b.duration_minutes or 60)).strftime('%-I:%M %p') }}
-                            <span class="ms-1 badge text-bg-light">{{ b.status }}</span>
-                          </div>
-                        </div>
-                      </a>
-                    {% endif %}
-                  {% endif %}
-                {% endfor %}
-
-              </div>
-            </div>
-          {% endfor %}
-        </div>
-
-        <div class="text-muted small mt-2">
-          Tip: Click an empty future slot to prefill Time Off. Click a booking to jump to the bookings list.
-        </div>
-      </div>
-    </div>
-
   </div>
-</div>
 
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    if (window.bootstrap && bootstrap.Tooltip) {
-      document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
-        new bootstrap.Tooltip(el);
-      });
-    }
-  });
-</script>
+  <div class="cal-card timeline-card">
+    <div class="timeline-head">
+      <div>
+        <div class="timeline-title">Weekly timeline</div>
+        <div class="timeline-sub">Click an empty future slot to add time off. Click a booking to open the booking list.</div>
+      </div>
+
+      <div class="legend">
+        <span><span class="swatch" style="background:#f3f4f6;"></span>Unavailable</span>
+        <span><span class="swatch" style="background:#dbeafe;"></span>Past</span>
+        <span><span class="swatch" style="background:#fecaca;"></span>Booked</span>
+        <span><span class="swatch" style="background:#bbf7d0;"></span>Completed</span>
+        <span><span class="swatch" style="background:#ddd6fe;"></span>Time Off</span>
+      </div>
+    </div>
+
+    <div class="calendar-scroll">
+      <div class="cal-grid">
+        <div class="cal-hdr"></div>
+
+        {% for d in week_days %}
+          <div class="cal-hdr">
+            {{ d.strftime("%a") }}
+            <span class="cal-date">{{ d.strftime("%b %-d") }}</span>
+          </div>
+        {% endfor %}
+
+        <div class="time-rail">
+          {% for h in range(day_start_hour, day_end_hour) %}
+            <div class="tick">{{ hour_label(h) }}</div>
+          {% endfor %}
+        </div>
+
+        {% for d in week_days %}
+          {% set dow = d.weekday() %}
+          {% set is_today = (has_now and d == today) %}
+          {% set is_past_day = (has_now and d < today) %}
+          {% set step = slot_minutes_by_day.get(dow, 30) %}
+
+          <div class="day-col">
+            <div class="day-body">
+
+              {% for m in range(0, total_minutes, 30) %}
+                {% set minute_of_day = (day_start_hour * 60) + m %}
+                {% set avail_flag = is_available_minute(rules_by_day, dow, minute_of_day) | trim %}
+                {% set is_past = (is_past_day or (is_today and ((minute_of_day|int) < (now_minute_of_day|int)))) %}
+
+                {% set slot_start_hour = ((minute_of_day // 60) | int) %}
+                {% set slot_start_min = ((minute_of_day % 60) | int) %}
+                {% set slot_start_iso = d.strftime("%Y-%m-%d") ~ "T" ~ ("%02d"|format(slot_start_hour)) ~ ":" ~ ("%02d"|format(slot_start_min)) %}
+
+                {% set slot_end_minute_of_day = minute_of_day + step %}
+                {% set slot_end_minute_of_day = (day_end_hour*60) if slot_end_minute_of_day > (day_end_hour*60) else slot_end_minute_of_day %}
+                {% set slot_end_hour = ((slot_end_minute_of_day // 60) | int) %}
+                {% set slot_end_min = ((slot_end_minute_of_day % 60) | int) %}
+                {% set slot_end_iso = d.strftime("%Y-%m-%d") ~ "T" ~ ("%02d"|format(slot_end_hour)) ~ ":" ~ ("%02d"|format(slot_end_min)) %}
+
+                <div class="slot{% if avail_flag != '1' %} unavail{% elif is_past %} past{% endif %}">
+                  {% if not is_past %}
+                    <a class="slot-link"
+                       href="{{ url_for('provider.time_off') }}?start={{ slot_start_iso }}&end={{ slot_end_iso }}"
+                       title="Block time"></a>
+                  {% endif %}
+                </div>
+              {% endfor %}
+
+              {% for t in time_off_entries %}
+                {% if t.start_datetime.date() <= d and t.end_datetime.date() >= d %}
+                  {% set start_m = (0 if t.start_datetime.date() < d else (t.start_datetime.hour*60 + t.start_datetime.minute)) %}
+                  {% set end_m = ((24*60) if t.end_datetime.date() > d else (t.end_datetime.hour*60 + t.end_datetime.minute)) %}
+                  {% set start_vis = start_m - (day_start_hour*60) %}
+                  {% set end_vis = end_m - (day_start_hour*60) %}
+                  {% set start_vis = 0 if start_vis < 0 else start_vis %}
+                  {% set end_vis = total_minutes if end_vis > total_minutes else end_vis %}
+
+                  {% if end_vis > start_vis %}
+                    {% set top_px = (start_vis * ppm) %}
+                    {% set height_px = ((end_vis - start_vis) * ppm) %}
+                    {% set qstart = t.start_datetime.strftime("%Y-%m-%dT%H:%M") %}
+                    {% set qend = t.end_datetime.strftime("%Y-%m-%dT%H:%M") %}
+
+                    <div class="overlay timeoff" style="--top-px: {{ top_px }}px; --height-px: {{ height_px }}px;"></div>
+
+                    <a class="block-link" href="{{ url_for('provider.time_off') }}?start={{ qstart }}&end={{ qend }}">
+                      <div class="block timeoff" style="--top-px: {{ top_px }}px; --height-px: {{ height_px }}px;">
+                        <div class="title">Time Off</div>
+                        <div class="meta">
+                          {{ hhmm(t.start_datetime) }} – {{ hhmm(t.end_datetime) }}
+                          {% if t.reason %}<br>{{ t.reason }}{% endif %}
+                        </div>
+                      </div>
+                    </a>
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+
+              {% for b in bookings %}
+                {% if b.booking_datetime.date() == d %}
+                  {% set start_m = (b.booking_datetime.hour*60 + b.booking_datetime.minute) %}
+                  {% set end_m = start_m + (b.duration_minutes or 60) %}
+                  {% set start_vis = start_m - (day_start_hour*60) %}
+                  {% set end_vis = end_m - (day_start_hour*60) %}
+                  {% set start_vis = 0 if start_vis < 0 else start_vis %}
+                  {% set end_vis = total_minutes if end_vis > total_minutes else end_vis %}
+
+                  {% if end_vis > start_vis %}
+                    {% set top_px = (start_vis * ppm) %}
+                    {% set height_px = ((end_vis - start_vis) * ppm) %}
+                    {% set svc_title = (b.service.title if b.service and b.service.title is defined else ('Service #' ~ b.service_id)) %}
+                    {% set is_done = b.status in ["completed", "accepted"] and b.booking_datetime < now_local if has_now else b.status == "completed" %}
+
+                    <div class="overlay {% if is_done %}completed{% else %}busy{% endif %}"
+                         style="--top-px: {{ top_px }}px; --height-px: {{ height_px }}px;"></div>
+
+                    <a class="block-link" href="{{ url_for('main.provider_bookings') }}#booking-{{ b.id }}">
+                      <div class="block {% if is_done %}completed{% else %}booking{% endif %}"
+                           style="--top-px: {{ top_px }}px; --height-px: {{ height_px }}px;">
+                        <div class="title">{{ svc_title }}</div>
+                        <div class="sub">
+                          {% if b.client and b.client.first_name is defined %}
+                            {{ b.client.first_name }} {{ b.client.last_name }}
+                          {% elif b.client and b.client.email is defined and b.client.email %}
+                            {{ b.client.email }}
+                          {% else %}
+                            Client #{{ b.client_id }}
+                          {% endif %}
+                        </div>
+                        <div class="meta">
+                          {{ hhmm(b.booking_datetime) }} – {{ (b.booking_datetime + timedelta(minutes=b.duration_minutes or 60)).strftime('%-I:%M %p') }}
+                        </div>
+                      </div>
+                    </a>
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="tip">
+      Tip: unavailable means you do not normally work that time. Past time is blue. Completed bookings are green.
+    </div>
+  </div>
+
+</div>
 
 {% endblock %}

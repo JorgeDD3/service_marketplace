@@ -1,129 +1,204 @@
 {% extends "base.html" %}
+{% block container_class %}container-wide{% endblock %}
 {% block title %}Messages{% endblock %}
 
 {% block content %}
 <style>
-  .container{
-    padding-top: 24px;
-    padding-bottom: 24px;
-    max-width: 980px;
+  body{ background:#f6f7fb; }
+
+  .chat-wrap{
+    width:min(1120px, calc(100vw - 42px));
+    margin:22px auto;
   }
 
   .chat-shell{
     background:#fff;
-    border:1px solid #e5e7eb;
-    border-radius: 18px;
+    border:1px solid rgba(15,23,42,.08);
+    border-radius:22px;
     overflow:hidden;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    box-shadow:0 14px 32px rgba(15,23,42,.055);
     display:flex;
     flex-direction:column;
-    height: 75vh;
+    height:calc(100vh - 135px);
   }
 
   .chat-header{
-    padding: 14px 16px;
-    border-bottom: 1px solid #eef2f7;
+    padding:18px 20px;
+    border-bottom:1px solid #eef2f7;
     display:flex;
-    align-items:flex-start;
     justify-content:space-between;
-    gap: 12px;
-    background:#ffffff;
-  }
-
-  .chat-title-row{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    flex-wrap:wrap;
+    gap:14px;
+    background:#fff;
   }
 
   .chat-title{
     margin:0;
-    font-size: 18px;
-    font-weight: 900;
-    letter-spacing: -0.02em;
-  }
-
-  .chat-sub{
-    margin-top: 6px;
-    color:#64748b;
-    font-size: 0.93rem;
-    font-weight: 600;
+    font-size:24px;
+    font-weight:950;
+    letter-spacing:-.03em;
+    color:#0b1220;
   }
 
   .chat-meta{
-    margin-top: 6px;
+    margin-top:8px;
     color:#64748b;
-    font-size: 0.9rem;
+    font-size:14px;
+    font-weight:750;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+
+  .chat-sub{
+    margin-top:8px;
+    color:#64748b;
+    font-size:14px;
+    font-weight:800;
   }
 
   .back-btn{
     border:1px solid #e5e7eb;
     background:#f8fafc;
     color:#0f172a;
-    border-radius: 12px;
-    padding: 8px 10px;
+    border-radius:14px;
+    padding:9px 12px;
     text-decoration:none;
-    font-weight: 800;
-    white-space: nowrap;
+    font-weight:950;
+    white-space:nowrap;
+    height:max-content;
   }
+
   .back-btn:hover{ background:#eef2f7; }
+
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    border:1px solid #e5e7eb;
+    background:#f8fafc;
+    color:#334155;
+    font-weight:950;
+    padding:5px 10px;
+    border-radius:999px;
+    font-size:12px;
+  }
+
+  .pill.inquiry{
+    background:#eff6ff;
+    border-color:#bfdbfe;
+    color:#1d4ed8;
+  }
+
+  .pill.bad{
+    background:#fef2f2;
+    border-color:#fecaca;
+    color:#991b1b;
+  }
+
+  .pill.good{
+    background:#ecfdf5;
+    border-color:#bbf7d0;
+    color:#166534;
+  }
 
   .chat-body{
     flex:1;
-    padding: 14px;
+    padding:18px;
     overflow-y:auto;
     background:#f8fafc;
   }
 
-  .msg-row{ display:flex; margin: 10px 0; }
+  .empty-chat{
+    height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#64748b;
+    font-weight:800;
+    text-align:center;
+  }
+
+  .msg-row{
+    display:flex;
+    margin:10px 0;
+  }
+
   .msg-row.me{ justify-content:flex-end; }
   .msg-row.them{ justify-content:flex-start; }
 
   .bubble{
-    max-width: 60%;
-    border-radius: 16px;
-    padding: 10px 12px;
-    border: 1px solid #e5e7eb;
-    box-shadow: 0 1px 1px rgba(0,0,0,0.04);
-    background:#ffffff;
+    max-width:62%;
+    border-radius:18px;
+    padding:11px 13px;
+    border:1px solid #e5e7eb;
+    box-shadow:0 1px 1px rgba(0,0,0,.04);
+    background:#fff;
   }
 
   .me .bubble{
     background:#2563eb;
-    color:white;
+    color:#fff;
     border-color:#2563eb;
   }
 
-  .bubble .who{
-    font-weight: 900;
-    font-size: 0.82rem;
-    opacity: 0.9;
-    margin-bottom: 4px;
+  .who{
+    font-weight:950;
+    font-size:12px;
+    opacity:.9;
+    margin-bottom:4px;
   }
 
-  .bubble .text{
-    white-space: pre-wrap;
-    line-height: 1.35;
-    font-size: 0.98rem;
+  .text{
+    white-space:pre-wrap;
+    line-height:1.38;
+    font-size:15px;
+    font-weight:600;
   }
 
-  .bubble .time{
-    margin-top: 6px;
-    font-size: 0.78rem;
-    opacity: 0.75;
+  .time{
+    margin-top:6px;
+    font-size:12px;
+    opacity:.72;
     text-align:right;
+    font-weight:700;
   }
-
-  .me .bubble .time{ opacity: 0.85; }
 
   .chat-compose{
     flex:0 0 auto;
-    background: rgba(255,255,255,0.96);
-    backdrop-filter: blur(8px);
-    border-top: 1px solid #eef2f7;
-    padding: 12px 14px;
+    background:#fff;
+    border-top:1px solid #eef2f7;
+    padding:14px 16px;
   }
+
+  .suggest-wrap{
+    margin-bottom:10px;
+  }
+
+  .suggest-title{
+    color:#64748b;
+    font-weight:850;
+    font-size:13px;
+    margin-bottom:7px;
+  }
+
+  .suggest-btns{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+
+  .suggest{
+    border:1px solid #e5e7eb;
+    background:#fff;
+    color:#0f172a;
+    border-radius:999px;
+    padding:7px 10px;
+    font-weight:850;
+    font-size:13px;
+    cursor:pointer;
+  }
+
+  .suggest:hover{ background:#f1f5f9; }
 
   .compose-row{
     display:flex;
@@ -134,162 +209,144 @@
   textarea.compose{
     flex:1;
     border:1px solid #e5e7eb;
-    border-radius: 14px;
-    padding: 10px 12px;
+    border-radius:16px;
+    padding:12px 14px;
     resize:none;
-    min-height: 44px;
-    max-height: 140px;
+    min-height:54px;
+    max-height:140px;
     outline:none;
+    font-weight:650;
   }
 
   textarea.compose:focus{
     border-color:#2563eb;
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+    box-shadow:0 0 0 3px rgba(37,99,235,.12);
   }
 
   .send-btn{
     background:#2563eb;
-    color:white;
+    color:#fff;
     border:none;
-    border-radius: 14px;
-    padding: 10px 14px;
-    font-weight: 900;
+    border-radius:16px;
+    padding:14px 18px;
+    font-weight:950;
   }
+
   .send-btn:hover{ background:#1d4ed8; }
 
-  .suggest-wrap{ margin-bottom: 10px; }
-  .suggest-title{
-    color:#64748b;
-    font-weight: 700;
-    font-size: 0.9rem;
-    margin-bottom: 6px;
-  }
-  .suggest-btns{
-    display:flex;
-    flex-wrap:wrap;
-    gap:8px;
-  }
-  .suggest{
-    border:1px solid #e5e7eb;
-    background:#ffffff;
-    color:#0f172a;
-    border-radius: 999px;
-    padding: 6px 10px;
-    font-weight: 800;
-    font-size: 0.85rem;
-    cursor:pointer;
-  }
-  .suggest:hover{ background:#f1f5f9; }
-
-  /* NEW: Inquiry pill */
-  .inquiry-pill{
-    display:inline-flex;
-    align-items:center;
-    border:1px solid #e2e8f0;
-    background:#f8fafc;
-    color:#0f172a;
-    font-weight: 900;
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 0.82rem;
-  }
-
-  @media (max-width: 650px){
-    .bubble{ max-width: 92%; }
-    .chat-body{ max-height: 66vh; }
+  @media(max-width:760px){
+    .chat-wrap{ width:min(1120px, calc(100vw - 24px)); }
+    .chat-shell{ height:calc(100vh - 120px); }
+    .chat-header{ flex-direction:column; }
+    .bubble{ max-width:92%; }
+    .compose-row{ flex-direction:column; align-items:stretch; }
   }
 </style>
 
 {% set is_inquiry = convo.booking and convo.booking.provider_note and convo.booking.provider_note.startswith("[INQUIRY]") %}
 
-<div class="chat-shell">
-  <div class="chat-header">
-    <div>
-      <div class="chat-title-row">
-        <h2 class="chat-title">
-          {% if is_inquiry %}
-            Inquiry (Ref #{{ convo.booking_id }})
-          {% else %}
-            Booking #{{ convo.booking_id }}
-          {% endif %}
-        </h2>
+<div class="chat-wrap">
+  <div class="chat-shell">
 
-        {% if is_inquiry %}
-          <span class="inquiry-pill">Inquiry</span>
+    <div class="chat-header">
+      <div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <h1 class="chat-title">
+            {% if is_inquiry %}
+              Inquiry #{{ convo.booking_id }}
+            {% else %}
+              Booking #{{ convo.booking_id }}
+            {% endif %}
+          </h1>
+
+          {% if is_inquiry %}
+            <span class="pill inquiry">Inquiry</span>
+          {% endif %}
+
+          {% if convo.booking %}
+            {% if convo.booking.status in ["accepted", "completed"] %}
+              <span class="pill good">{{ convo.booking.status }}</span>
+            {% elif convo.booking.status in ["declined", "cancelled"] %}
+              <span class="pill bad">{{ convo.booking.status }}</span>
+            {% else %}
+              <span class="pill">{{ convo.booking.status }}</span>
+            {% endif %}
+          {% endif %}
+        </div>
+
+        {% if convo.booking %}
+          <div class="chat-meta">
+            <span>
+              <strong>Service:</strong>
+              <a href="{{ url_for('main.service_detail', service_id=convo.booking.service_id) }}">
+                {{ convo.booking.service.title if convo.booking.service else "—" }}
+              </a>
+            </span>
+
+            {% if not is_inquiry %}
+              <span>•</span>
+              <span>
+                <strong>When:</strong>
+                {{ convo.booking.booking_datetime.strftime("%b %d, %Y • %I:%M %p") if convo.booking.booking_datetime else "—" }}
+              </span>
+            {% endif %}
+          </div>
         {% endif %}
+
+        <div class="chat-sub">
+          {% if current_user.id == convo.client_id %}
+            Chatting with {{ convo.provider.first_name }} {{ convo.provider.last_name }}
+          {% else %}
+            Chatting with {{ convo.client.first_name }} {{ convo.client.last_name }}
+          {% endif %}
+        </div>
       </div>
 
-      {% if convo.booking %}
-        <div class="chat-meta">
-          <span class="fw-semibold">Service:</span>
-          <a href="{{ url_for('main.service_detail', service_id=convo.booking.service_id) }}">
-            {{ convo.booking.service.title if convo.booking.service else "—" }}
-          </a>
+      <a class="back-btn" href="{{ url_for('messages.inbox') }}">← Inbox</a>
+    </div>
 
-          {% if is_inquiry %}
-            <span class="mx-2">•</span>
-            <span class="fw-semibold">Type:</span> Pre-book question
-          {% else %}
-            <span class="mx-2">•</span>
-            <span class="fw-semibold">When:</span>
-            {{ convo.booking.booking_datetime.strftime("%b %d, %Y %I:%M %p") if convo.booking.booking_datetime else "—" }}
-            <span class="mx-2">•</span>
-            <span class="status-badge {{ convo.booking.status }}">{{ convo.booking.status }}</span>
-          {% endif %}
+    <div class="chat-body" id="msgScroll">
+      {% if convo.messages %}
+        {% for m in convo.messages %}
+          <div class="msg-row {% if m.sender_id == current_user.id %}me{% else %}them{% endif %}">
+            <div class="bubble">
+              <div class="who">
+                {% if m.sender_id == current_user.id %}
+                  You
+                {% else %}
+                  {{ m.sender.first_name }} {{ m.sender.last_name }}
+                {% endif %}
+              </div>
+              <div class="text">{{ m.body }}</div>
+              <div class="time">{{ m.created_at.strftime("%b %d, %I:%M %p") }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-chat">
+          No messages yet. Send the first message below.
         </div>
       {% endif %}
-
-      <div class="chat-sub">
-        {% if current_user.id == convo.client_id %}
-          Chatting with {{ convo.provider.first_name }} {{ convo.provider.last_name }}
-        {% else %}
-          Chatting with {{ convo.client.first_name }} {{ convo.client.last_name }}
-        {% endif %}
-      </div>
     </div>
 
-    <a class="back-btn" href="{{ url_for('messages.inbox') }}">← Inbox</a>
-  </div>
-
-  <div class="chat-body" id="msgScroll">
-    {% if convo.messages %}
-      {% for m in convo.messages %}
-        <div class="msg-row {% if m.sender_id == current_user.id %}me{% else %}them{% endif %}">
-          <div class="bubble">
-            <div class="who">
-              {% if m.sender_id == current_user.id %}
-                You
-              {% else %}
-                {{ m.sender.first_name }} {{ m.sender.last_name }}
-              {% endif %}
-            </div>
-            <div class="text">{{ m.body }}</div>
-            <div class="time">{{ m.created_at.strftime("%b %d, %I:%M %p") }}</div>
-          </div>
+    <form method="post" class="chat-compose">
+      <div class="suggest-wrap">
+        <div class="suggest-title">Suggested prompts</div>
+        <div class="suggest-btns">
+          <button type="button" class="suggest msg-suggest" data-text="Hi! What should I bring or prepare before our session?">What should I prepare?</button>
+          <button type="button" class="suggest msg-suggest" data-text="Can you confirm what’s included in this service?">What’s included?</button>
+          <button type="button" class="suggest msg-suggest" data-text="Do you have any requirements or preferences before we meet?">Any requirements?</button>
+          <button type="button" class="suggest msg-suggest" data-text="Can we confirm the location or meeting method?">Confirm logistics</button>
         </div>
-      {% endfor %}
-    {% else %}
-      <div class="muted">No messages yet. Send the first message below.</div>
-    {% endif %}
-  </div>
-
-  <form method="post" class="chat-compose">
-    <div class="suggest-wrap">
-      <div class="suggest-title">Suggested questions (click to add)</div>
-      <div class="suggest-btns">
-        <button type="button" class="suggest msg-suggest" data-text="Hi! Quick question — what should I bring or prepare before our session?">What should I prepare?</button>
-        <button type="button" class="suggest msg-suggest" data-text="Can you confirm what’s included in this service and what isn’t?">What’s included?</button>
-        <button type="button" class="suggest msg-suggest" data-text="Do you have any requirements or preferences before we meet?">Any requirements?</button>
-        <button type="button" class="suggest msg-suggest" data-text="Can we confirm the location / meeting method (in-person vs online) and any details?">Confirm logistics</button>
       </div>
-    </div>
 
-    <div class="compose-row">
-      <textarea class="compose" id="body" name="body" maxlength="5000" required
-                placeholder="Write a message…"></textarea>
-      <button class="send-btn" type="submit">Send</button>
-    </div>
-  </form>
+      <div class="compose-row">
+        <textarea class="compose" id="body" name="body" maxlength="5000" required placeholder="Write a message..."></textarea>
+        <button class="send-btn" type="submit">Send</button>
+      </div>
+    </form>
+
+  </div>
 </div>
 
 <script>
@@ -308,8 +365,8 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
-  if (window.location.hash === "#compose") {
-    if (textarea) textarea.focus();
+  if (window.location.hash === "#compose" && textarea) {
+    textarea.focus();
   }
 });
 </script>

@@ -1,122 +1,422 @@
 {% extends "base.html" %}
+{% block title %}Time Off{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Time Off</h2>
-    <a class="btn btn-outline-secondary" href="{{ url_for('provider.calendar_view') }}">Back to Calendar</a>
+<style>
+  body{ background:#f6f7fb; }
+
+  .to-wrap{
+    width:min(1320px, calc(100vw - 42px));
+    margin:10px auto;
+  }
+
+  .to-card{
+    background:#fff;
+    border:1px solid rgba(15,23,42,.08);
+    border-radius:22px;
+    box-shadow:0 14px 32px rgba(15,23,42,.055);
+  }
+
+  .to-header{
+    padding:14px 18px;
+    margin-bottom:10px;
+  }
+
+  .to-title{
+    margin:0;
+    font-size:31px;
+    line-height:1;
+    font-weight:950;
+    letter-spacing:-.035em;
+    color:#0b1220;
+  }
+
+  .to-sub{
+    margin-top:7px;
+    color:#64748b;
+    font-weight:700;
+    font-size:15px;
+  }
+
+  .btn{
+    border-radius:12px;
+    font-weight:900;
+  }
+
+  .main-panel{
+    padding:18px;
+  }
+
+  .panel-title{
+    margin:0;
+    font-size:24px;
+    font-weight:950;
+    color:#0b1220;
+  }
+
+  .panel-sub{
+    margin-top:5px;
+    color:#64748b;
+    font-weight:700;
+    font-size:14px;
+  }
+
+  .summary-grid{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:10px;
+    margin-top:14px;
+  }
+
+  .summary-card{
+    border:1px solid #e5e7eb;
+    background:#f8fafc;
+    border-radius:16px;
+    padding:13px;
+  }
+
+  .summary-label{
+    color:#64748b;
+    font-size:11px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    font-weight:950;
+  }
+
+  .summary-value{
+    margin-top:5px;
+    color:#0f172a;
+    font-size:24px;
+    font-weight:950;
+    line-height:1;
+  }
+
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    border-radius:999px;
+    padding:5px 9px;
+    font-size:12px;
+    font-weight:950;
+    border:1px solid #e5e7eb;
+    background:#f8fafc;
+    color:#334155;
+  }
+
+  .pill.timeoff{
+    background:#ede9fe;
+    border-color:#c4b5fd;
+    color:#5b21b6;
+  }
+
+  .pill.allday{
+    background:#f1f5f9;
+    color:#475569;
+  }
+
+  .entry-list{
+    display:grid;
+    gap:10px;
+    margin-top:14px;
+    max-height:370px;
+    overflow:auto;
+    padding-right:4px;
+  }
+
+  .entry{
+    border:1px solid #e5e7eb;
+    border-radius:16px;
+    padding:14px;
+    background:#fff;
+  }
+
+  .entry-top{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+
+  .entry-title{
+    font-weight:950;
+    color:#0f172a;
+    font-size:16px;
+  }
+
+  .entry-meta{
+    color:#64748b;
+    font-size:13px;
+    font-weight:750;
+    margin-top:4px;
+  }
+
+  .empty{
+    border:1px dashed #cbd5e1;
+    border-radius:18px;
+    padding:42px 24px;
+    color:#64748b;
+    font-weight:800;
+    background:#f8fafc;
+    margin-top:14px;
+    text-align:center;
+  }
+
+  .empty-title{
+    color:#0f172a;
+    font-size:20px;
+    font-weight:950;
+    margin-bottom:4px;
+  }
+
+  .form-label{
+    font-weight:900;
+    color:#334155;
+    font-size:13px;
+    margin-bottom:5px;
+  }
+
+  .form-control{
+    border-radius:12px;
+    padding:10px 11px;
+    font-weight:700;
+  }
+
+  .form-check-input{
+    width:18px;
+    height:18px;
+  }
+
+  .modal-content{
+    border-radius:22px;
+    border:1px solid rgba(15,23,42,.10);
+  }
+
+  .modal-title{
+    font-weight:950;
+  }
+
+  .modal-sub{
+    color:#64748b;
+    font-weight:700;
+    font-size:14px;
+  }
+
+  .helper-box{
+    border:1px solid #dbeafe;
+    background:#eff6ff;
+    color:#1e3a8a;
+    border-radius:16px;
+    padding:12px;
+    font-size:13px;
+    font-weight:750;
+    line-height:1.35;
+  }
+
+  @media(max-width:900px){
+    .to-wrap{ width:min(1320px, calc(100vw - 24px)); }
+    .summary-grid{ grid-template-columns:1fr; }
+  }
+</style>
+
+{% set p = prefill if prefill is defined else {
+  "all_day": false,
+  "start_date": "",
+  "end_date": "",
+  "start_time": "09:00",
+  "end_time": "17:00",
+  "reason": ""
+} %}
+
+<div class="to-wrap">
+
+  <div class="to-card to-header">
+    <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+      <div>
+        <h1 class="to-title">Time Off</h1>
+        <div class="to-sub">
+          View blocked time and add one-time exceptions without changing your weekly availability.
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#addTimeOffModal">
+          + Add blocked time
+        </button>
+        <a class="btn btn-outline-secondary" href="{{ url_for('provider.calendar_view') }}">Calendar</a>
+        <a class="btn btn-outline-secondary" href="{{ url_for('provider.availability') }}">Availability</a>
+      </div>
+    </div>
   </div>
 
-  {# Safe defaults if prefill isn't provided #}
-  {% set p = prefill if prefill is defined else {
-    "all_day": false,
-    "start_date": "",
-    "end_date": "",
-    "start_time": "09:00",
-    "end_time": "17:00",
-    "reason": ""
-  } %}
+  <div class="to-card main-panel">
+    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+      <div>
+        <h2 class="panel-title">Current blocked time</h2>
+        <div class="panel-sub">These times are hidden from client booking options.</div>
+      </div>
 
-  <div class="row g-4">
-    <!-- Add Time Off Form -->
-    <div class="col-lg-5">
-      <div class="card">
-        <div class="card-header">
-          <strong>Add Time Off</strong>
-        </div>
-        <div class="card-body">
-          <form method="POST">
-            <div class="form-check mb-3">
-              <input class="form-check-input" type="checkbox" id="all_day" name="all_day"
-                     {% if p.all_day %}checked{% endif %}>
-              <label class="form-check-label" for="all_day">All day</label>
-              <div class="text-muted small">Use for vacation days or full-day unavailability.</div>
-            </div>
+      <span class="pill timeoff">{{ entries|length if entries else 0 }} entries</span>
+    </div>
 
-            <div class="row g-2 mb-3">
-              <div class="col-md-6">
-                <label class="form-label">Start date</label>
-                <input class="form-control" type="date" name="start_date" required
-                       value="{{ p.start_date }}">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">End date</label>
-                <input class="form-control" type="date" name="end_date" required
-                       value="{{ p.end_date }}">
-              </div>
-            </div>
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-label">Total blocks</div>
+        <div class="summary-value">{{ entries|length if entries else 0 }}</div>
+      </div>
 
-            <div class="row g-2 mb-3">
-              <div class="col-md-6">
-                <label class="form-label">Start time</label>
-                <input class="form-control" type="time" name="start_time"
-                       value="{{ p.start_time or '09:00' }}">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">End time</label>
-                <input class="form-control" type="time" name="end_time"
-                       value="{{ p.end_time or '17:00' }}">
-              </div>
-              <div class="text-muted small mt-1">
-                If “All day” is checked, times are ignored.
-              </div>
-            </div>
+      <div class="summary-card">
+        <div class="summary-label">Type</div>
+        <div class="summary-value" style="font-size:18px;">Temporary</div>
+      </div>
 
-            <div class="mb-3">
-              <label class="form-label">Reason (optional)</label>
-              <input class="form-control" type="text" name="reason"
-                     placeholder="Vacation / Appointment / Not available"
-                     value="{{ p.reason }}">
-            </div>
-
-            <button class="btn btn-primary" type="submit">Save Time Off</button>
-          </form>
-        </div>
+      <div class="summary-card">
+        <div class="summary-label">Calendar color</div>
+        <div class="summary-value" style="font-size:18px;">Purple</div>
       </div>
     </div>
 
-    <!-- Existing Entries -->
-    <div class="col-lg-7">
-      <div class="card">
-        <div class="card-header">
-          <strong>Existing Time Off</strong>
-        </div>
-        <div class="card-body">
-          {% if entries %}
-            <div class="table-responsive">
-              <table class="table table-sm align-middle">
-                <thead>
-                  <tr>
-                    <th>Start</th>
-                    <th>End</th>
-                    <th>All day</th>
-                    <th>Reason</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for e in entries %}
-                    <tr>
-                      <td>{{ e.start_datetime.strftime("%Y-%m-%d %H:%M") }}</td>
-                      <td>{{ e.end_datetime.strftime("%Y-%m-%d %H:%M") }}</td>
-                      <td>
-                        {% if e.all_day %}
-                          <span class="badge bg-secondary">Yes</span>
-                        {% else %}
-                          <span class="badge bg-light text-dark">No</span>
-                        {% endif %}
-                      </td>
-                      <td>{{ e.reason or "" }}</td>
-                    </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+    {% if entries %}
+      <div class="entry-list">
+        {% for e in entries %}
+          <div class="entry">
+            <div class="entry-top">
+              <div>
+                <div class="entry-title">
+                  {% if e.all_day %}
+                    {{ e.start_datetime.strftime("%b %-d, %Y") }}
+                    {% if e.end_datetime.date() != e.start_datetime.date() %}
+                      – {{ e.end_datetime.strftime("%b %-d, %Y") }}
+                    {% endif %}
+                  {% else %}
+                    {{ e.start_datetime.strftime("%b %-d, %Y") }}
+                  {% endif %}
+                </div>
+
+                <div class="entry-meta">
+                  {% if e.all_day %}
+                    All day
+                  {% else %}
+                    {{ e.start_datetime.strftime("%-I:%M %p") }} – {{ e.end_datetime.strftime("%-I:%M %p") }}
+                  {% endif %}
+                </div>
+
+                {% if e.reason %}
+                  <div class="entry-meta"><strong>Reason:</strong> {{ e.reason }}</div>
+                {% endif %}
+              </div>
+
+              <div class="d-flex gap-2 flex-wrap">
+                <span class="pill timeoff">Time off</span>
+                {% if e.all_day %}
+                  <span class="pill allday">All day</span>
+                {% endif %}
+              </div>
             </div>
-          {% else %}
-            <div class="text-muted">No time off entries yet.</div>
-          {% endif %}
-        </div>
+          </div>
+        {% endfor %}
       </div>
+    {% else %}
+      <div class="empty">
+        <div class="empty-title">No blocked time yet</div>
+        Click <strong>Add blocked time</strong> to block a date or time from client bookings.
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<div class="modal fade" id="addTimeOffModal" tabindex="-1" aria-labelledby="addTimeOffModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title" id="addTimeOffModalLabel">Add blocked time</h5>
+          <div class="modal-sub">Block a date or time range from client bookings.</div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <form method="POST">
+        <div class="modal-body">
+          <div class="helper-box mb-3">
+            <strong>How it works:</strong> saved time off appears in purple on your calendar and prevents client bookings during that range.
+          </div>
+
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="all_day" name="all_day"
+                   {% if p.all_day %}checked{% endif %}>
+            <label class="form-check-label fw-bold" for="all_day">All day</label>
+            <div class="text-muted small">Use for full-day unavailability.</div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Start date</label>
+              <input class="form-control" type="date" name="start_date" required value="{{ p.start_date }}">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">End date</label>
+              <input class="form-control" type="date" name="end_date" required value="{{ p.end_date }}">
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3" id="timeFields">
+            <div class="col-md-6">
+              <label class="form-label">Start time</label>
+              <input class="form-control" type="time" name="start_time" value="{{ p.start_time or '09:00' }}" step="900">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">End time</label>
+              <input class="form-control" type="time" name="end_time" value="{{ p.end_time or '17:00' }}" step="900">
+            </div>
+
+            <div class="text-muted small mt-1">
+              Times use 15-minute increments. If All day is checked, times are ignored.
+            </div>
+          </div>
+
+          <div>
+            <label class="form-label">Reason</label>
+            <input class="form-control" type="text" name="reason"
+                   placeholder="Vacation / Appointment / Exam / Not available"
+                   value="{{ p.reason }}">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary" type="submit">Save blocked time</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const allDay = document.getElementById("all_day");
+  const timeFields = document.getElementById("timeFields");
+
+  function syncTimeFields() {
+    if (!allDay || !timeFields) return;
+    timeFields.style.opacity = allDay.checked ? "0.45" : "1";
+  }
+
+  if (allDay) {
+    allDay.addEventListener("change", syncTimeFields);
+    syncTimeFields();
+  }
+
+    const shouldOpenModal = "{{ 'true' if p.start_date or p.end_date else 'false' }}";
+
+  if (shouldOpenModal === "true") {
+    const modalEl = document.getElementById("addTimeOffModal");
+    if (modalEl && window.bootstrap) {
+      new bootstrap.Modal(modalEl).show();
+    }
+  }
+});
+</script>
 {% endblock %}

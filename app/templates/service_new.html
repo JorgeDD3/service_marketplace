@@ -2,126 +2,161 @@
 {% block title %}New Service{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width: 1100px;">
-
-  <!-- Single compact card (header + form) -->
-  <div class="card shadow-sm border-0" style="border-radius: 18px;">
-    <div class="card-body py-3">
-      <div class="d-flex align-items-start justify-content-between gap-3 mb-2">
-        <div>
-          <h1 class="h4 mb-1">Create a Service</h1>
-          <div class="text-muted small">
-            Title + short description + optional price. Add experience/certifications in the description.
-          </div>
-        </div>
-
-        <div class="d-flex align-items-center gap-2 flex-shrink-0">
-          <a class="btn btn-sm btn-outline-secondary"
-             href="{{ url_for('provider_services.my_services') }}">
-            Back
-          </a>
+<div class="container pt-2 pb-3" style="max-width: 1200px;">
+  <form method="POST" class="needs-validation" novalidate>
+    <div class="d-flex align-items-center justify-content-between gap-3 mb-2 flex-wrap">
+      <div>
+        <div class="text-muted small mb-0">Provider Dashboard / Services</div>
+        <h1 class="h2 mb-1">Create a Service</h1>
+        <div class="text-muted">
+          Create a professional service listing clients can quickly understand and book.
         </div>
       </div>
 
-      <form method="POST" class="needs-validation" novalidate>
-        <div class="row g-3">
+      <a class="btn btn-outline-secondary" href="{{ url_for('provider_services.my_services') }}">
+        ← Back to Services
+      </a>
+    </div>
 
-          <div class="col-12">
-            <label class="form-label fw-semibold mb-1" for="title">Title</label>
-            <input id="title"
-                   name="title"
-                   type="text"
-                   class="form-control"
-                   maxlength="80"
-                   placeholder="e.g., Computer Science Tutoring"
-                   required>
-            <div class="invalid-feedback">Title is required.</div>
-          </div>
+    <div class="row g-3 align-items-start">
 
-          <!-- Description + quick inserts -->
-          <div class="col-12">
-            <div class="d-flex align-items-center justify-content-between gap-2">
-              <label class="form-label fw-semibold mb-1" for="description">Description (optional)</label>
+      <!-- LEFT COLUMN -->
+      <div class="col-12 col-lg-8">
+        <div class="card shadow-sm border-0 h-100" style="border-radius: 18px;">
+          <div class="card-body p-3 p-md-4">
 
-              <div class="d-flex flex-wrap gap-2">
-                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnAddExperience">
-                  + Experience
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnAddCert">
-                  + Certification
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnAddTemplate">
-                  + Template
-                </button>
-                <button type="button"
-                        class="btn btn-sm btn-outline-secondary"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#descPreviewWrap"
-                        aria-expanded="false"
-                        aria-controls="descPreviewWrap"
-                        id="btnTogglePreview">
-                  Preview
-                </button>
+            <!-- Title -->
+            <div class="mb-3">
+              <div class="d-flex align-items-center justify-content-between mb-1">
+                <label class="form-label fw-semibold mb-0" for="title">Service title</label>
+                <div class="small text-muted"><span id="titleCount">0</span>/80</div>
+              </div>
+
+              <input id="title"
+                     name="title"
+                     type="text"
+                     class="form-control form-control-lg"
+                     maxlength="80"
+                     placeholder="e.g., Computer Science Tutoring (Data Structures)"
+                     required>
+
+              <div class="invalid-feedback">Title is required.</div>
+              <div class="form-text">Be specific: subject + outcome works best.</div>
+            </div>
+
+            <!-- Description -->
+            <div class="mb-3">
+              <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-1">
+                <label class="form-label fw-semibold mb-0" for="description">Description</label>
+
+                <div class="d-flex gap-2 flex-wrap">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="btnAddTemplate">
+                    Insert outline
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="btnAddExperience">
+                    + Experience
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="btnAddCert">
+                    + Certification
+                  </button>
+                </div>
+              </div>
+
+              <textarea id="description"
+                        name="description"
+                        class="form-control"
+                        rows="4"
+                        maxlength="1200"
+                        placeholder="What will the client get? Topics covered? Typical session length?"></textarea>
+
+              <div class="d-flex justify-content-between align-items-center mt-1">
+                <div class="form-text mb-0">
+                  Everything is stored in the description. No extra fields required.
+                </div>
+                <div class="small text-muted"><span id="descCount">0</span>/1200</div>
               </div>
             </div>
 
-            <textarea id="description"
-                      name="description"
-                      class="form-control"
-                      rows="4"
-                      maxlength="1200"
-                      placeholder="What will the client get? Topics covered? Typical session length?"></textarea>
+            <!-- Price -->
+            <div class="row g-3 align-items-stretch">
+              <div class="col-12 col-md-5">
+                <label class="form-label fw-semibold mb-1" for="price">Price (optional)</label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input id="price"
+                         name="price"
+                         type="number"
+                         class="form-control"
+                         step="0.01"
+                         min="0"
+                         placeholder="50.00">
+                </div>
+                <div class="form-text">Leave blank if you want to discuss pricing in messages.</div>
+              </div>
 
-            <div class="form-text">
-              Tip: Use the quick buttons to add credibility details. Everything is saved in the description (no extra fields).
-            </div>
-
-            <!-- Preview (collapsed by default) -->
-            <div class="collapse mt-2" id="descPreviewWrap">
-              <div class="card border-0" style="background: #f8f9fa; border-radius: 14px;">
-                <div class="card-body py-2">
-                  <div class="small text-muted mb-1">Preview</div>
-                  <div id="descPreview" class="small" style="white-space: pre-wrap;"></div>
+              <div class="col-12 col-md-7">
+                <div class="rounded-3 h-100 p-3" style="background: #f8f9fa; border: 1px solid #e9ecef;">
+                  <div class="small fw-semibold mb-1">What makes a strong listing?</div>
+                  <div class="small text-muted">
+                    Explain what the client gets, what topics you cover, session length, and any relevant experience or certifications.
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div class="col-12 col-md-5">
-            <label class="form-label fw-semibold mb-1" for="price">Price (optional)</label>
-            <div class="input-group">
-              <span class="input-group-text">$</span>
-              <input id="price"
-                     name="price"
-                     type="number"
-                     class="form-control"
-                     step="0.01"
-                     min="0"
-                     placeholder="50.00">
+          <div class="border-top px-3 px-md-4 py-3"
+               style="background:#fff; border-bottom-left-radius:18px; border-bottom-right-radius:18px;">
+            <div class="d-flex align-items-center justify-content-between gap-3">
+              <a class="btn btn-outline-secondary" href="{{ url_for('provider_services.my_services') }}">
+                Cancel
+              </a>
+
+              <button class="btn btn-primary" type="submit">
+                Create Service
+              </button>
             </div>
-            <div class="form-text">Leave blank to discuss pricing in messages.</div>
-          </div>
-
-        </div>
-
-        <!-- Sticky action bar INSIDE card -->
-        <div class="pt-3 mt-3 border-top"
-             style="position: sticky; bottom: 0; background: #fff; border-bottom-left-radius: 18px; border-bottom-right-radius: 18px;">
-          <div class="d-flex align-items-center justify-content-between gap-3">
-            <a class="btn btn-sm btn-outline-secondary"
-               href="{{ url_for('provider_services.my_services') }}">
-              Cancel
-            </a>
-
-            <button class="btn btn-sm btn-primary" type="submit">
-              Create Service
-            </button>
           </div>
         </div>
-      </form>
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div class="col-12 col-lg-4">
+        <div class="card shadow-sm border-0" style="border-radius: 18px;">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-start justify-content-between mb-2">
+              <div>
+                <div class="text-muted small">Live preview</div>
+                <div class="fw-semibold">How clients will see it</div>
+              </div>
+              <span class="badge rounded-pill text-bg-light border">Preview</span>
+            </div>
+
+            <hr class="my-2">
+
+            <div id="previewTitle" class="h5 mb-1">Service title…</div>
+            <div id="previewPrice" class="text-muted small mb-2">Pricing: message to discuss</div>
+            <div id="previewDesc"
+                 class="small"
+                 style="white-space: pre-wrap; line-height: 1.4;">
+              Add a description to help clients understand what they are booking.
+            </div>
+
+            <hr class="my-3">
+
+            <div class="fw-semibold small mb-2">Quick tips</div>
+            <ul class="small text-muted ps-3 mb-0" style="line-height: 1.4;">
+              <li class="mb-1">Start with the outcome.</li>
+              <li class="mb-1">List the topics you help with.</li>
+              <li class="mb-1">Mention session length.</li>
+              <li>Include experience or certifications.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
     </div>
-  </div>
-
+  </form>
 </div>
 
 <script>
@@ -139,24 +174,61 @@
     });
   })();
 
-  // Quick-insert helpers + preview
+  // Counters + preview + quick inserts
   (function () {
-    const ta = document.getElementById('description');
-    const preview = document.getElementById('descPreview');
+    const title = document.getElementById('title');
+    const desc = document.getElementById('description');
+    const price = document.getElementById('price');
 
-    const addLine = (line) => {
-      if (!ta) return;
-      const val = ta.value || '';
+    const titleCount = document.getElementById('titleCount');
+    const descCount = document.getElementById('descCount');
+
+    const previewTitle = document.getElementById('previewTitle');
+    const previewDesc = document.getElementById('previewDesc');
+    const previewPrice = document.getElementById('previewPrice');
+
+    function setText(el, value) {
+      if (el) el.textContent = value;
+    }
+
+    function updateCounters() {
+      if (title && titleCount) titleCount.textContent = title.value.length;
+      if (desc && descCount) descCount.textContent = desc.value.length;
+    }
+
+    function fmtMoney(value) {
+      const num = Number(value);
+      if (!Number.isFinite(num)) return '';
+      return num.toFixed(2);
+    }
+
+    function updatePreview() {
+      const t = (title?.value || '').trim();
+      const d = (desc?.value || '').trim();
+      const p = (price?.value || '').trim();
+
+      setText(previewTitle, t || 'Service title…');
+      setText(
+        previewDesc,
+        d || 'Add a description to help clients understand what they are booking.'
+      );
+
+      if (p) {
+        setText(previewPrice, `Starting at $${fmtMoney(p)}`);
+      } else {
+        setText(previewPrice, 'Pricing: message to discuss');
+      }
+    }
+
+    function addLine(line) {
+      if (!desc) return;
+      const val = desc.value || '';
       const needsNewline = val.length && !val.endsWith('\n');
-      ta.value = val + (needsNewline ? '\n' : '') + line + '\n';
-      ta.focus();
+      desc.value = val + (needsNewline ? '\n' : '') + line + '\n';
+      desc.focus();
+      updateCounters();
       updatePreview();
-    };
-
-    const updatePreview = () => {
-      if (!preview || !ta) return;
-      preview.textContent = ta.value || '';
-    };
+    }
 
     document.getElementById('btnAddExperience')?.addEventListener('click', () => {
       addLine('• Experience: ');
@@ -168,21 +240,34 @@
 
     document.getElementById('btnAddTemplate')?.addEventListener('click', () => {
       addLine("What you'll get:");
-      addLine("• ");
-      addLine("Session length: ");
-      addLine("Experience: ");
-      addLine("Certifications (optional): ");
+      addLine('• ');
+      addLine('');
+      addLine('Topics covered:');
+      addLine('• ');
+      addLine('');
+      addLine('Session length:');
+      addLine('• ');
+      addLine('');
+      addLine('Experience:');
+      addLine('• ');
+      addLine('');
+      addLine('Certifications (optional):');
+      addLine('• ');
     });
 
-    // Keep preview in sync when typing
-    ta?.addEventListener('input', updatePreview);
-
-    // If user opens preview, ensure it's current
-    document.getElementById('btnTogglePreview')?.addEventListener('click', () => {
+    title?.addEventListener('input', () => {
+      updateCounters();
       updatePreview();
     });
 
-    // Initialize preview
+    desc?.addEventListener('input', () => {
+      updateCounters();
+      updatePreview();
+    });
+
+    price?.addEventListener('input', updatePreview);
+
+    updateCounters();
     updatePreview();
   })();
 </script>

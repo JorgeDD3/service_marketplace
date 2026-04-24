@@ -2,22 +2,23 @@
 {% block title %}Admin: Users{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width: 1100px;">
+<div class="container-dashboard" style="max-width: 1400px;">
 
-  <!-- Header card -->
+  <!-- Header -->
   <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
     <div class="card-body py-3">
-      <div class="d-flex align-items-start justify-content-between gap-3">
+      <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
         <div>
+          <div class="text-muted small mb-1">Admin Console</div>
           <h1 class="h3 mb-1">Users</h1>
-          <div class="text-muted small">
+          <div class="text-muted">
             Enable/disable accounts. You cannot disable yourself, and the last active admin is protected.
           </div>
         </div>
 
         <div class="d-flex align-items-center gap-2 flex-shrink-0">
           <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.moderation') }}">
-            Back to Moderation
+            ← Back to Moderation
           </a>
         </div>
       </div>
@@ -25,112 +26,146 @@
   </div>
 
   {% if users %}
-    <div class="d-flex flex-column gap-2">
-      {% for u in users %}
-        <div class="card shadow-sm border-0" style="border-radius: 18px;">
-          <div class="card-body py-3">
-            <div class="d-flex align-items-start justify-content-between gap-3">
+    {# counts #}
+    {% set active_count = 0 %}
+    {% set disabled_count = 0 %}
+    {% for u in users %}
+      {% if u.is_active %}{% set active_count = active_count + 1 %}{% else %}{% set disabled_count = disabled_count + 1 %}{% endif %}
+    {% endfor %}
 
-              <!-- Left: user info -->
-              <div class="flex-grow-1">
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                  <div class="fw-semibold">{{ u.first_name }} {{ u.last_name }}</div>
+    <!-- Search + Filters -->
+    <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
+      <div class="card-body py-3">
+        <div class="row g-2 align-items-end">
+          <div class="col-12 col-lg-6">
+            <label class="form-label small text-muted mb-1" for="uSearch">Search</label>
+            <input id="uSearch" type="text" class="form-control"
+                   placeholder="Search by name or email…"
+                   autocomplete="off">
+            <div class="form-text small">Tip: search works instantly; click ✏️ to manage a user.</div>
+          </div>
 
-                  <span class="badge {% if u.is_active %}badge-accepted{% else %}badge-cancelled{% endif %}">
-                    {% if u.is_active %}active{% else %}disabled{% endif %}
-                  </span>
+          <div class="col-12 col-md-6 col-lg-3">
+            <label class="form-label small text-muted mb-1" for="uRole">Role</label>
+            <select id="uRole" class="form-select">
+              <option value="all" selected>All roles</option>
+              <option value="admin">Admin</option>
+              <option value="provider">Provider</option>
+              <option value="client">Client</option>
+            </select>
+          </div>
 
-                  <span class="text-muted small">#{{ u.id }}</span>
-                </div>
+          <div class="col-12 col-md-6 col-lg-3">
+            <label class="form-label small text-muted mb-1" for="uStatus">Status</label>
+            <select id="uStatus" class="form-select">
+              <option value="all" selected>All statuses</option>
+              <option value="active">Active</option>
+              <option value="disabled">Disabled</option>
+            </select>
+          </div>
 
-                <div class="text-muted small mt-1">
-                  <span class="me-3">
-                    <span class="text-muted">Email:</span>
-                    <span class="fw-semibold">{{ u.email }}</span>
-                  </span>
+          <div class="col-12">
+            <div class="d-flex gap-2 justify-content-end flex-wrap mt-1">
+              <span class="badge bg-light text-dark border">Active: <span id="cActive">{{ active_count }}</span></span>
+              <span class="badge bg-light text-dark border">Disabled: <span id="cDisabled">{{ disabled_count }}</span></span>
+              <span class="badge bg-light text-dark border">Showing: <span id="cShowing">0</span></span>
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="uClear">Clear</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-                  <span class="me-3">
-                    <span class="text-muted">Role:</span>
-                    <span class="fw-semibold">{{ u.role_display or "—" }}</span>
-                  </span>
-                </div>
+    <!-- List -->
+    <div class="card shadow-sm border-0" style="border-radius: 18px;">
+      <div class="card-body p-0">
 
-                <div class="mt-2">
-                  <div class="text-muted small">Disabled reason</div>
-                  <div class="small">
-                    {% if u.disabled_reason %}
-                      <span style="white-space: pre-wrap;">{{ u.disabled_reason }}</span>
+        <div class="d-none d-lg-block px-3 py-2 border-bottom"
+             style="background:#f8f9fa; border-top-left-radius:18px; border-top-right-radius:18px;">
+          <div class="row align-items-center small text-muted">
+            <div class="col-lg-4">User</div>
+            <div class="col-lg-3">Email</div>
+            <div class="col-lg-2">Role</div>
+            <div class="col-lg-2">Status</div>
+            <div class="col-lg-1 text-end">Edit</div>
+          </div>
+        </div>
+
+        <div class="list-group list-group-flush" id="uList">
+          {% for u in users %}
+            {% set full_name = ((u.first_name or '') ~ ' ' ~ (u.last_name or ''))|trim %}
+            {% set role = (u.role_display or '') %}
+            {% set role_lower = role|lower %}
+            {% set status = 'active' if u.is_active else 'disabled' %}
+            {% set disabled_at = (u.disabled_at.strftime("%Y-%m-%d %H:%M") if u.disabled_at else "—") %}
+            {% set disabled_reason = (u.disabled_reason or '') %}
+
+            <div class="list-group-item px-3 py-3 u-row"
+                 data-search="{{ (full_name ~ ' ' ~ u.email ~ ' ' ~ role)|lower }}"
+                 data-role="{{ role_lower }}"
+                 data-status="{{ status }}"
+                 data-user-id="{{ u.id }}"
+                 data-name="{{ full_name|e }}"
+                 data-email="{{ u.email|e }}"
+                 data-role-display="{{ role|e }}"
+                 data-is-active="{{ 1 if u.is_active else 0 }}"
+                 data-disabled-at="{{ disabled_at }}"
+                 data-disabled-reason="{{ disabled_reason|e }}"
+                 data-action-url="{{ url_for('admin.toggle_user_active', user_id=u.id) }}"
+                 data-is-self="{{ 1 if u.id == current_user.id else 0 }}">
+
+              <div class="row g-2 align-items-start">
+                <div class="col-12 col-lg-4">
+                  <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div class="fw-semibold">{{ full_name or "—" }}</div>
+                    <span class="text-muted small">#{{ u.id }}</span>
+                  </div>
+                  <div class="text-muted small mt-1">
+                    {% if disabled_reason %}
+                      <span class="text-muted">Disabled reason:</span> {{ disabled_reason }}
                     {% else %}
                       <span class="text-muted">—</span>
                     {% endif %}
                   </div>
                 </div>
 
-                <div class="mt-2">
-                  <div class="text-muted small">Disabled at</div>
-                  <div class="small">
-                    {% if u.disabled_at %}
-                      {{ u.disabled_at.strftime("%Y-%m-%d %H:%M") }}
-                    {% else %}
-                      <span class="text-muted">—</span>
-                    {% endif %}
-                  </div>
+                <div class="col-12 col-lg-3">
+                  <div class="small fw-semibold">{{ u.email }}</div>
+                  <div class="text-muted small">Disabled at: {{ disabled_at }}</div>
                 </div>
-              </div>
 
-              <!-- Right: actions -->
-              <div class="flex-shrink-0" style="min-width: 280px;">
-                <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
-                  <div class="card-body py-2">
-                    <div class="d-flex align-items-center justify-content-between">
-                      <div class="fw-semibold">Account controls</div>
-                      <span class="badge bg-light text-dark">User</span>
-                    </div>
+                <div class="col-6 col-lg-2">
+                  <span class="badge bg-light text-dark border">{{ role or "—" }}</span>
+                </div>
 
-                    {% if u.id == current_user.id %}
-                      <div class="text-muted small mt-2">
-                        You can’t disable your own account.
-                      </div>
-                    {% else %}
-                      <form method="POST"
-                            action="{{ url_for('admin.toggle_user_active', user_id=u.id) }}"
-                            class="mt-2 m-0"
-                            {% if u.is_active %}onsubmit="return confirm('Disable this user?');"{% else %}onsubmit="return confirm('Enable this user?');"{% endif %}>
-                        {% if u.is_active %}
-                          <label class="form-label small text-muted mb-1" for="reason{{ u.id }}">
-                            Reason (optional)
-                          </label>
-                          <input id="reason{{ u.id }}"
-                                 type="text"
-                                 name="disabled_reason"
-                                 class="form-control form-control-sm"
-                                 placeholder="e.g., spam, abuse, policy violation">
-                          <div class="d-flex justify-content-end mt-2">
-                            <button type="submit" class="btn btn-sm btn-outline-danger">
-                              Disable
-                            </button>
-                          </div>
-                        {% else %}
-                          <div class="text-muted small">
-                            This user is currently disabled.
-                          </div>
-                          <div class="d-flex justify-content-end mt-2">
-                            <button type="submit" class="btn btn-sm btn-outline-success">
-                              Enable
-                            </button>
-                          </div>
-                        {% endif %}
-                      </form>
-                    {% endif %}
-                  </div>
+                <div class="col-6 col-lg-2">
+                  {% if u.is_active %}
+                    <span class="badge bg-success-subtle text-success border">Active</span>
+                  {% else %}
+                    <span class="badge bg-danger-subtle text-danger border">Disabled</span>
+                  {% endif %}
+                </div>
+
+                <div class="col-12 col-lg-1 text-lg-end">
+                  <button type="button"
+                          class="u-edit border-0 bg-transparent p-0 text-secondary"
+                          title="Manage user"
+                          aria-label="Manage user"
+                          data-bs-toggle="modal"
+                          data-bs-target="#uModal"
+                          style="font-size: 1.05rem; line-height: 1;">
+                    ✏️
+                  </button>
                 </div>
               </div>
 
             </div>
-          </div>
+          {% endfor %}
         </div>
-      {% endfor %}
+
+      </div>
     </div>
+
   {% else %}
     <div class="card border-0 shadow-sm" style="border-radius: 18px;">
       <div class="card-body py-3">
@@ -141,4 +176,159 @@
   {% endif %}
 
 </div>
+
+<!-- Single reusable modal -->
+<div class="modal fade" id="uModal" tabindex="-1" aria-labelledby="uModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content" style="border-radius: 18px;">
+      <div class="modal-header">
+        <div>
+          <div class="text-muted small">User</div>
+          <h5 class="modal-title mb-0" id="uModalLabel">Manage account</h5>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <form method="POST" id="uForm" action="">
+        <div class="modal-body">
+          <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+            <div>
+              <div class="fw-semibold" id="mName">—</div>
+              <div class="text-muted small" id="mMeta">—</div>
+            </div>
+            <span class="badge bg-light text-dark border" id="mStatus">—</span>
+          </div>
+
+          <hr class="my-3">
+
+          <div id="mSelfWarning" class="alert alert-warning d-none mb-3" role="alert" style="border-radius: 14px;">
+            You can’t disable your own account.
+          </div>
+
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label small text-muted mb-1" for="mReason">Disable reason (optional)</label>
+              <input id="mReason" type="text" name="disabled_reason" class="form-control"
+                     placeholder="e.g., spam, abuse, policy violation">
+              <div class="form-text small">
+                Reason is stored when disabling. Enabling clears disabled reason/time.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer d-flex justify-content-between">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-danger" id="mToggleBtn">Disable</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const search = document.getElementById('uSearch');
+  const roleSel = document.getElementById('uRole');
+  const statusSel = document.getElementById('uStatus');
+  const clearBtn = document.getElementById('uClear');
+
+  const rows = Array.from(document.querySelectorAll('.u-row'));
+  const showingEl = document.getElementById('cShowing');
+
+  function applyFilter() {
+    const q = (search?.value || '').trim().toLowerCase();
+    const role = (roleSel?.value || 'all').toLowerCase();
+    const status = (statusSel?.value || 'all').toLowerCase();
+
+    let shown = 0;
+    rows.forEach((row) => {
+      const hay = row.dataset.search || '';
+      const rRole = (row.dataset.role || '').toLowerCase();
+      const rStatus = (row.dataset.status || '').toLowerCase();
+
+      const matchQ = !q || hay.includes(q);
+      const matchRole = (role === 'all') || (rRole === role);
+      const matchStatus = (status === 'all') || (rStatus === status);
+
+      const match = matchQ && matchRole && matchStatus;
+      row.style.display = match ? '' : 'none';
+      if (match) shown += 1;
+    });
+
+    if (showingEl) showingEl.textContent = String(shown);
+  }
+
+  applyFilter();
+
+  search?.addEventListener('input', applyFilter);
+  roleSel?.addEventListener('change', applyFilter);
+  statusSel?.addEventListener('change', applyFilter);
+  clearBtn?.addEventListener('click', () => {
+    if (search) search.value = '';
+    if (roleSel) roleSel.value = 'all';
+    if (statusSel) statusSel.value = 'all';
+    search?.focus();
+    applyFilter();
+  });
+
+  // Modal wiring
+  const mName = document.getElementById('mName');
+  const mMeta = document.getElementById('mMeta');
+  const mStatus = document.getElementById('mStatus');
+  const mReason = document.getElementById('mReason');
+  const selfWarn = document.getElementById('mSelfWarning');
+
+  const form = document.getElementById('uForm');
+  const toggleBtn = document.getElementById('mToggleBtn');
+
+  const setText = (el, val) => { if (el) el.textContent = val; };
+
+  function setBadge(isActive) {
+    if (!mStatus) return;
+    if (isActive) {
+      mStatus.textContent = 'Active';
+      mStatus.className = 'badge border bg-success-subtle text-success';
+    } else {
+      mStatus.textContent = 'Disabled';
+      mStatus.className = 'badge border bg-danger-subtle text-danger';
+    }
+  }
+
+  document.querySelectorAll('.u-edit').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const row = btn.closest('.u-row');
+      if (!row) return;
+
+      const id = row.dataset.userId;
+      const name = row.dataset.name || '—';
+      const email = row.dataset.email || '—';
+      const role = row.dataset.roleDisplay || '—';
+      const isActive = row.dataset.isActive === '1';
+      const disabledAt = row.dataset.disabledAt || '—';
+      const disabledReason = row.dataset.disabledReason || '';
+      const actionUrl = row.dataset.actionUrl || '';
+      const isSelf = row.dataset.isSelf === '1';
+
+      if (form && actionUrl) form.action = actionUrl;
+
+      setText(mName, name);
+      setText(mMeta, `Email: ${email} • Role: ${role} • #${id} • Disabled at: ${disabledAt}`);
+      setBadge(isActive);
+
+      if (mReason) mReason.value = disabledReason;
+
+      // Self-protect UI (backend already protects)
+      if (selfWarn) selfWarn.classList.toggle('d-none', !isSelf);
+      if (toggleBtn) {
+        toggleBtn.disabled = isSelf;
+        toggleBtn.textContent = isActive ? 'Disable' : 'Enable';
+        toggleBtn.className = 'btn ' + (isActive ? 'btn-danger' : 'btn-success');
+      }
+    });
+  });
+
+})();
+</script>
 {% endblock %}

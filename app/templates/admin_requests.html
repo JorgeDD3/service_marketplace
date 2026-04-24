@@ -2,147 +2,350 @@
 {% block title %}Admin: Service Requests{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width: 1100px;">
+<div class="container-dashboard" style="max-width: 1400px;">
 
-  <!-- Header card -->
+  {# Split into Active vs History locally (no backend changes) #}
+  {% set active_requests = [] %}
+  {% set closed_requests = [] %}
+  {% for r in (requests or []) %}
+    {% if (r.status or '')|lower in ['closed', 'resolved', 'done'] %}
+      {% set _ = closed_requests.append(r) %}
+    {% else %}
+      {% set _ = active_requests.append(r) %}
+    {% endif %}
+  {% endfor %}
+
+  <!-- Header -->
   <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
     <div class="card-body py-3">
-      <div class="d-flex align-items-start justify-content-between gap-3">
+      <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
         <div>
+          <div class="text-muted small mb-1">Admin Console</div>
           <h1 class="h3 mb-1">Service Requests</h1>
-          <div class="text-muted small">
+          <div class="text-muted">
             Review client requests for services not yet offered. Close items once resolved.
           </div>
         </div>
 
         <div class="d-flex align-items-center gap-2 flex-shrink-0">
           <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.moderation') }}">
-            Back to Moderation
+            ← Back to Moderation
           </a>
         </div>
       </div>
     </div>
   </div>
 
-  {% if not requests %}
-    <div class="card border-0 shadow-sm" style="border-radius: 18px;">
-      <div class="card-body py-3">
-        <div class="d-flex align-items-center justify-content-between gap-3">
-          <div>
-            <div class="fw-semibold">No service requests found</div>
-            <div class="text-muted small">
-              When clients submit requests, they’ll appear here for admin review and closure.
-            </div>
+  <!-- Search + counts -->
+  <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
+    <div class="card-body py-3">
+      <div class="row g-2 align-items-center">
+        <div class="col-12 col-lg-7">
+          <label class="form-label small text-muted mb-1" for="reqSearch">Search</label>
+          <input id="reqSearch"
+                 type="text"
+                 class="form-control"
+                 placeholder="Search by request title, description, or requester email…"
+                 autocomplete="off">
+          <div class="form-text small">Tip: search works across both Active and History.</div>
+        </div>
+
+        <div class="col-12 col-lg-5">
+          <div class="d-flex gap-2 justify-content-lg-end flex-wrap">
+            <span class="badge bg-light text-dark border align-self-center">
+              Active: <span id="cntActive">{{ active_requests|length }}</span>
+            </span>
+            <span class="badge bg-light text-dark border align-self-center">
+              History: <span id="cntHistory">{{ closed_requests|length }}</span>
+            </span>
+            <span class="badge bg-light text-dark border align-self-center">
+              Showing: <span id="cntShowing">0</span>
+            </span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="reqClear">Clear</button>
           </div>
-          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.moderation') }}">
-            Go to moderation hub
-          </a>
         </div>
       </div>
     </div>
-  {% else %}
+  </div>
 
-    <div class="d-flex flex-column gap-2">
-      {% for r in requests %}
-        <div class="card shadow-sm border-0" style="border-radius: 18px;">
+  <!-- Section toggles -->
+  <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
+    <div class="card-body py-2">
+      <ul class="nav nav-pills gap-2" id="reqTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active btn-sm"
+                  id="tab-active"
+                  data-bs-toggle="pill"
+                  data-bs-target="#pane-active"
+                  type="button"
+                  role="tab"
+                  aria-controls="pane-active"
+                  aria-selected="true">
+            Active
+            <span class="badge bg-light text-dark border ms-2">{{ active_requests|length }}</span>
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link btn-sm"
+                  id="tab-history"
+                  data-bs-toggle="pill"
+                  data-bs-target="#pane-history"
+                  type="button"
+                  role="tab"
+                  aria-controls="pane-history"
+                  aria-selected="false">
+            History
+            <span class="badge bg-light text-dark border ms-2">{{ closed_requests|length }}</span>
+          </button>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="tab-content" id="reqTabContent">
+
+    <!-- ACTIVE -->
+    <div class="tab-pane fade show active" id="pane-active" role="tabpanel" aria-labelledby="tab-active" tabindex="0">
+      {% if not active_requests %}
+        <div class="card border-0 shadow-sm" style="border-radius: 18px;">
           <div class="card-body py-3">
-            <div class="d-flex align-items-start justify-content-between gap-3">
-
-              <!-- Left: request info -->
-              <div class="flex-grow-1">
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                  <div class="fw-semibold">{{ r.title }}</div>
-
-                  {% if r.status %}
-                    <span class="badge bg-light text-dark">{{ r.status }}</span>
-                  {% endif %}
-
-                  <span class="text-muted small">#{{ r.id }}</span>
+            <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+              <div>
+                <div class="fw-semibold">No active service requests</div>
+                <div class="text-muted small">
+                  When clients submit requests, they’ll appear here for admin review and closure.
                 </div>
+              </div>
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.moderation') }}">
+                Go to moderation hub
+              </a>
+            </div>
+          </div>
+        </div>
+      {% else %}
+        <div class="d-flex flex-column gap-2" id="activeList">
+          {% for r in active_requests %}
+            {% set requester = (r.user.email if r.user and r.user.email else "—") %}
+            {% set created_str = (r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "—") %}
+            {% set desc = (r.description or "") %}
+            {% set is_long = desc|length > 220 %}
+            <div class="card shadow-sm border-0 req-row"
+                 style="border-radius: 18px;"
+                 data-search="{{ ((r.title or '') ~ ' ' ~ desc ~ ' ' ~ requester)|lower }}"
+                 data-section="active">
 
-                <div class="text-muted small mt-1">
-                  <span class="me-2">
-                    <span class="text-muted">Requested by:</span>
-                    {% if r.user and r.user.email %}
-                      <span class="fw-semibold">{{ r.user.email }}</span>
-                    {% else %}
-                      —
-                    {% endif %}
-                  </span>
+              <div class="card-body py-3">
+                <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
 
-                  <span class="me-2">
-                    <span class="text-muted">Created:</span>
-                    {% if r.created_at %}
-                      {{ r.created_at.strftime("%Y-%m-%d %H:%M") }}
-                    {% else %}
-                      —
-                    {% endif %}
-                  </span>
-                </div>
+                  <!-- Left: request info -->
+                  <div class="flex-grow-1">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                      <div class="fw-semibold">{{ r.title }}</div>
 
-                {% if r.description %}
-                  {% set desc = r.description %}
-                  {% set is_long = desc|length > 220 %}
-                  <div class="text-muted small mt-2">
-                    {{ desc[:220] }}{% if is_long %}…{% endif %}
-                    {% if is_long %}
-                      <button class="btn btn-sm btn-link p-0 ms-1 align-baseline"
-                              type="button"
-                              data-bs-toggle="collapse"
-                              data-bs-target="#reqDesc{{ r.id }}"
-                              aria-expanded="false"
-                              aria-controls="reqDesc{{ r.id }}"
-                              onclick="
-                                const el=document.getElementById('reqDesc{{ r.id }}');
-                                const btn=this;
-                                setTimeout(()=>{ btn.textContent = el.classList.contains('show') ? 'Show less' : 'Show more'; }, 10);
-                              ">
-                        Show more
-                      </button>
+                      <span class="badge bg-warning-subtle text-warning border">Active</span>
+
+                      <span class="text-muted small">#{{ r.id }}</span>
+                    </div>
+
+                    <div class="text-muted small mt-1">
+                      <span class="me-3">
+                        <span class="text-muted">Requested by:</span>
+                        <span class="fw-semibold">{{ requester }}</span>
+                      </span>
+                      <span class="me-3">
+                        <span class="text-muted">Created:</span>
+                        {{ created_str }}
+                      </span>
+                    </div>
+
+                    {% if desc %}
+                      <div class="text-muted small mt-2">
+                        {{ desc[:220] }}{% if is_long %}…{% endif %}
+                        {% if is_long %}
+                          <button class="btn btn-sm btn-link p-0 ms-1 align-baseline"
+                                  type="button"
+                                  data-bs-toggle="collapse"
+                                  data-bs-target="#reqDesc{{ r.id }}"
+                                  aria-expanded="false"
+                                  aria-controls="reqDesc{{ r.id }}"
+                                  onclick="
+                                    const el=document.getElementById('reqDesc{{ r.id }}');
+                                    const btn=this;
+                                    setTimeout(()=>{ btn.textContent = el.classList.contains('show') ? 'Show less' : 'Show more'; }, 10);
+                                  ">
+                            Show more
+                          </button>
+                        {% endif %}
+                      </div>
+
+                      {% if is_long %}
+                        <div class="collapse mt-2" id="reqDesc{{ r.id }}">
+                          <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
+                            <div class="card-body py-2">
+                              <div class="small" style="white-space: pre-wrap;">{{ desc }}</div>
+                            </div>
+                          </div>
+                        </div>
+                      {% endif %}
                     {% endif %}
                   </div>
 
-                  {% if is_long %}
-                    <div class="collapse mt-2" id="reqDesc{{ r.id }}">
-                      <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
-                        <div class="card-body py-2">
-                          <div class="small" style="white-space: pre-wrap;">{{ desc }}</div>
+                  <!-- Right: actions -->
+                  <div class="flex-shrink-0" style="min-width: 260px;">
+                    <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
+                      <div class="card-body py-2">
+                        <div class="text-muted small mb-2">Actions</div>
+
+                        <form method="POST"
+                              action="{{ url_for('service_requests.admin_close_request', request_id=r.id) }}"
+                              class="m-0"
+                              onsubmit="return confirm('Close this request?');">
+                          <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
+                            Close request
+                          </button>
+                        </form>
+
+                        <div class="form-text small mt-2">
+                          Closing moves it to History.
                         </div>
                       </div>
                     </div>
-                  {% endif %}
-                {% endif %}
-              </div>
-
-              <!-- Right: actions -->
-              <div class="flex-shrink-0" style="min-width: 260px;">
-                <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
-                  <div class="card-body py-2">
-                    <div class="text-muted small mb-2">Actions</div>
-
-                    {# Matches your routes: service_requests.admin_close_request POST /admin/requests/<id>/close #}
-                    <form method="POST"
-                          action="{{ url_for('service_requests.admin_close_request', request_id=r.id) }}"
-                          class="m-0"
-                          onsubmit="return confirm('Close this request?');">
-                      <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
-                        Close request
-                      </button>
-                    </form>
-
-                    <div class="form-text small mt-2">
-                      Closing removes it from the active queue (use when resolved).
-                    </div>
                   </div>
+
                 </div>
               </div>
 
             </div>
-          </div>
+          {% endfor %}
         </div>
-      {% endfor %}
+      {% endif %}
     </div>
 
-  {% endif %}
+    <!-- HISTORY -->
+    <div class="tab-pane fade" id="pane-history" role="tabpanel" aria-labelledby="tab-history" tabindex="0">
+      {% if not closed_requests %}
+        <div class="card border-0 shadow-sm" style="border-radius: 18px;">
+          <div class="card-body py-3">
+            <div class="fw-semibold">No history yet</div>
+            <div class="text-muted small">
+              Closed requests will appear here for reference.
+            </div>
+          </div>
+        </div>
+      {% else %}
+        <div class="d-flex flex-column gap-2" id="historyList">
+          {% for r in closed_requests %}
+            {% set requester = (r.user.email if r.user and r.user.email else "—") %}
+            {% set created_str = (r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "—") %}
+            {% set desc = (r.description or "") %}
+            {% set is_long = desc|length > 220 %}
+            <div class="card shadow-sm border-0 req-row"
+                 style="border-radius: 18px;"
+                 data-search="{{ ((r.title or '') ~ ' ' ~ desc ~ ' ' ~ requester ~ ' ' ~ (r.status or ''))|lower }}"
+                 data-section="history">
+
+              <div class="card-body py-3">
+                <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+
+                  <div class="flex-grow-1">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                      <div class="fw-semibold">{{ r.title }}</div>
+
+                      <span class="badge bg-secondary-subtle text-secondary border">
+                        {{ r.status or 'closed' }}
+                      </span>
+
+                      <span class="text-muted small">#{{ r.id }}</span>
+                    </div>
+
+                    <div class="text-muted small mt-1">
+                      <span class="me-3">
+                        <span class="text-muted">Requested by:</span>
+                        <span class="fw-semibold">{{ requester }}</span>
+                      </span>
+                      <span class="me-3">
+                        <span class="text-muted">Created:</span>
+                        {{ created_str }}
+                      </span>
+                    </div>
+
+                    {% if desc %}
+                      <div class="text-muted small mt-2">
+                        {{ desc[:220] }}{% if is_long %}…{% endif %}
+                        {% if is_long %}
+                          <button class="btn btn-sm btn-link p-0 ms-1 align-baseline"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#reqDesc{{ r.id }}"
+        aria-expanded="false"
+        aria-controls="reqDesc{{ r.id }}">
+  Show more
+</button>
+                        {% endif %}
+                      </div>
+
+                      {% if is_long %}
+                        <div class="collapse mt-2" id="histDesc{{ r.id }}">
+                          <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
+                            <div class="card-body py-2">
+                              <div class="small" style="white-space: pre-wrap;">{{ desc }}</div>
+                            </div>
+                          </div>
+                        </div>
+                      {% endif %}
+                    {% endif %}
+                  </div>
+
+                  <div class="flex-shrink-0" style="min-width: 260px;">
+                    <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
+                      <div class="card-body py-2">
+                        <div class="text-muted small mb-2">Status</div>
+                        <div class="small text-muted">
+                          This request is closed and is stored for reference.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+  </div>
 </div>
+
+<script>
+(function () {
+  const search = document.getElementById('reqSearch');
+  const clearBtn = document.getElementById('reqClear');
+  const rows = Array.from(document.querySelectorAll('.req-row'));
+  const showingEl = document.getElementById('cntShowing');
+
+  function applyFilter() {
+    const q = (search?.value || '').trim().toLowerCase();
+    let shown = 0;
+    rows.forEach((row) => {
+      const hay = row.dataset.search || '';
+      const match = !q || hay.includes(q);
+      row.style.display = match ? '' : 'none';
+      if (match) shown += 1;
+    });
+    if (showingEl) showingEl.textContent = String(shown);
+  }
+
+  applyFilter();
+
+  search?.addEventListener('input', applyFilter);
+  clearBtn?.addEventListener('click', () => {
+    if (search) search.value = '';
+    search?.focus();
+    applyFilter();
+  });
+})();
+</script>
 {% endblock %}

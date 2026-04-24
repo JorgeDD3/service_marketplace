@@ -663,3 +663,23 @@ def health():
         "status": "ok",
         "utc": datetime.utcnow().isoformat(timespec="seconds") + "Z",
     }, 200
+
+
+@main.route("/provider/services/<int:service_id>/edit", methods=["POST"])
+@login_required
+@role_required("provider")
+def provider_edit_service(service_id):
+    service = Service.query.get_or_404(service_id)
+
+    if not service.provider_profile or service.provider_profile.user_id != current_user.id:
+        flash_danger("Not authorized.")
+        return redirect(url_for("provider_services.my_services"))
+
+    service.title = request.form.get("title")
+    service.description = request.form.get("description")
+    service.price = float(request.form.get("price") or 0)
+
+    db.session.commit()
+
+    flash_success("Service updated.")
+    return redirect(url_for("provider_services.my_services"))

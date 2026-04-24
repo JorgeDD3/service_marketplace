@@ -1,126 +1,494 @@
 {% extends "base.html" %}
-{% block title %}Verification{% endblock %}
+{% block container_class %}container-wide{% endblock %}
+{% block title %}Provider Verification{% endblock %}
 
 {% block content %}
 <style>
-  /* Local density tweaks for this page */
-  .pv-wrap { max-width: 1100px; margin: 0 auto; }
-  .pv-card { border-radius: 18px; }
-  .pv-tight .card-body { padding: 16px !important; }
-  .pv-tight h1 { font-size: 34px; line-height: 1.1; margin: 0; }
-  .pv-tight .muted { color: #6b7280; }
-  .pv-tight .btn { padding: 8px 12px; }
-  .pv-tight .btn-sm { padding: 6px 10px; }
+  :root{
+    --ink:#0b1220;
+    --muted:#64748b;
+    --line:#e5e7eb;
+    --bg:#f6f7fb;
+    --green:#15803d;
+    --yellow:#a16207;
+    --red:#b91c1c;
+  }
+
+  body{ background:var(--bg); overflow:hidden; }
+
+  .verify-wrap{
+    width:min(1220px, calc(100vw - 42px));
+    height:calc(100vh - 96px);
+    margin:14px auto 0;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+
+  .verify-card{
+    background:#fff;
+    border:1px solid rgba(15,23,42,.08);
+    border-radius:20px;
+    box-shadow:0 14px 30px rgba(15,23,42,.055);
+  }
+
+  .verify-header{
+    padding:18px 22px;
+    flex:0 0 auto;
+  }
+
+  .verify-title{
+    margin:0;
+    font-size:34px;
+    line-height:1;
+    font-weight:950;
+    letter-spacing:-.035em;
+    color:var(--ink);
+  }
+
+  .verify-sub{
+    margin-top:6px;
+    color:var(--muted);
+    font-weight:700;
+    font-size:14px;
+  }
+
+  .verify-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:900;
+    border:1px solid var(--line);
+    background:#fff;
+    color:#334155;
+    white-space:nowrap;
+  }
+
+  .verify-pill.good{
+    background:#ecfdf5;
+    border-color:#bbf7d0;
+    color:var(--green);
+  }
+
+  .verify-pill.pending{
+    background:#fffbeb;
+    border-color:#fde68a;
+    color:var(--yellow);
+  }
+
+  .verify-pill.bad{
+    background:#fef2f2;
+    border-color:#fecaca;
+    color:var(--red);
+  }
+
+  .verify-nav{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+
+  .verify-nav .btn{
+    border-radius:12px;
+    padding:9px 13px;
+    font-weight:850;
+  }
+
+  .verify-grid{
+    flex:1;
+    min-height:0;
+    display:grid;
+    grid-template-columns:.82fr 1.18fr;
+    gap:12px;
+  }
+
+  .panel{
+    padding:18px;
+    min-height:0;
+    overflow:hidden;
+  }
+
+  .panel-title{
+    margin:0;
+    font-size:20px;
+    font-weight:950;
+    color:var(--ink);
+    line-height:1.1;
+  }
+
+  .panel-sub{
+    margin-top:5px;
+    color:var(--muted);
+    font-weight:700;
+    line-height:1.25;
+    font-size:14px;
+  }
+
+  .step{
+    display:flex;
+    gap:11px;
+    padding:12px 0;
+    border-top:1px solid rgba(15,23,42,.07);
+  }
+
+  .step:first-of-type{
+    margin-top:8px;
+  }
+
+  .step-num{
+    width:30px;
+    height:30px;
+    border-radius:999px;
+    background:#eff6ff;
+    color:#1d4ed8;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:950;
+    flex:0 0 auto;
+  }
+
+  .step strong{
+    color:var(--ink);
+    font-size:15px;
+  }
+
+  .step div:last-child{
+    color:var(--muted);
+    font-weight:700;
+    font-size:14px;
+    line-height:1.28;
+  }
+
+    .status-box{
+    border-radius:14px;
+    padding:10px 14px;
+    border:1px solid var(--line);
+    font-weight:800;
+    font-size:13px;
+    line-height:1.3;
+  }
+
+  .status-box.good{
+    background:#ecfdf5;
+    border-color:#bbf7d0;
+    color:#166534;
+  }
+
+  .status-box.pending{
+    background:#fffbeb;
+    border-color:#fde68a;
+    color:#92400e;
+  }
+
+  .status-box.bad{
+    background:#fef2f2;
+    border-color:#fecaca;
+    color:#991b1b;
+  }
+
+    .mini-card{
+    border:1px solid rgba(15,23,42,.10);
+    border-radius:14px;
+    padding:9px 13px;
+    background:#fff;
+    min-height:58px;
+  }
+
+  .klabel{
+    color:#64748b;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    font-weight:950;
+    margin-bottom:4px;
+  }
+
+  .kvalue{
+    color:#0f172a;
+    font-size:15px;
+    font-weight:800;
+    line-height:1.25;
+    word-break:break-word;
+  }
+
+  .form-label{
+    font-weight:850;
+    color:#1f2937;
+    font-size:13px;
+    margin-bottom:4px;
+  }
+
+  .form-control{
+    border-radius:12px;
+    padding:9px 11px;
+    font-weight:650;
+  }
+
+  .btn-primary,
+  .btn-outline-secondary{
+    border-radius:12px;
+    padding:9px 13px;
+    font-weight:900;
+  }
+
+  @media(max-width:950px){
+    body{ overflow:auto; }
+    .verify-wrap{
+      height:auto;
+      width:min(1220px, calc(100vw - 24px));
+    }
+    .verify-grid{ grid-template-columns:1fr; }
+  }
 </style>
 
-<div class="container pv-tight" style="padding-top: 24px; padding-bottom: 24px;">
-  <div class="pv-wrap">
+{% set vstatus = verification.status if verification else "not_submitted" %}
 
-    {% set vstatus = verification.status if verification else "not_submitted" %}
+<div class="verify-wrap">
 
-    <!-- Header card (matches Provider Profile style) -->
-    <div class="card shadow-sm pv-card mb-3">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-          <div>
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-              <h1>Provider Verification</h1>
+  <div class="verify-card verify-header">
+    <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+      <div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <h1 class="verify-title">Provider Verification</h1>
 
-              {% if vstatus == "verified" %}
-                <span class="badge text-bg-success">✓ Verified</span>
-              {% elif vstatus == "pending_review" %}
-                <span class="badge text-bg-warning">⏳ Pending</span>
-              {% elif vstatus == "rejected" %}
-                <span class="badge text-bg-danger">Rejected</span>
-              {% else %}
-                <span class="badge text-bg-secondary">Not submitted</span>
-              {% endif %}
-            </div>
+          {% if vstatus == "verified" %}
+            <span class="verify-pill good">✓ Verified</span>
+          {% elif vstatus == "pending_review" %}
+            <span class="verify-pill pending">⏳ Pending</span>
+          {% elif vstatus == "rejected" %}
+            <span class="verify-pill bad">Needs updates</span>
+          {% else %}
+            <span class="verify-pill">Not submitted</span>
+          {% endif %}
+        </div>
 
-            <div class="muted mt-1">
-              Signed in as <strong>{{ current_user.email }}</strong>
-            </div>
-          </div>
+        <div class="verify-sub">
+          Signed in as <strong>{{ current_user.email }}</strong>
+        </div>
+      </div>
 
-          <div class="d-flex gap-2">
-  <a class="btn btn-primary btn-sm disabled" aria-disabled="true">
-    Verification
-  </a>
+      <div class="verify-nav">
+        <a class="btn btn-primary disabled" aria-disabled="true">Verification</a>
+        <a class="btn btn-outline-secondary" href="{{ url_for('provider.profile') }}">Profile</a>
+        <a class="btn btn-outline-secondary" href="{{ url_for('provider.settings') }}">Settings</a>
+      </div>
+    </div>
+  </div>
 
-  <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('provider.profile') }}">
-    Profile
-  </a>
+  <div class="verify-grid">
 
-  <a class="btn btn-outline-secondary btn-sm disabled" aria-disabled="true" title="Coming soon">
-    Settings
-  </a>
-</div>
+    <div class="verify-card panel">
+      <h2 class="panel-title">How verification works</h2>
+      <div class="panel-sub">
+        Verification helps clients trust that providers are real, professional, and ready to accept bookings.
+      </div>
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <strong>Submit identity details</strong><br>
+          Add your legal name and optional credential number.
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <strong>Upload documents</strong><br>
+          Add an ID document and one certification, license, or credential file.
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <strong>Admin review</strong><br>
+          An admin approves the account or requests updates.
         </div>
       </div>
     </div>
 
-    {% if vstatus == "rejected" and verification and verification.admin_notes %}
-      <div class="alert alert-danger">
-        <div class="fw-semibold mb-1">Admin notes</div>
-        <div>{{ verification.admin_notes }}</div>
-      </div>
-    {% endif %}
+    <div class="verify-card panel">
+      <h2 class="panel-title">Verification status</h2>
 
-    <div class="card shadow-sm pv-card">
-      <div class="card-body" style="padding: 20px;">
-        <p class="text-muted mb-3">
-          Submit basic verification details. An admin will review and mark your account as verified.
-        </p>
+      {% if vstatus == "verified" %}
+        <div class="status-box good mt-2">
+          <div class="fw-bold">You are verified 🎉</div>
+          Your provider account has been approved.
 
-        {% if vstatus in ["pending_review", "verified"] %}
-          <div class="alert alert-info mb-0">
-            {% if vstatus == "pending_review" %}
-              Your verification is currently pending review.
-            {% else %}
-              You are verified 🎉
-            {% endif %}
+          <div class="mt-2 d-flex align-items-center gap-2 flex-wrap">
+            <span style="color:#64748b; font-weight:700; font-size:13px;">
+              Need to add certifications or update details?
+            </span>
+            <a class="btn btn-outline-success btn-sm"
+               href="{{ url_for('provider.dashboard') }}"
+               style="border-radius:999px; font-weight:900;">
+              Request verification update
+            </a>
           </div>
-        {% else %}
-          <form method="POST" enctype="multipart/form-data">
-            <div class="row g-3">
+        </div>
+      {% elif vstatus == "pending_review" %}
+        <div class="status-box pending mt-2">
+          <div class="fw-bold">Pending review</div>
+          Your submission is currently being reviewed.
+        </div>
+      {% elif vstatus == "rejected" %}
+        <div class="status-box bad mt-2">
+          <div class="fw-bold">Verification rejected</div>
+          Review the admin notes and resubmit.
+        </div>
+      {% endif %}
 
-              <div class="col-md-6">
-                <label class="form-label fw-semibold">Legal name</label>
-                <input class="form-control" name="legal_name"
-                       value="{{ verification.legal_name if verification else '' }}" required>
-              </div>
+      {% if verification %}
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mt-3 mb-2">
+          <div>
+            <h3 class="panel-title" style="font-size:18px;">What you’re verified for</h3>
+            <div class="panel-sub">This is the record connected to your provider account.</div>
+          </div>
 
-              <div class="col-md-6">
-                <label class="form-label fw-semibold">License / Credential # (optional)</label>
-                <input class="form-control" name="license_number"
-                       value="{{ verification.license_number if verification else '' }}">
-              </div>
+          
+        </div>
 
-              <div class="col-12">
-                <label class="form-label fw-semibold">Portfolio URL (optional)</label>
-                <input class="form-control" name="portfolio_url"
-                       value="{{ verification.portfolio_url if verification else '' }}">
-              </div>
+        <div class="status-box mb-2" style="background:#f8fafc; border-color:#e2e8f0; color:#0f172a;">
+          <div class="fw-bold">Provider identity verification</div>
+          <div style="color:#64748b; font-weight:700;">
+            Legal name, credential information, professional link, and supporting documents.
+          </div>
+        </div>
 
-              <div class="col-md-6">
-                <label class="form-label fw-semibold">ID Document (PDF/JPG/PNG)</label>
-                <input class="form-control" type="file" name="id_document" accept=".pdf,.png,.jpg,.jpeg">
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label fw-semibold">Certification / License (PDF/JPG/PNG)</label>
-                <input class="form-control" type="file" name="certification" accept=".pdf,.png,.jpg,.jpeg">
-              </div>
-
-              <div class="col-12 d-flex gap-2 pt-1">
-                <button class="btn btn-primary" type="submit">Submit for review</button>
-                <a class="btn btn-outline-secondary" href="{{ url_for('provider.profile') }}">Back to Profile</a>
-              </div>
-
+        <div class="row g-2">
+          <div class="col-md-6">
+            <div class="mini-card">
+              <div class="klabel">Legal name</div>
+              <div class="kvalue">{{ verification.legal_name or "Not provided" }}</div>
             </div>
-          </form>
+          </div>
+
+          <div class="col-md-6">
+            <div class="mini-card">
+              <div class="klabel">Credential number</div>
+              <div class="kvalue">{{ verification.license_number or "Not provided" }}</div>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="mini-card" style="min-height:62px;">
+              <div class="klabel">Professional / portfolio link</div>
+              <div class="kvalue">{{ verification.portfolio_url or "Not provided" }}</div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="mini-card">
+              <div class="klabel">ID document</div>
+              <div class="kvalue">
+                {% if verification.id_document_filename %}
+                  <span class="verify-pill good">Uploaded</span>
+                {% else %}
+                  <span class="verify-pill">Not uploaded</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="mini-card">
+              <div class="klabel">Certification file</div>
+              <div class="kvalue">
+                {% if verification.certification_filename %}
+                  <span class="verify-pill good">Uploaded</span>
+                {% else %}
+                  <span class="verify-pill">Not uploaded</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="mini-card">
+              <div class="klabel">Submitted</div>
+              <div class="kvalue">
+                {% if verification.submitted_at %}
+                  {{ verification.submitted_at.strftime("%b %d, %Y") }}
+                {% else %}
+                  Not available
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="mini-card">
+              <div class="klabel">Status</div>
+              <div class="kvalue">{{ vstatus.replace("_", " ").title() }}</div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="mini-card">
+              <div class="klabel">Reviewed</div>
+              <div class="kvalue">
+                {% if verification.reviewed_at %}
+                  {{ verification.reviewed_at.strftime("%b %d, %Y") }}
+                {% elif vstatus == "verified" %}
+                  Approved
+                {% else %}
+                  Not yet
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {% if verification.admin_notes %}
+          <div class="status-box mt-2" style="background:#fff7ed; border-color:#fed7aa; color:#9a3412;">
+            <div class="fw-bold">Admin notes</div>
+            {{ verification.admin_notes }}
+          </div>
         {% endif %}
-      </div>
+      {% endif %}
+
+      {% if vstatus not in ["verified", "pending_review"] %}
+        <form method="POST" enctype="multipart/form-data" class="mt-3">
+          <div class="row g-2">
+
+            <div class="col-md-6">
+              <label class="form-label">Legal name</label>
+              <input class="form-control" name="legal_name" value="{{ verification.legal_name if verification else '' }}" required>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Credential #</label>
+              <input class="form-control" name="license_number" value="{{ verification.license_number if verification else '' }}">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Portfolio URL</label>
+              <input class="form-control" name="portfolio_url" value="{{ verification.portfolio_url if verification else '' }}">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">ID document</label>
+              <input class="form-control" type="file" name="id_document" accept=".pdf,.png,.jpg,.jpeg">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Certification</label>
+              <input class="form-control" type="file" name="certification" accept=".pdf,.png,.jpg,.jpeg">
+            </div>
+
+            <div class="col-12 d-flex gap-2 mt-1">
+              <button class="btn btn-primary" type="submit">Submit</button>
+              <a class="btn btn-outline-secondary" href="{{ url_for('provider.profile') }}">Back</a>
+            </div>
+
+          </div>
+        </form>
+      {% endif %}
     </div>
 
   </div>

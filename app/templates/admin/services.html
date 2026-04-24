@@ -2,150 +2,161 @@
 {% block title %}Admin: Services Moderation{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width: 1100px;">
+<div class="container-dashboard" style="max-width: 1400px;">
 
-  <!-- Header card -->
+  <!-- Header -->
   <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
     <div class="card-body py-3">
-      <div class="d-flex align-items-start justify-content-between gap-3">
+      <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
         <div>
+          <div class="text-muted small mb-1">Admin Console</div>
           <h1 class="h3 mb-1">Services Moderation</h1>
-          <div class="text-muted small">
-            Hide/unhide services and attach moderation notes. Notes are visible to the provider on their services page.
+          <div class="text-muted">
+            Search services by title or provider, then click the pencil to hide/unhide and add notes.
           </div>
         </div>
 
-        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+        <div class="d-flex align-items-center gap-2">
           <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.moderation') }}">
-            Back to Moderation
+            ← Back to Moderation
           </a>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- Search + summary -->
+  <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
+    <div class="card-body py-3">
+      <div class="row g-2 align-items-center">
+        <div class="col-12 col-lg-7">
+          <label class="form-label small text-muted mb-1" for="svcSearch">Search</label>
+          <input id="svcSearch"
+                 type="text"
+                 class="form-control"
+                 placeholder="Search by service title or provider email…"
+                 autocomplete="off">
+          <div class="form-text small">
+            Tip: type part of a title (e.g. "tutoring") or provider email.
+          </div>
+        </div>
+
+        <div class="col-12 col-lg-5">
+          <div class="d-flex gap-2 justify-content-lg-end">
+            <span class="badge bg-light text-dark border align-self-center">
+              Total: <span id="svcTotal">0</span>
+            </span>
+            <span class="badge bg-light text-dark border align-self-center">
+              Showing: <span id="svcShowing">0</span>
+            </span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="svcClear">
+              Clear
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   {% if services %}
-    <div class="d-flex flex-column gap-2">
+    <!-- List -->
+    <div class="card shadow-sm border-0" style="border-radius: 18px;">
+      <div class="card-body p-0">
 
-      {% for s in services %}
-        <div class="card shadow-sm border-0" style="border-radius: 18px;">
-          <div class="card-body py-3">
-            <div class="d-flex align-items-start justify-content-between gap-3">
+        <!-- Table header -->
+        <div class="d-none d-lg-block px-3 py-2 border-bottom"
+             style="background:#f8f9fa; border-top-left-radius:18px; border-top-right-radius:18px;">
+          <div class="row align-items-center small text-muted">
+            <div class="col-lg-5">Service</div>
+            <div class="col-lg-4">Provider / Dates</div>
+            <div class="col-lg-2">Status</div>
+            <div class="col-lg-1 text-end">Edit</div>
+          </div>
+        </div>
 
-              <!-- Left: service info -->
-              <div class="flex-grow-1">
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                  <div class="fw-semibold">{{ s.title }}</div>
+        <div class="list-group list-group-flush" id="svcList">
+          {% for s in services %}
+            {% set provider_email = (s.provider_profile.user.email if s.provider_profile and s.provider_profile.user else "—") %}
+            {% set desc = (s.description or "") %}
+            {% set desc_short = desc[:140] ~ ("…" if desc|length > 140 else "") %}
 
-                  <span class="badge {% if s.is_active %}badge-accepted{% else %}badge-cancelled{% endif %}">
-                    {% if s.is_active %}active{% else %}hidden{% endif %}
-                  </span>
+            {# created_at may not exist on your Service model, so guard it #}
+            {% set created_str = (s.created_at.strftime("%Y-%m-%d %H:%M") if (s.created_at is defined and s.created_at) else "—") %}
+            {% set moderated_str = (s.moderated_at.strftime("%Y-%m-%d %H:%M") if s.moderated_at else "—") %}
 
-                  <span class="text-muted small">#{{ s.id }}</span>
-                </div>
+            <div class="list-group-item px-3 py-3 svc-row"
+                 data-title="{{ (s.title or '')|lower }}"
+                 data-provider="{{ provider_email|lower }}"
+                 data-service-id="{{ s.id }}"
+                 data-service-title="{{ s.title|e }}"
+                 data-provider-email="{{ provider_email|e }}"
+                 data-is-active="{{ 1 if s.is_active else 0 }}"
+                 data-moderation-note="{{ (s.moderation_note or '')|e }}"
+                 data-description="{{ desc|e }}"
+                 data-created-at="{{ created_str }}"
+                 data-moderated-at="{{ moderated_str }}"
+                 data-action-url="{{ url_for('admin.toggle_service', service_id=s.id) }}">
 
-                <div class="text-muted small mt-1">
-                  <span class="me-2">
-                    <span class="text-muted">Provider:</span>
-                    {% if s.provider_profile and s.provider_profile.user %}
-                      <span class="fw-semibold">{{ s.provider_profile.user.email }}</span>
-                    {% else %}
-                      —
-                    {% endif %}
-                  </span>
-
-                  <span class="me-2">
-                    <span class="text-muted">Moderated:</span>
-                    {{ s.moderated_at.strftime("%Y-%m-%d %H:%M") if s.moderated_at else "—" }}
-                  </span>
-                </div>
-
-                {% if s.description %}
-                  {% set desc = s.description %}
-                  {% set is_long = desc|length > 180 %}
-
-                  <div class="text-muted small mt-2">
-                    {{ desc[:180] }}{% if is_long %}…{% endif %}
-                    {% if is_long %}
-                      <button class="btn btn-sm btn-link p-0 ms-1 align-baseline"
-                              type="button"
-                              data-bs-toggle="collapse"
-                              data-bs-target="#svcDesc{{ s.id }}"
-                              aria-expanded="false"
-                              aria-controls="svcDesc{{ s.id }}"
-                              onclick="
-                                const el=document.getElementById('svcDesc{{ s.id }}');
-                                const btn=this;
-                                setTimeout(()=>{ btn.textContent = el.classList.contains('show') ? 'Show less' : 'Show more'; }, 10);
-                              ">
-                        Show more
-                      </button>
-                    {% endif %}
+              <div class="row align-items-start g-2">
+                <!-- Service -->
+                <div class="col-12 col-lg-5">
+                  <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div class="fw-semibold">{{ s.title }}</div>
+                    <span class="text-muted small">#{{ s.id }}</span>
                   </div>
 
-                  {% if is_long %}
-                    <div class="collapse mt-2" id="svcDesc{{ s.id }}">
-                      <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
-                        <div class="card-body py-2">
-                          <div class="small" style="white-space: pre-wrap;">{{ desc }}</div>
-                        </div>
-                      </div>
+                  <div class="text-muted small mt-1">
+                    {{ desc_short if desc else "No description." }}
+                  </div>
+
+                  {% if s.moderation_note %}
+                    <div class="small mt-1">
+                      <span class="text-muted">Note:</span>
+                      <em>{{ s.moderation_note }}</em>
                     </div>
                   {% endif %}
-                {% endif %}
+                </div>
 
-                <div class="mt-2">
-                  <div class="text-muted small">Moderation note</div>
+                <!-- Provider -->
+                <div class="col-12 col-lg-4">
                   <div class="small">
-                    {% if s.moderation_note %}
-                      <em>{{ s.moderation_note }}</em>
-                    {% else %}
-                      <span class="text-muted">—</span>
-                    {% endif %}
+                    <div class="text-muted">Provider</div>
+                    <div class="fw-semibold">{{ provider_email }}</div>
+                  </div>
+                  <div class="text-muted small mt-1">
+                    <div><span class="text-muted">Created:</span> {{ created_str }}</div>
+                    <div><span class="text-muted">Moderated:</span> {{ moderated_str }}</div>
                   </div>
                 </div>
-              </div>
 
-              <!-- Right: moderation action -->
-              <div class="flex-shrink-0" style="min-width: 260px;">
-                <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
-                  <div class="card-body py-2">
-                    <form method="POST" action="{{ url_for('admin.toggle_service', service_id=s.id) }}" class="m-0">
-                      <label class="form-label small text-muted mb-1" for="note{{ s.id }}">
-                        Update note (optional)
-                      </label>
-                      <input id="note{{ s.id }}"
-                             type="text"
-                             name="moderation_note"
-                             class="form-control form-control-sm"
-                             placeholder="e.g., spam, misleading, duplicate"
-                             value="{{ s.moderation_note or '' }}">
+                <!-- Status -->
+                <div class="col-8 col-lg-2">
+                  {% if s.is_active %}
+                    <span class="badge bg-success-subtle text-success border">Active</span>
+                  {% else %}
+                    <span class="badge bg-danger-subtle text-danger border">Hidden</span>
+                  {% endif %}
+                </div>
 
-                      <div class="d-flex justify-content-end gap-2 mt-2">
-                        {% if s.is_active %}
-                          <button type="submit" class="btn btn-sm btn-outline-danger">
-                            Hide
-                          </button>
-                        {% else %}
-                          <button type="submit" class="btn btn-sm btn-outline-success">
-                            Unhide
-                          </button>
-                        {% endif %}
-                      </div>
-
-                      <div class="form-text small mt-2">
-                        Tip: hiding prevents providers from un-hiding if a moderation note exists.
-                      </div>
-                    </form>
-                  </div>
+                <!-- Edit (no box) -->
+                <div class="col-4 col-lg-1 text-end">
+                  <button type="button"
+                          class="svc-edit border-0 bg-transparent p-0 text-secondary"
+                          title="Edit moderation"
+                          aria-label="Edit moderation"
+                          data-bs-toggle="modal"
+                          data-bs-target="#svcEditModal"
+                          style="font-size: 1.05rem; line-height: 1;">
+                    ✏️
+                  </button>
                 </div>
               </div>
 
             </div>
-          </div>
+          {% endfor %}
         </div>
-      {% endfor %}
 
+      </div>
     </div>
   {% else %}
     <div class="card border-0 shadow-sm" style="border-radius: 18px;">
@@ -157,4 +168,171 @@
   {% endif %}
 
 </div>
+
+<!-- Single reusable modal -->
+<div class="modal fade" id="svcEditModal" tabindex="-1" aria-labelledby="svcEditModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content" style="border-radius: 18px;">
+      <div class="modal-header">
+        <div>
+          <div class="text-muted small">Service moderation</div>
+          <h5 class="modal-title mb-0" id="svcEditModalLabel">Edit</h5>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <form method="POST" id="svcEditForm" action="">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div>
+                  <div class="fw-semibold" id="svcModalTitle">—</div>
+                  <div class="text-muted small" id="svcModalMeta">—</div>
+                </div>
+                <span class="badge bg-light text-dark border" id="svcModalStatus">—</span>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="text-muted small mb-1">Description</div>
+              <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
+                <div class="card-body py-2">
+                  <div class="small" id="svcModalDesc" style="white-space: pre-wrap;">—</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small text-muted mb-1" for="svcModalNote">Moderation note (optional)</label>
+              <input id="svcModalNote"
+                     type="text"
+                     name="moderation_note"
+                     class="form-control"
+                     placeholder="e.g., spam, misleading, duplicate">
+              <div class="form-text small">
+                Tip: hiding prevents providers from un-hiding if a moderation note exists.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer d-flex justify-content-between">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            Cancel
+          </button>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary" name="action" value="save" id="svcModalSave">
+              Save Note
+            </button>
+            <button type="submit" class="btn btn-danger" name="action" value="toggle" id="svcModalToggle">
+              Hide
+            </button>
+          </div>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const search = document.getElementById('svcSearch');
+  const clearBtn = document.getElementById('svcClear');
+  const rows = Array.from(document.querySelectorAll('.svc-row'));
+  const totalEl = document.getElementById('svcTotal');
+  const showingEl = document.getElementById('svcShowing');
+
+  if (totalEl) totalEl.textContent = String(rows.length);
+
+  const applyFilter = () => {
+    const q = (search?.value || '').trim().toLowerCase();
+    let shown = 0;
+
+    rows.forEach((row) => {
+      const title = row.dataset.title || '';
+      const provider = row.dataset.provider || '';
+      const match = !q || title.includes(q) || provider.includes(q);
+      row.style.display = match ? '' : 'none';
+      if (match) shown += 1;
+    });
+
+    if (showingEl) showingEl.textContent = String(shown);
+  };
+
+  applyFilter();
+
+  search?.addEventListener('input', applyFilter);
+  clearBtn?.addEventListener('click', () => {
+    if (search) search.value = '';
+    search?.focus();
+    applyFilter();
+  });
+
+  // Modal wiring
+  const modalEl = document.getElementById('svcEditModal');
+  const modalTitle = document.getElementById('svcModalTitle');
+  const modalMeta = document.getElementById('svcModalMeta');
+  const modalDesc = document.getElementById('svcModalDesc');
+  const modalNote = document.getElementById('svcModalNote');
+  const modalStatus = document.getElementById('svcModalStatus');
+  const saveBtn = document.getElementById('svcModalSave');
+  const toggleBtn = document.getElementById('svcModalToggle');
+  const form = document.getElementById('svcEditForm');
+
+  const setText = (el, val) => { if (el) el.textContent = val; };
+
+  document.querySelectorAll('.svc-edit').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const row = btn.closest('.svc-row');
+      if (!row) return;
+
+      const serviceId = row.dataset.serviceId;
+      const title = row.dataset.serviceTitle || '—';
+      const providerEmail = row.dataset.providerEmail || '—';
+      const isActive = row.dataset.isActive === '1';
+      const note = row.dataset.moderationNote || '';
+      const desc = row.dataset.description || '';
+      const createdAt = row.dataset.createdAt || '—';
+      const moderatedAt = row.dataset.moderatedAt || '—';
+      const actionUrl = row.dataset.actionUrl || '';
+
+      if (form && actionUrl) form.action = actionUrl;
+
+      setText(modalTitle, title);
+      setText(modalMeta, `Provider: ${providerEmail} • Created: ${createdAt} • Moderated: ${moderatedAt} • #${serviceId}`);
+      setText(modalDesc, desc.trim() ? desc : 'No description.');
+      if (modalNote) modalNote.value = note;
+
+      if (modalStatus) {
+        modalStatus.textContent = isActive ? 'Active' : 'Hidden';
+        modalStatus.className = 'badge border ' + (isActive ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger');
+      }
+
+      if (toggleBtn) {
+        toggleBtn.textContent = isActive ? 'Hide' : 'Unhide';
+        toggleBtn.className = 'btn ' + (isActive ? 'btn-danger' : 'btn-success');
+      }
+
+      if (saveBtn) {
+        saveBtn.textContent = 'Save Note';
+        saveBtn.className = 'btn btn-primary';
+      }
+    });
+  });
+
+  modalEl?.addEventListener('hidden.bs.modal', () => {
+    if (toggleBtn) {
+      toggleBtn.textContent = 'Hide';
+      toggleBtn.className = 'btn btn-danger';
+    }
+    if (saveBtn) {
+      saveBtn.textContent = 'Save Note';
+      saveBtn.className = 'btn btn-primary';
+    }
+  });
+})();
+</script>
 {% endblock %}

@@ -3,541 +3,488 @@
 
 {% block content %}
 <style>
-  :root { --panel-h: 620px; } /* adjust if you want tighter/looser */
+  body{ background:#f6f7fb; }
 
-  .wrap { max-width: 1100px; margin: 0 auto; }
-  .cardx { border-radius: 18px; }
-  .h1x { font-size: 34px; font-weight: 800; line-height: 1.1; margin: 0; }
-  .muted { color: #6b7280; }
-  .btn-mini { padding: 6px 10px; font-size: 13px; }
-  .chip { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border:1px solid #e5e7eb; border-radius:999px; background:#fff; font-size:13px; }
-
-  /* One-screen layout */
-  .screen {
-    height: calc(100vh - 86px); /* navbar + padding */
-    min-height: 680px;
-    max-height: 820px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+  .avail-wrap{
+    width:min(1280px, calc(100vw - 42px));
+    margin:18px auto;
   }
 
-  .panes {
-    flex: 1;
-    display: grid;
-    grid-template-columns: 420px 1fr;
-    gap: 10px;
-    min-height: 0; /* allow internal scroll areas */
-  }
-  @media (max-width: 1100px) {
-    .panes { grid-template-columns: 1fr; }
-    .screen { height: auto; max-height: none; }
+  .avail-card{
+    background:#fff;
+    border:1px solid rgba(15,23,42,.08);
+    border-radius:22px;
+    box-shadow:0 14px 32px rgba(15,23,42,.055);
   }
 
-  .pane {
-    height: 100%;
-    min-height: 0;
+  .avail-header{
+    padding:20px 22px;
+    margin-bottom:14px;
   }
 
-  .pane-body {
-    height: var(--panel-h);
-    min-height: 0;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+  .avail-title{
+    margin:0;
+    font-size:36px;
+    line-height:1;
+    font-weight:950;
+    letter-spacing:-.035em;
+    color:#0b1220;
   }
 
-  /* Left tabs */
-  .tabs {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 10px;
+  .avail-sub{
+    margin-top:7px;
+    color:#64748b;
+    font-weight:700;
+    font-size:15px;
   }
-  .tabbtn {
+
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid #e5e7eb;
+    background:#f8fafc;
+    color:#334155;
+    font-size:12px;
+    font-weight:950;
+  }
+
+  .pill.good{
+    background:#ecfdf5;
+    border-color:#bbf7d0;
+    color:#166534;
+  }
+
+  .btn{
+    border-radius:12px;
+    font-weight:900;
+  }
+
+  .top-actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+
+  .week-card{
+    padding:20px;
+  }
+
+  .section-title{
+    margin:0;
+    font-size:24px;
+    font-weight:950;
+    color:#0b1220;
+  }
+
+  .section-sub{
+    margin-top:5px;
+    color:#64748b;
+    font-size:14px;
+    font-weight:700;
+  }
+
+  .week-grid{
+    display:grid;
+    grid-template-columns:repeat(7, minmax(0, 1fr));
+    gap:10px;
+    margin-top:16px;
+  }
+
+  .daycard{
+    border:1px solid rgba(15,23,42,.09);
+    border-radius:18px;
+    background:#fff;
+    min-height:245px;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+
+  .day-head{
+    padding:12px;
+    border-bottom:1px solid #eef2f7;
+    background:#f8fafc;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+  }
+
+  .day-name{
+    font-size:17px;
+    font-weight:950;
+    color:#0f172a;
+  }
+
+  .edit-day-btn{
     border:1px solid #e5e7eb;
     background:#fff;
-    border-radius: 999px;
-    padding: 6px 10px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .tabbtn.active {
-    border-color: rgba(37,99,235,.45);
-    background: rgba(37,99,235,.08);
-    color:#2563eb;
+    min-width:74px;
+    height:34px;
+    border-radius:999px;
+    cursor:pointer;
+    font-size:12px;
+    font-weight:950;
+    color:#334155;
   }
 
-  .tabpanel { display:none; }
-  .tabpanel.active { display:block; }
-
-  /* Day picker */
-  .daypick { display:flex; gap:8px; flex-wrap:wrap; }
-  .daybtn {
-    border:1px solid #e5e7eb; border-radius:999px; padding:6px 10px;
-    background:#fff; cursor:pointer; user-select:none; font-size:13px; font-weight:600;
-  }
-  .daybtn.active { border-color: rgba(37,99,235,.45); background: rgba(37,99,235,.08); color:#2563eb; }
-
-  .tiny { font-size:12px; color:#6b7280; }
-
-  /* Weekly schedule grid (fixed to 4 cols then 3 cols) */
-  .weekwrap {
-    height: 100%;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-  }
-  .weekgrid {
-    display:grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap:10px;
-  }
-  .weekgrid2 {
-    margin-top: 10px;
-    display:grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap:10px;
-  }
-  @media (max-width: 992px) {
-    .weekgrid { grid-template-columns: repeat(2, 1fr); }
-    .weekgrid2 { grid-template-columns: repeat(2, 1fr); }
-  }
-  @media (max-width: 640px) {
-    .weekgrid, .weekgrid2 { grid-template-columns: 1fr; }
+  .edit-day-btn:hover{
+    background:#eff6ff;
+    border-color:#bfdbfe;
+    color:#1d4ed8;
   }
 
-  .daycard {
-    border:1px solid #e5e7eb; border-radius:14px; background:#fff; padding:10px;
-    min-height: 128px;
+  .day-body{
+    padding:12px;
+    flex:1;
+    display:flex;
+    flex-direction:column;
   }
-  .daycard h4 { margin:0; font-size:14px; }
-  .win {
-    border:1px solid #eef2f7; border-radius:12px; padding:8px; margin-top:8px;
-    background:#fafbfc;
-  }
-  .winline { display:flex; justify-content:space-between; gap:8px; align-items:center; flex-wrap:wrap; }
 
-  /* Scroll only inside the right pane if there are tons of windows */
-  .week-scroll {
-    overflow: auto;
-    min-height: 0;
-    padding-right: 4px;
+  .window{
+    border:1px solid #e5e7eb;
+    border-radius:16px;
+    background:#fff;
+    padding:12px;
+  }
+
+  .window-label{
+    color:#64748b;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    font-weight:950;
+    margin-bottom:6px;
+  }
+
+  .window-time{
+    font-size:20px;
+    font-weight:950;
+    color:#0f172a;
+    line-height:1.2;
+  }
+
+  .window-sub{
+    color:#64748b;
+    font-size:13px;
+    font-weight:800;
+    margin-top:6px;
+  }
+
+  .status-badge{
+    display:inline-flex;
+    border-radius:999px;
+    padding:5px 9px;
+    font-size:11px;
+    font-weight:950;
+    margin-top:10px;
+  }
+
+  .status-badge.active{
+    background:#dcfce7;
+    color:#166534;
+  }
+
+  .status-badge.off{
+    background:#e5e7eb;
+    color:#475569;
+  }
+
+  .empty-day{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    border:1px dashed #cbd5e1;
+    border-radius:16px;
+    background:#f8fafc;
+    color:#64748b;
+    font-size:13px;
+    font-weight:800;
+    padding:14px;
+  }
+
+  .empty-title{
+    color:#0f172a;
+    font-weight:950;
+  }
+
+  .form-label{
+    font-weight:900;
+    color:#334155;
+    font-size:12px;
+    margin-bottom:5px;
+  }
+
+  .form-control,
+  .form-select{
+    border-radius:12px;
+    padding:10px 11px;
+    font-weight:700;
+  }
+
+  .modal-content{
+    border-radius:22px;
+    border:1px solid rgba(15,23,42,.10);
+  }
+
+  .modal-title{
+    font-weight:950;
+  }
+
+  .modal-sub{
+    color:#64748b;
+    font-weight:700;
+    font-size:14px;
+  }
+
+  @media(max-width:1180px){
+    .week-grid{ grid-template-columns:repeat(2, 1fr); }
+  }
+
+  @media(max-width:650px){
+    .avail-wrap{ width:min(1280px, calc(100vw - 24px)); }
+    .week-grid{ grid-template-columns:1fr; }
   }
 </style>
 
-<div class="container" style="padding-top: 14px; padding-bottom: 14px;">
-  <div class="wrap screen">
+{% macro normal_time(t) %}
+  {% set parts = t.split(":") %}
+  {% set h = parts[0]|int %}
+  {% set m = parts[1] %}
+  {% set suffix = "AM" if h < 12 else "PM" %}
+  {% set hr = h if h <= 12 else h - 12 %}
+  {% set hr = 12 if hr == 0 else hr %}
+  {{ hr }}:{{ m }} {{ suffix }}
+{% endmacro %}
 
-    <!-- Header -->
-    <div class="card shadow-sm cardx">
-      <div class="card-body" style="padding: 12px 14px;">
-        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-          <div>
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-              <div class="h1x">Availability</div>
-              <span class="badge text-bg-light">Provider</span>
-              {% if nav_verification_status == "verified" %}
-                <span class="badge text-bg-success">✓ Verified</span>
-              {% elif nav_verification_status == "pending_review" %}
-                <span class="badge text-bg-warning">⏳ Pending</span>
-              {% else %}
-                <span class="badge text-bg-secondary">Not verified</span>
-              {% endif %}
-              <span class="chip"><strong>Goal:</strong><span class="muted">Set weekly hours</span></span>
-            </div>
-            <div class="muted mt-1">Pick days + time once. Use Time Off for one-time exceptions.</div>
-          </div>
+{% set day_labels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] %}
 
-          <div class="d-flex gap-2">
-            <a class="btn btn-outline-secondary btn-mini" href="{{ url_for('provider.calendar_view') }}">← Calendar</a>
-            <a class="btn btn-outline-secondary btn-mini" href="{{ url_for('provider.time_off') }}">Time Off</a>
-          </div>
+{% set by_day = {} %}
+{% for r in rules %}
+  {% set _ = by_day.setdefault(r.day_of_week, []).append(r) %}
+{% endfor %}
+
+<div class="avail-wrap">
+
+  <div class="avail-card avail-header">
+    <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+      <div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <h1 class="avail-title">Availability</h1>
+          <span class="pill">Provider</span>
+
+          {% if nav_verification_status == "verified" %}
+            <span class="pill good">✓ Verified</span>
+          {% elif nav_verification_status == "pending_review" %}
+            <span class="pill">Pending review</span>
+          {% else %}
+            <span class="pill">Not verified</span>
+          {% endif %}
+        </div>
+
+        <div class="avail-sub">
+          View and edit your normal weekly schedule. Use Time Off for one-time exceptions.
         </div>
       </div>
+
+      <div class="top-actions">
+        <a class="btn btn-outline-secondary" href="{{ url_for('provider.calendar_view') }}">Calendar</a>
+        <a class="btn btn-outline-secondary" href="{{ url_for('provider.time_off') }}">Time Off</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="avail-card week-card">
+    <h2 class="section-title">Weekly availability</h2>
+    <div class="section-sub">
+      Each day shows whether clients can book you. Click Edit to update that day’s normal hours.
     </div>
 
-    {% set day_labels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] %}
+    <div class="week-grid">
+      {% for d in range(0,7) %}
+        {% set day_rules = by_day.get(d) %}
+        {% set first_rule = day_rules[0] if day_rules else none %}
 
-    {# Group rules by day #}
-    {% set by_day = {} %}
-    {% for r in rules %}
-      {% set _ = by_day.setdefault(r.day_of_week, []).append(r) %}
+        <div class="daycard">
+          <div class="day-head">
+            <div class="day-name">{{ day_labels[d] }}</div>
+            <button class="edit-day-btn"
+                    type="button"
+                    data-bs-toggle="modal"
+                    data-bs-target="#editDayModal{{ d }}">
+              Edit
+            </button>
+          </div>
+
+          <div class="day-body">
+            {% if not day_rules %}
+              <div class="empty-day">
+                <div class="empty-title">Unavailable</div>
+                <div>No weekly hours set.</div>
+              </div>
+            {% else %}
+              {% for r in day_rules %}
+                <div class="window">
+                  <div class="window-label">Bookable hours</div>
+                  <div class="window-time">
+                    {{ normal_time(r.start_time) }} – {{ normal_time(r.end_time) }}
+                  </div>
+
+                  <div class="window-sub">
+                    {{ r.slot_minutes }} minute sessions
+                  </div>
+
+                  {% if r.is_active %}
+                    <span class="status-badge active">Visible to clients</span>
+                  {% else %}
+                    <span class="status-badge off">Paused</span>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Edit Modal -->
+        <div class="modal fade" id="editDayModal{{ d }}" tabindex="-1" aria-labelledby="editDayModalLabel{{ d }}" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header">
+                <div>
+                  <h5 class="modal-title" id="editDayModalLabel{{ d }}">Edit {{ day_labels[d] }} availability</h5>
+                  <div class="modal-sub">
+                    Update your normal weekly hours for {{ day_labels[d] }}.
+                  </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+
+              <div class="modal-body">
+                {% if first_rule %}
+                  <form method="POST" action="{{ url_for('provider.update_availability', rule_id=first_rule.id) }}">
+                    <div class="row g-3">
+                      <div class="col-6">
+                        <label class="form-label">Start time</label>
+                        <select class="form-select" name="start_time" required>
+  {% for h in range(7, 23) %}
+    {% for m in [0, 15, 30, 45] %}
+      {% set value = "%02d:%02d"|format(h, m) %}
+      <option value="{{ value }}" {% if first_rule.start_time == value %}selected{% endif %}>
+        {{ normal_time(value) }}
+      </option>
     {% endfor %}
+  {% endfor %}
+</select>
+                      </div>
 
-    <div class="panes">
+                      <div class="col-6">
+                        <label class="form-label">End time</label>
+                        <select class="form-select" name="end_time" required>
+  {% for h in range(7, 23) %}
+    {% for m in [0, 15, 30, 45] %}
+      {% set value = "%02d:%02d"|format(h, m) %}
+      <option value="{{ value }}" {% if first_rule.end_time == value %}selected{% endif %}>
+        {{ normal_time(value) }}
+      </option>
+    {% endfor %}
+  {% endfor %}
+</select>
+                      </div>
 
-      <!-- LEFT: Controls (tabbed) -->
-      <div class="pane">
-        <div class="card shadow-sm cardx h-100">
-          <div class="card-body pane-body" style="padding: 12px 14px;">
-            <div class="fw-semibold mb-1">Set availability</div>
-            <div class="tiny mb-2">Use tabs to keep it simple.</div>
+                      <div class="col-12">
+                        <label class="form-label">Session length</label>
+                        <select class="form-select" name="slot_minutes">
+                          <option value="30" {% if first_rule.slot_minutes == 30 %}selected{% endif %}>30 minutes</option>
+                          <option value="45" {% if first_rule.slot_minutes == 45 %}selected{% endif %}>45 minutes</option>
+                          <option value="60" {% if first_rule.slot_minutes == 60 %}selected{% endif %}>60 minutes</option>
+                          <option value="90" {% if first_rule.slot_minutes == 90 %}selected{% endif %}>90 minutes</option>
+                          <option value="120" {% if first_rule.slot_minutes == 120 %}selected{% endif %}>120 minutes</option>
+                        </select>
+                      </div>
 
-            <div class="tabs">
-              <button class="tabbtn active" type="button" data-tab="tab-weekly">Weekly</button>
-              <button class="tabbtn" type="button" data-tab="tab-preset">Preset</button>
-              <button class="tabbtn" type="button" data-tab="tab-oneoff">One-off</button>
-            </div>
+                      <div class="col-12 d-grid">
+                        <button class="btn btn-primary" type="submit">Save changes</button>
+                      </div>
+                    </div>
+                  </form>
 
-            <!-- WEEKLY -->
-            <div class="tabpanel active" id="tab-weekly">
-              <div class="tiny mb-2">1) Choose days → 2) Set time → 3) Save.</div>
+                  <hr>
 
-              <div class="d-flex gap-2 flex-wrap mb-2">
-                <button class="btn btn-outline-secondary btn-mini" type="button" id="selWeekdays">Weekdays</button>
-                <button class="btn btn-outline-secondary btn-mini" type="button" id="selWeekends">Weekends</button>
-                <button class="btn btn-outline-secondary btn-mini" type="button" id="selAll">Everyday</button>
-                <button class="btn btn-outline-secondary btn-mini" type="button" id="selNone">Clear</button>
+                  <div class="d-flex gap-2 flex-wrap">
+                    <form method="POST" action="{{ url_for('provider.toggle_availability', rule_id=first_rule.id) }}">
+                      <button class="btn btn-outline-secondary" type="submit">
+                        {% if first_rule.is_active %}Pause availability{% else %}Enable availability{% endif %}
+                      </button>
+                    </form>
+
+                    <form method="POST"
+                          action="{{ url_for('provider.delete_availability', rule_id=first_rule.id) }}"
+                          onsubmit="return confirm('Delete this availability window?');">
+                      <button class="btn btn-outline-danger" type="submit">Delete availability</button>
+                    </form>
+                  </div>
+                {% else %}
+                  <form method="POST" action="{{ url_for('provider.availability') }}">
+                    <input type="hidden" name="day_of_week" value="{{ d }}">
+
+                    <div class="row g-3">
+                      <div class="col-6">
+                        <label class="form-label">Start time</label>
+                        <select class="form-select" name="start_time" required>
+  {% for h in range(7, 23) %}
+    {% for m in [0, 15, 30, 45] %}
+      {% set value = "%02d:%02d"|format(h, m) %}
+      <option value="{{ value }}" {% if value == "09:00" %}selected{% endif %}>
+        {{ normal_time(value) }}
+      </option>
+    {% endfor %}
+  {% endfor %}
+</select>
+                      </div>
+
+                      <div class="col-6">
+                        <label class="form-label">End time</label>
+                        <select class="form-select" name="end_time" required>
+  {% for h in range(7, 23) %}
+    {% for m in [0, 15, 30, 45] %}
+      {% set value = "%02d:%02d"|format(h, m) %}
+      <option value="{{ value }}" {% if value == "17:00" %}selected{% endif %}>
+        {{ normal_time(value) }}
+      </option>
+    {% endfor %}
+  {% endfor %}
+</select>
+                      </div>
+
+                      <div class="col-12">
+                        <label class="form-label">Session length</label>
+                        <select class="form-select" name="slot_minutes">
+                          <option value="30" selected>30 minutes</option>
+                          <option value="45">45 minutes</option>
+                          <option value="60">60 minutes</option>
+                          <option value="90">90 minutes</option>
+                          <option value="120">120 minutes</option>
+                        </select>
+                      </div>
+
+                      <div class="col-12 d-grid">
+                        <button class="btn btn-primary" type="submit">Add availability</button>
+                      </div>
+                    </div>
+                  </form>
+                {% endif %}
               </div>
-
-              <div class="daypick mb-2" id="dayPick">
-                {% for i in range(0,7) %}
-                  <div class="daybtn" data-day="{{ i }}">{{ day_labels[i] }}</div>
-                {% endfor %}
-              </div>
-
-              <div class="row g-2 align-items-end">
-                <div class="col-4">
-                  <label class="form-label fw-semibold mb-1">Start</label>
-                  <input class="form-control" type="time" id="multiStart" value="09:00">
-                </div>
-                <div class="col-4">
-                  <label class="form-label fw-semibold mb-1">End</label>
-                  <input class="form-control" type="time" id="multiEnd" value="17:00">
-                </div>
-                <div class="col-4">
-                  <label class="form-label fw-semibold mb-1">Slot</label>
-                  <input class="form-control" type="number" id="multiSlot" value="30" min="5" step="5">
-                </div>
-
-                <div class="col-12 d-flex gap-2 align-items-center mt-1">
-                  <button class="btn btn-primary" type="button" id="multiSave">Save</button>
-                  <span class="tiny" id="multiStatus"></span>
-                </div>
-              </div>
-
-              <div class="tiny mt-2">
-                This creates <strong>one window per selected day</strong>.
-              </div>
-            </div>
-
-            <!-- PRESET -->
-            <div class="tabpanel" id="tab-preset">
-              <div class="fw-semibold">Fast preset</div>
-              <div class="tiny mb-2">Adds Mon–Fri 9–5 with 30-min slots.</div>
-              <form method="POST" action="{{ url_for('provider.availability_preset') }}">
-                <input type="hidden" name="preset" value="weekday_9_5_30">
-                <button class="btn btn-outline-primary btn-mini" type="submit">Add weekday 9–5</button>
-              </form>
-            </div>
-
-            <!-- ONE-OFF -->
-            <div class="tabpanel" id="tab-oneoff">
-              <div class="fw-semibold">Add a one-off day</div>
-              <div class="tiny mb-2">If you just want one specific day window.</div>
-
-              <form method="POST" action="{{ url_for('provider.availability') }}">
-                <div class="row g-2 align-items-end">
-                  <div class="col-4">
-                    <label class="form-label fw-semibold mb-1">Day</label>
-                    <select class="form-select" name="day_of_week" required>
-                      {% for i in range(0,7) %}
-                        <option value="{{ i }}">{{ day_labels[i] }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
-                  <div class="col-4">
-                    <label class="form-label fw-semibold mb-1">Start</label>
-                    <input class="form-control" type="time" name="start_time" required>
-                  </div>
-                  <div class="col-4">
-                    <label class="form-label fw-semibold mb-1">End</label>
-                    <input class="form-control" type="time" name="end_time" required>
-                  </div>
-                  <div class="col-6">
-                    <label class="form-label fw-semibold mb-1">Slot minutes</label>
-                    <input class="form-control" type="number" name="slot_minutes" value="30" min="5" step="5" required>
-                  </div>
-                  <div class="col-6 d-grid">
-                    <button class="btn btn-outline-primary" type="submit">Add</button>
-                  </div>
-                </div>
-              </form>
-            </div>
-
-            <div class="mt-auto tiny pt-2">
-              Tip: Use <strong>Time Off</strong> to block a specific date without changing weekly hours.
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- RIGHT: Weekly schedule -->
-      <div class="pane">
-        <div class="card shadow-sm cardx h-100">
-          <div class="card-body pane-body" style="padding: 12px 14px;">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <div class="fw-semibold">Your weekly schedule</div>
-              <div class="tiny">Toggle or delete windows</div>
-            </div>
-
-            <div class="weekwrap">
-              <div class="week-scroll">
-                <!-- Row 1: Mon–Thu -->
-                <div class="weekgrid">
-                  {% for d in range(0,4) %}
-                    <div class="daycard">
-                      <div class="d-flex justify-content-between align-items-center">
-                        <h4>{{ day_labels[d] }}</h4>
-                        <span class="tiny">{% if by_day.get(d) %}{{ by_day[d]|length }}{% else %}0{% endif %}</span>
-                      </div>
-
-                      {% if not by_day.get(d) %}
-                        <div class="tiny mt-2">No windows</div>
-                      {% else %}
-                        {% set wins = by_day[d] %}
-                        {% set visible = wins[:1] %}
-                        {% set hidden = wins[1:] %}
-
-                        {% for r in visible %}
-                          <div class="win">
-                            <div class="winline">
-                              <div>
-                                <div class="fw-semibold">{{ r.start_time }}–{{ r.end_time }}</div>
-                                <div class="tiny">
-                                  {{ r.slot_minutes }} min •
-                                  {% if r.is_active %}<span class="badge text-bg-success">active</span>{% else %}<span class="badge text-bg-secondary">off</span>{% endif %}
-                                </div>
-                              </div>
-                              <div class="d-flex gap-2">
-                                <form method="POST" action="{{ url_for('provider.toggle_availability', rule_id=r.id) }}">
-                                  <button class="btn btn-outline-secondary btn-mini" type="submit">
-                                    {% if r.is_active %}Disable{% else %}Enable{% endif %}
-                                  </button>
-                                </form>
-                                <form method="POST" action="{{ url_for('provider.delete_availability', rule_id=r.id) }}"
-                                      onsubmit="return confirm('Delete this availability window?');">
-                                  <button class="btn btn-outline-danger btn-mini" type="submit">Delete</button>
-                                </form>
-                              </div>
-                            </div>
-                          </div>
-                        {% endfor %}
-
-                        {% if hidden|length > 0 %}
-                          <button class="btn btn-outline-secondary btn-mini mt-2"
-                                  type="button"
-                                  data-bs-toggle="collapse"
-                                  data-bs-target="#more-{{ d }}"
-                                  aria-expanded="false"
-                                  aria-controls="more-{{ d }}">
-                            Show {{ hidden|length }} more
-                          </button>
-                          <div class="collapse mt-2" id="more-{{ d }}">
-                            {% for r in hidden %}
-                              <div class="win">
-                                <div class="winline">
-                                  <div>
-                                    <div class="fw-semibold">{{ r.start_time }}–{{ r.end_time }}</div>
-                                    <div class="tiny">
-                                      {{ r.slot_minutes }} min •
-                                      {% if r.is_active %}<span class="badge text-bg-success">active</span>{% else %}<span class="badge text-bg-secondary">off</span>{% endif %}
-                                    </div>
-                                  </div>
-                                  <div class="d-flex gap-2">
-                                    <form method="POST" action="{{ url_for('provider.toggle_availability', rule_id=r.id) }}">
-                                      <button class="btn btn-outline-secondary btn-mini" type="submit">
-                                        {% if r.is_active %}Disable{% else %}Enable{% endif %}
-                                      </button>
-                                    </form>
-                                    <form method="POST" action="{{ url_for('provider.delete_availability', rule_id=r.id) }}"
-                                          onsubmit="return confirm('Delete this availability window?');">
-                                      <button class="btn btn-outline-danger btn-mini" type="submit">Delete</button>
-                                    </form>
-                                  </div>
-                                </div>
-                              </div>
-                            {% endfor %}
-                          </div>
-                        {% endif %}
-                      {% endif %}
-                    </div>
-                  {% endfor %}
-                </div>
-
-                <!-- Row 2: Fri–Sun -->
-                <div class="weekgrid2">
-                  {% for d in range(4,7) %}
-                    <div class="daycard">
-                      <div class="d-flex justify-content-between align-items-center">
-                        <h4>{{ day_labels[d] }}</h4>
-                        <span class="tiny">{% if by_day.get(d) %}{{ by_day[d]|length }}{% else %}0{% endif %}</span>
-                      </div>
-
-                      {% if not by_day.get(d) %}
-                        <div class="tiny mt-2">No windows</div>
-                      {% else %}
-                        {% set wins = by_day[d] %}
-                        {% set visible = wins[:1] %}
-                        {% set hidden = wins[1:] %}
-
-                        {% for r in visible %}
-                          <div class="win">
-                            <div class="winline">
-                              <div>
-                                <div class="fw-semibold">{{ r.start_time }}–{{ r.end_time }}</div>
-                                <div class="tiny">
-                                  {{ r.slot_minutes }} min •
-                                  {% if r.is_active %}<span class="badge text-bg-success">active</span>{% else %}<span class="badge text-bg-secondary">off</span>{% endif %}
-                                </div>
-                              </div>
-                              <div class="d-flex gap-2">
-                                <form method="POST" action="{{ url_for('provider.toggle_availability', rule_id=r.id) }}">
-                                  <button class="btn btn-outline-secondary btn-mini" type="submit">
-                                    {% if r.is_active %}Disable{% else %}Enable{% endif %}
-                                  </button>
-                                </form>
-                                <form method="POST" action="{{ url_for('provider.delete_availability', rule_id=r.id) }}"
-                                      onsubmit="return confirm('Delete this availability window?');">
-                                  <button class="btn btn-outline-danger btn-mini" type="submit">Delete</button>
-                                </form>
-                              </div>
-                            </div>
-                          </div>
-                        {% endfor %}
-
-                        {% if hidden|length > 0 %}
-                          <button class="btn btn-outline-secondary btn-mini mt-2"
-                                  type="button"
-                                  data-bs-toggle="collapse"
-                                  data-bs-target="#more-{{ d }}"
-                                  aria-expanded="false"
-                                  aria-controls="more-{{ d }}">
-                            Show {{ hidden|length }} more
-                          </button>
-                          <div class="collapse mt-2" id="more-{{ d }}">
-                            {% for r in hidden %}
-                              <div class="win">
-                                <div class="winline">
-                                  <div>
-                                    <div class="fw-semibold">{{ r.start_time }}–{{ r.end_time }}</div>
-                                    <div class="tiny">
-                                      {{ r.slot_minutes }} min •
-                                      {% if r.is_active %}<span class="badge text-bg-success">active</span>{% else %}<span class="badge text-bg-secondary">off</span>{% endif %}
-                                    </div>
-                                  </div>
-                                  <div class="d-flex gap-2">
-                                    <form method="POST" action="{{ url_for('provider.toggle_availability', rule_id=r.id) }}">
-                                      <button class="btn btn-outline-secondary btn-mini" type="submit">
-                                        {% if r.is_active %}Disable{% else %}Enable{% endif %}
-                                      </button>
-                                    </form>
-                                    <form method="POST" action="{{ url_for('provider.delete_availability', rule_id=r.id) }}"
-                                          onsubmit="return confirm('Delete this availability window?');">
-                                      <button class="btn btn-outline-danger btn-mini" type="submit">Delete</button>
-                                    </form>
-                                  </div>
-                                </div>
-                              </div>
-                            {% endfor %}
-                          </div>
-                        {% endif %}
-                      {% endif %}
-                    </div>
-                  {% endfor %}
-                </div>
-
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>
-
+      {% endfor %}
     </div>
-
   </div>
 </div>
-
-<script>
-(function () {
-  // Tabs
-  const tabBtns = document.querySelectorAll(".tabbtn");
-  const panels = document.querySelectorAll(".tabpanel");
-  tabBtns.forEach(btn => {
-    btn.addEventListener("click", () => {
-      tabBtns.forEach(b => b.classList.remove("active"));
-      panels.forEach(p => p.classList.remove("active"));
-      btn.classList.add("active");
-      document.getElementById(btn.dataset.tab).classList.add("active");
-    });
-  });
-
-  // Day selection
-  const selected = new Set();
-  function render() {
-    document.querySelectorAll("#dayPick .daybtn").forEach((el) => {
-      const d = parseInt(el.dataset.day, 10);
-      el.classList.toggle("active", selected.has(d));
-    });
-  }
-  function setDays(predicate) {
-    selected.clear();
-    for (let d = 0; d < 7; d++) if (predicate(d)) selected.add(d);
-    render();
-  }
-  document.getElementById("selWeekdays")?.addEventListener("click", () => setDays(d => d >= 0 && d <= 4));
-  document.getElementById("selWeekends")?.addEventListener("click", () => setDays(d => d === 5 || d === 6));
-  document.getElementById("selAll")?.addEventListener("click", () => setDays(_ => true));
-  document.getElementById("selNone")?.addEventListener("click", () => setDays(_ => false));
-  document.querySelectorAll("#dayPick .daybtn").forEach((el) => {
-    el.addEventListener("click", () => {
-      const d = parseInt(el.dataset.day, 10);
-      if (selected.has(d)) selected.delete(d); else selected.add(d);
-      render();
-    });
-  });
-
-  async function postWindow(day, start, end, slot) {
-    const body = new URLSearchParams();
-    body.set("day_of_week", day);
-    body.set("start_time", start);
-    body.set("end_time", end);
-    body.set("slot_minutes", slot);
-
-    const res = await fetch("{{ url_for('provider.availability') }}", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: body.toString(),
-      credentials: "same-origin",
-    });
-    return res.ok;
-  }
-
-  document.getElementById("multiSave")?.addEventListener("click", async () => {
-    const statusEl = document.getElementById("multiStatus");
-    const start = document.getElementById("multiStart").value;
-    const end = document.getElementById("multiEnd").value;
-    const slot = document.getElementById("multiSlot").value;
-    const days = Array.from(selected);
-
-    if (!days.length) { statusEl.textContent = "Pick at least one day."; return; }
-    if (!start || !end || !slot) { statusEl.textContent = "Fill start/end/slot."; return; }
-
-    statusEl.textContent = "Saving…";
-    let okCount = 0;
-    for (const d of days) {
-      const ok = await postWindow(String(d), start, end, slot);
-      if (ok) okCount++;
-    }
-    statusEl.textContent = `Saved ${okCount}/${days.length}. Reloading…`;
-    window.location.reload();
-  });
-
-  render();
-})();
-</script>
 {% endblock %}

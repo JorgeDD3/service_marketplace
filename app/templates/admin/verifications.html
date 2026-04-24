@@ -1,146 +1,447 @@
 {% extends "base.html" %}
-{% block title %}Verification Queue{% endblock %}
+{% block title %}Provider Verifications{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width: 1100px;">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Provider Verification Queue</h2>
-    <span class="badge text-bg-secondary">Pending: {{ pending|length }}</span>
+<div class="container-dashboard" style="max-width: 1400px;">
+
+  <!-- Header -->
+  <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
+    <div class="card-body py-3">
+      <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+        <div>
+          <div class="text-muted small mb-1">Admin Console</div>
+          <h1 class="h3 mb-1">Provider Verifications</h1>
+          <div class="text-muted">
+            Review verification submissions, manage verified providers, and respond to updates.
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.moderation') }}">
+            ← Back to Moderation
+          </a>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div class="card rounded-4 shadow-sm mb-4">
-    <div class="card-body p-4">
-      <h5 class="mb-3">Pending Review</h5>
+  <!-- Search + counts -->
+  <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
+    <div class="card-body py-3">
+      <div class="row g-2 align-items-center">
+        <div class="col-12 col-lg-7">
+          <label class="form-label small text-muted mb-1" for="verSearch">Search</label>
+          <input id="verSearch" type="text" class="form-control"
+                 placeholder="Search by provider name, email, legal name, or license #…"
+                 autocomplete="off">
+          <div class="form-text small">Tip: Search works across all sections below.</div>
+        </div>
+
+        <div class="col-12 col-lg-5">
+          <div class="d-flex gap-2 justify-content-lg-end flex-wrap">
+            <span class="badge bg-light text-dark border align-self-center">
+              Pending: <span id="cntPending">{{ pending|length }}</span>
+            </span>
+            <span class="badge bg-light text-dark border align-self-center">
+              Reviewed: <span id="cntReviewed">{{ reviewed|length }}</span>
+            </span>
+            <span class="badge bg-light text-dark border align-self-center">
+              Showing: <span id="cntShowing">0</span>
+            </span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="verClear">Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pending Review -->
+  <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
+    <div class="card-body p-0">
+      <div class="px-3 py-3 border-bottom" style="background:#f8f9fa; border-top-left-radius:18px; border-top-right-radius:18px;">
+        <div class="d-flex align-items-center justify-content-between">
+          <div class="fw-semibold">Pending review</div>
+          <span class="badge bg-warning-subtle text-warning border">Queue</span>
+        </div>
+      </div>
 
       {% if not pending %}
-        <div class="text-muted">No pending verification submissions.</div>
+        <div class="p-3 text-muted">No pending verification submissions.</div>
       {% else %}
-        <div class="table-responsive">
-          <table class="table align-middle">
-            <thead>
-              <tr>
-                <th>Provider</th>
-                <th>Legal Name</th>
-                <th>License #</th>
-                <th>Portfolio</th>
-                <th>Documents</th>
-                <th>Submitted</th>
-                <th style="width: 340px;">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for v in pending %}
-                <tr>
-                  <td>
-                    <div class="fw-semibold">
-                      {{ v.provider_profile.user.first_name }} {{ v.provider_profile.user.last_name }}
-                    </div>
-                    <div class="text-muted small">{{ v.provider_profile.user.email }}</div>
-                  </td>
-                  <td>{{ v.legal_name or "-" }}</td>
-                  <td>{{ v.license_number or "-" }}</td>
-                  <td>
-                    {% if v.portfolio_url %}
-                      <a href="{{ v.portfolio_url }}" target="_blank" rel="noopener">Link</a>
-                    {% else %}
-                      -
-                    {% endif %}
-                  </td>
+        <div class="list-group list-group-flush" id="pendingList">
+          {% for v in pending %}
+            {% set u = v.provider_profile.user %}
+            {% set provider_name = (u.first_name ~ " " ~ u.last_name)|trim %}
+            {% set email = u.email %}
+            {% set legal = v.legal_name or "" %}
+            {% set license = v.license_number or "" %}
+            {% set submitted = (v.submitted_at.strftime("%Y-%m-%d %I:%M %p") if v.submitted_at else "—") %}
 
-                <td>
-  {% if v.id_document_filename %}
-    <a class="me-2" href="{{ url_for('admin.download_verification_doc', verification_id=v.id, kind='id') }}">
-      ID Doc
-    </a>
-  {% else %}
-    <span class="text-muted small">No ID</span>
-  {% endif %}
+            <div class="list-group-item px-3 py-3 ver-row"
+                 data-section="pending"
+                 data-search="{{ (provider_name ~ ' ' ~ email ~ ' ' ~ legal ~ ' ' ~ license)|lower }}"
+                 data-verification-id="{{ v.id }}"
+                 data-provider-name="{{ provider_name|e }}"
+                 data-provider-email="{{ email|e }}"
+                 data-legal-name="{{ (v.legal_name or '')|e }}"
+                 data-license-number="{{ (v.license_number or '')|e }}"
+                 data-portfolio-url="{{ (v.portfolio_url or '')|e }}"
+                 data-submitted-at="{{ submitted }}"
+                 data-id-doc="{{ (v.id_document_filename or '')|e }}"
+                 data-cert-doc="{{ (v.certification_filename or '')|e }}"
+                 data-admin-notes="{{ (v.admin_notes or '')|e }}"
+                 data-status="{{ v.status|e }}"
+                 data-modal-mode="pending">
 
-  {% if v.certification_filename %}
-    <a class="ms-2" href="{{ url_for('admin.download_verification_doc', verification_id=v.id, kind='cert') }}">
-      Cert
-    </a>
-  {% else %}
-    <span class="text-muted small ms-2">No Cert</span>
-  {% endif %}
-</td>
+              <div class="row g-2 align-items-start">
+                <div class="col-12 col-lg-5">
+                  <div class="fw-semibold">{{ provider_name }}</div>
+                  <div class="text-muted small">{{ email }}</div>
+                </div>
 
-                  <td class="text-muted small">
-                    {% if v.submitted_at %}
-                      {{ v.submitted_at.strftime("%Y-%m-%d %I:%M %p") }}
-                    {% else %}
-                      -
-                    {% endif %}
-                  </td>
-                  <td>
-                    <form class="d-flex gap-2" method="POST" action="{{ url_for('admin.approve_verification', verification_id=v.id) }}">
-                      <input class="form-control form-control-sm" name="admin_notes" placeholder="Optional notes">
-                      <button class="btn btn-sm btn-success" type="submit">Approve</button>
-                    </form>
+                <div class="col-12 col-lg-5">
+                  <div class="text-muted small">
+                    <div><span class="text-muted">Legal:</span> {{ v.legal_name or "—" }}</div>
+                    <div><span class="text-muted">License #:</span> {{ v.license_number or "—" }}</div>
+                    <div><span class="text-muted">Submitted:</span> {{ submitted }}</div>
+                  </div>
+                </div>
 
-                    <form class="d-flex gap-2 mt-2" method="POST" action="{{ url_for('admin.reject_verification', verification_id=v.id) }}">
-                      <input class="form-control form-control-sm" name="admin_notes" placeholder="Required rejection reason">
-                      <button class="btn btn-sm btn-danger" type="submit">Reject</button>
-                    </form>
-                  </td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+                <div class="col-8 col-lg-1">
+                  <span class="badge bg-warning-subtle text-warning border">Pending</span>
+                </div>
+
+                <div class="col-4 col-lg-1 text-end">
+                  <button type="button"
+                          class="ver-edit border-0 bg-transparent p-0 text-secondary"
+                          title="Review"
+                          aria-label="Review"
+                          data-bs-toggle="modal"
+                          data-bs-target="#verModal"
+                          style="font-size: 1.05rem; line-height: 1;">
+                    ✏️
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          {% endfor %}
         </div>
       {% endif %}
     </div>
   </div>
 
-  <div class="card rounded-4 shadow-sm">
-    <div class="card-body p-4">
-      <h5 class="mb-3">Recently Reviewed</h5>
+  <!-- Reviewed (Verified + Rejected) -->
+  <div class="card shadow-sm border-0" style="border-radius: 18px;">
+    <div class="card-body p-0">
+      <div class="px-3 py-3 border-bottom" style="background:#f8f9fa; border-top-left-radius:18px; border-top-right-radius:18px;">
+        <div class="d-flex align-items-center justify-content-between">
+          <div class="fw-semibold">Reviewed</div>
+          <span class="badge bg-light text-dark border">History</span>
+        </div>
+      </div>
 
       {% if not reviewed %}
-        <div class="text-muted">No reviewed verifications yet.</div>
+        <div class="p-3 text-muted">No reviewed verifications yet.</div>
       {% else %}
-        <div class="table-responsive">
-          <table class="table align-middle">
-            <thead>
-              <tr>
-                <th>Provider</th>
-                <th>Status</th>
-                <th>Reviewed</th>
-                <th>Admin Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for v in reviewed %}
-                <tr>
-                  <td>
-                    {{ v.provider_profile.user.first_name }} {{ v.provider_profile.user.last_name }}
-                    <div class="text-muted small">{{ v.provider_profile.user.email }}</div>
-                  </td>
-                  <td>
-                    <span class="badge
-                      {% if v.status == 'verified' %} text-bg-success
-                      {% elif v.status == 'rejected' %} text-bg-danger
-                      {% else %} text-bg-secondary
-                      {% endif %}
-                    ">
-                      {{ v.status.replace('_',' ') }}
-                    </span>
-                  </td>
-                  <td class="text-muted small">
-                    {% if v.reviewed_at %}
-                      {{ v.reviewed_at.strftime("%Y-%m-%d %I:%M %p") }}
-                    {% else %}
-                      -
-                    {% endif %}
-                  </td>
-                  <td class="text-muted small">{{ v.admin_notes or "-" }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+        <div class="list-group list-group-flush" id="reviewedList">
+          {% for v in reviewed %}
+            {% set u = v.provider_profile.user %}
+            {% set provider_name = (u.first_name ~ " " ~ u.last_name)|trim %}
+            {% set email = u.email %}
+            {% set legal = v.legal_name or "" %}
+            {% set license = v.license_number or "" %}
+            {% set reviewed_at = (v.reviewed_at.strftime("%Y-%m-%d %I:%M %p") if v.reviewed_at else "—") %}
+
+            <div class="list-group-item px-3 py-3 ver-row"
+                 data-section="reviewed"
+                 data-search="{{ (provider_name ~ ' ' ~ email ~ ' ' ~ legal ~ ' ' ~ license ~ ' ' ~ (v.status or ''))|lower }}"
+                 data-verification-id="{{ v.id }}"
+                 data-provider-name="{{ provider_name|e }}"
+                 data-provider-email="{{ email|e }}"
+                 data-legal-name="{{ (v.legal_name or '')|e }}"
+                 data-license-number="{{ (v.license_number or '')|e }}"
+                 data-portfolio-url="{{ (v.portfolio_url or '')|e }}"
+                 data-reviewed-at="{{ reviewed_at }}"
+                 data-id-doc="{{ (v.id_document_filename or '')|e }}"
+                 data-cert-doc="{{ (v.certification_filename or '')|e }}"
+                 data-admin-notes="{{ (v.admin_notes or '')|e }}"
+                 data-status="{{ v.status|e }}"
+                 data-modal-mode="reviewed">
+
+              <div class="row g-2 align-items-start">
+                <div class="col-12 col-lg-5">
+                  <div class="fw-semibold">{{ provider_name }}</div>
+                  <div class="text-muted small">{{ email }}</div>
+                </div>
+
+                <div class="col-12 col-lg-5">
+                  <div class="text-muted small">
+                    <div><span class="text-muted">Status:</span> {{ v.status.replace('_',' ') }}</div>
+                    <div><span class="text-muted">Reviewed:</span> {{ reviewed_at }}</div>
+                    <div class="text-truncate"><span class="text-muted">Notes:</span> {{ v.admin_notes or "—" }}</div>
+                  </div>
+                </div>
+
+                <div class="col-8 col-lg-1">
+                  {% if v.status == 'verified' %}
+                    <span class="badge bg-success-subtle text-success border">Verified</span>
+                  {% elif v.status == 'rejected' %}
+                    <span class="badge bg-danger-subtle text-danger border">Rejected</span>
+                  {% else %}
+                    <span class="badge bg-secondary-subtle text-secondary border">{{ v.status }}</span>
+                  {% endif %}
+                </div>
+
+                <div class="col-4 col-lg-1 text-end">
+                  <button type="button"
+                          class="ver-edit border-0 bg-transparent p-0 text-secondary"
+                          title="View / Edit"
+                          aria-label="View / Edit"
+                          data-bs-toggle="modal"
+                          data-bs-target="#verModal"
+                          style="font-size: 1.05rem; line-height: 1;">
+                    ✏️
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          {% endfor %}
         </div>
       {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<!-- Single reusable modal -->
+<div class="modal fade" id="verModal" tabindex="-1" aria-labelledby="verModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content" style="border-radius: 18px;">
+      <div class="modal-header">
+        <div>
+          <div class="text-muted small">Verification</div>
+          <h5 class="modal-title mb-0" id="verModalLabel">Review</h5>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+          <div>
+            <div class="fw-semibold" id="mProviderName">—</div>
+            <div class="text-muted small" id="mProviderMeta">—</div>
+          </div>
+          <span class="badge bg-light text-dark border" id="mStatus">—</span>
+        </div>
+
+        <hr class="my-3">
+
+        <div class="row g-3">
+          <div class="col-12 col-md-6">
+            <div class="text-muted small mb-1">Legal name</div>
+            <div class="fw-semibold" id="mLegalName">—</div>
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="text-muted small mb-1">License #</div>
+            <div class="fw-semibold" id="mLicense">—</div>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <div class="text-muted small mb-1">Portfolio</div>
+            <div id="mPortfolioWrap"><span class="text-muted">—</span></div>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <div class="text-muted small mb-1">Documents</div>
+            <div id="mDocsWrap" class="small text-muted">—</div>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label small text-muted mb-1" for="mAdminNotes">Admin notes</label>
+            <input id="mAdminNotes" type="text" class="form-control" placeholder="Notes / reason…">
+            <div class="form-text small">
+              For rejection, a reason is required (existing behavior).
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer d-flex justify-content-between">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+
+        <div class="d-flex gap-2">
+          <!-- Pending actions -->
+          <form method="POST" id="mApproveForm" action="" class="m-0">
+            <input type="hidden" name="admin_notes" id="mApproveNotes">
+            <button type="submit" class="btn btn-success" id="mApproveBtn">Approve</button>
+          </form>
+
+          <form method="POST" id="mRejectForm" action="" class="m-0">
+            <input type="hidden" name="admin_notes" id="mRejectNotes">
+            <button type="submit" class="btn btn-danger" id="mRejectBtn">Reject</button>
+          </form>
+
+          <!-- Reviewed action placeholder (we'll wire backend next step) -->
+          <form method="POST" id="mUnverifyForm" action="" class="m-0">
+            <input type="hidden" name="admin_notes" id="mUnverifyNotes">
+            <button type="submit" class="btn btn-outline-danger" id="mUnverifyBtn">Unverify</button>
+          </form>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
+
+<script>
+(function () {
+  const search = document.getElementById('verSearch');
+  const clearBtn = document.getElementById('verClear');
+  const rows = Array.from(document.querySelectorAll('.ver-row'));
+  const showingEl = document.getElementById('cntShowing');
+
+  const applyFilter = () => {
+    const q = (search?.value || '').trim().toLowerCase();
+    let shown = 0;
+    rows.forEach((row) => {
+      const hay = row.dataset.search || '';
+      const match = !q || hay.includes(q);
+      row.style.display = match ? '' : 'none';
+      if (match) shown += 1;
+    });
+    if (showingEl) showingEl.textContent = String(shown);
+  };
+
+  applyFilter();
+  search?.addEventListener('input', applyFilter);
+  clearBtn?.addEventListener('click', () => {
+    if (search) search.value = '';
+    search?.focus();
+    applyFilter();
+  });
+
+  // Modal wiring
+  const mProviderName = document.getElementById('mProviderName');
+  const mProviderMeta = document.getElementById('mProviderMeta');
+  const mStatus = document.getElementById('mStatus');
+  const mLegalName = document.getElementById('mLegalName');
+  const mLicense = document.getElementById('mLicense');
+  const mPortfolioWrap = document.getElementById('mPortfolioWrap');
+  const mDocsWrap = document.getElementById('mDocsWrap');
+  const mAdminNotes = document.getElementById('mAdminNotes');
+
+  const approveForm = document.getElementById('mApproveForm');
+  const rejectForm = document.getElementById('mRejectForm');
+  const unverifyForm = document.getElementById('mUnverifyForm');
+
+  const approveNotes = document.getElementById('mApproveNotes');
+  const rejectNotes = document.getElementById('mRejectNotes');
+  const unverifyNotes = document.getElementById('mUnverifyNotes');
+
+  const approveBtn = document.getElementById('mApproveBtn');
+  const rejectBtn = document.getElementById('mRejectBtn');
+  const unverifyBtn = document.getElementById('mUnverifyBtn');
+
+  const setText = (el, val) => { if (el) el.textContent = val; };
+
+  function setBadge(status) {
+    if (!mStatus) return;
+    mStatus.textContent = status;
+    let cls = 'badge border bg-light text-dark';
+    if (status === 'pending') cls = 'badge border bg-warning-subtle text-warning';
+    if (status === 'verified') cls = 'badge border bg-success-subtle text-success';
+    if (status === 'rejected') cls = 'badge border bg-danger-subtle text-danger';
+    mStatus.className = cls;
+  }
+
+  function setDocs(row) {
+    const idDoc = row.dataset.idDoc || '';
+    const certDoc = row.dataset.certDoc || '';
+    const parts = [];
+
+    if (idDoc) {
+      parts.push(`<a href="{{ url_for('admin.download_verification_doc', verification_id=0, kind='id') }}".replace('/0/', '/' + row.dataset.verificationId + '/')}">ID Doc</a>`);
+    } else {
+      parts.push(`<span class="text-muted">No ID</span>`);
+    }
+
+    if (certDoc) {
+      parts.push(`<a class="ms-2" href="{{ url_for('admin.download_verification_doc', verification_id=0, kind='cert') }}".replace('/0/', '/' + row.dataset.verificationId + '/')}">Cert</a>`);
+    } else {
+      parts.push(`<span class="text-muted ms-2">No Cert</span>`);
+    }
+
+    mDocsWrap.innerHTML = parts.join(' ');
+  }
+
+  function setPortfolio(url) {
+    if (!mPortfolioWrap) return;
+    if (!url) {
+      mPortfolioWrap.innerHTML = `<span class="text-muted">—</span>`;
+      return;
+    }
+    mPortfolioWrap.innerHTML = `<a href="${url}" target="_blank" rel="noopener">Open portfolio</a>`;
+  }
+
+  document.querySelectorAll('.ver-edit').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const row = btn.closest('.ver-row');
+      if (!row) return;
+
+      const mode = row.dataset.modalMode; // "pending" or "reviewed"
+      const id = row.dataset.verificationId;
+
+      const name = row.dataset.providerName || '—';
+      const email = row.dataset.providerEmail || '—';
+      const legal = row.dataset.legalName || '—';
+      const license = row.dataset.licenseNumber || '—';
+      const portfolio = row.dataset.portfolioUrl || '';
+      const status = row.dataset.status || '—';
+
+      const submittedAt = row.dataset.submittedAt || '';
+      const reviewedAt = row.dataset.reviewedAt || '';
+
+      setText(mProviderName, name);
+      setText(mLegalName, legal || '—');
+      setText(mLicense, license || '—');
+      setPortfolio(portfolio);
+      setDocs(row);
+      setBadge(status);
+
+      const metaBits = [`${email}`];
+      if (mode === 'pending') metaBits.push(`Submitted: ${submittedAt || '—'}`);
+      if (mode === 'reviewed') metaBits.push(`Reviewed: ${reviewedAt || '—'}`);
+      metaBits.push(`#${id}`);
+      setText(mProviderMeta, metaBits.join(' • '));
+
+      // Notes field seeded
+      if (mAdminNotes) mAdminNotes.value = row.dataset.adminNotes || '';
+
+      // Wire existing endpoints for pending actions
+      if (approveForm) approveForm.action = "{{ url_for('admin.approve_verification', verification_id=0) }}".replace('/0', '/' + id);
+      if (rejectForm) rejectForm.action = "{{ url_for('admin.reject_verification', verification_id=0) }}".replace('/0', '/' + id);
+
+      // Placeholder endpoint for unverify (we add backend next micro-step)
+      // Keep it disabled for now so it doesn't 404.
+      if (unverifyForm) unverifyForm.action = "#";
+
+      // Toggle which buttons are visible
+      const isPending = (mode === 'pending');
+      approveForm.style.display = isPending ? '' : 'none';
+      rejectForm.style.display = isPending ? '' : 'none';
+
+      unverifyForm.style.display = (!isPending && status === 'verified') ? '' : 'none';
+      if (unverifyBtn) unverifyBtn.disabled = true;
+    });
+  });
+
+  // Copy notes into hidden fields on submit
+  approveForm?.addEventListener('submit', () => { if (approveNotes) approveNotes.value = mAdminNotes.value || ''; });
+  rejectForm?.addEventListener('submit', () => { if (rejectNotes) rejectNotes.value = mAdminNotes.value || ''; });
+  unverifyForm?.addEventListener('submit', () => { if (unverifyNotes) unverifyNotes.value = mAdminNotes.value || ''; });
+
+})();
+</script>
 {% endblock %}
