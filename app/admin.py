@@ -17,7 +17,7 @@ from flask_login import login_required, current_user
 
 from .decorators import role_required
 from .extensions import db
-from .models import User, Service, Booking, ServiceRequest, ProviderVerification
+from .models import User, Service, Booking, ServiceRequest, ProviderVerification, ProviderProfile
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -95,6 +95,7 @@ def users():
 @role_required("admin")
 def toggle_user_active(user_id: int):
     target = User.query.get_or_404(user_id)
+    AUTO_MARKER = "[AUTO_DISABLED_BY_USER]"
 
     # Guardrail 1: admin cannot disable themself
     if target.id == current_user.id:
@@ -114,7 +115,27 @@ def toggle_user_active(user_id: int):
             flash("You cannot disable the last active admin.", "danger")
             return redirect(url_for("admin.users"))
 
-    # Toggle
+    # Helper: build a query for services owned by this user (schema-safe)
+    services_q = None
+    provider_profile_id = None
+
+    if target.has_role("provider"):
+        # Always resolve provider_profile_id from DB (do NOT rely on relationship name)
+        provider_profile_id = (
+            ProviderProfile.query.with_entities(ProviderProfile.id)
+            .filter(ProviderProfile.user_id == target.id)
+            .scalar()
+        )
+
+        # Common schema options for Service ownership
+        if hasattr(Service, "user_id"):
+            services_q = Service.query.filter(Service.user_id == target.id)
+        elif provider_profile_id is not None and hasattr(Service, "provider_profile_id"):
+            services_q = Service.query.filter(Service.provider_profile_id == provider_profile_id)
+        elif provider_profile_id is not None and hasattr(Service, "provider_id"):
+            # some schemas name it provider_id but store ProviderProfile.id
+            services_q = Service.query.filter(Service.provider_id == provider_profile_id)
+
     if target.is_active:
         # disable user
         target.is_active = False
@@ -122,46 +143,18 @@ def toggle_user_active(user_id: int):
         reason = (request.form.get("disabled_reason") or "").strip()
         target.disabled_reason = reason or "Disabled by admin"
 
-        # If disabling a provider, also hide all their services from the marketplace.
-        # No ERD changes: we only flip Service.is_active (schema-safe).
-        if target.has_role("provider"):
-            service_filter_applied = False
+        # Auto-hide ONLY services that are currently active, and tag them for restore
+        if services_q is not None:
+            active_services = services_q.filter(Service.is_active.is_(True)).all()
+            for svc in active_services:
+                svc.is_active = False
 
-            # Option A: Service.user_id -> User.id
-            if hasattr(Service, "user_id"):
-                Service.query.filter(Service.user_id == target.id).update(
-                    {"is_active": False},
-                    synchronize_session=False,
-                )
-                service_filter_applied = True
+                note = (svc.moderation_note or "").strip()
+                if AUTO_MARKER not in note:
+                    svc.moderation_note = (note + ("\n" if note else "") + AUTO_MARKER).strip()
 
-            # Option B: Service.provider_id -> ProviderProfile.id (via user.provider_profile)
-            if (not service_filter_applied) and hasattr(Service, "provider_id"):
-                if hasattr(target, "provider_profile") and target.provider_profile:
-                    Service.query.filter(
-                        Service.provider_id == target.provider_profile.id
-                    ).update(
-                        {"is_active": False},
-                        synchronize_session=False,
-                    )
-                    service_filter_applied = True
-
-            # Option C: Service.provider_profile_id -> ProviderProfile.id
-            if (not service_filter_applied) and hasattr(Service, "provider_profile_id"):
-                if hasattr(target, "provider_profile") and target.provider_profile:
-                    Service.query.filter(
-                        Service.provider_profile_id == target.provider_profile.id
-                    ).update(
-                        {"is_active": False},
-                        synchronize_session=False,
-                    )
-                    service_filter_applied = True
-
-            if not service_filter_applied:
-                flash(
-                    "Provider disabled, but services could not be auto-hidden (unknown Service FK).",
-                    "warning",
-                )
+                if hasattr(svc, "moderated_at"):
+                    svc.moderated_at = datetime.utcnow()
 
         flash(f"User {target.email} disabled.", "success")
 
@@ -171,12 +164,25 @@ def toggle_user_active(user_id: int):
         target.disabled_at = None
         target.disabled_reason = None
 
-        # NOTE: We do NOT auto-reactivate services on enable (no previous state stored).
+        # Restore ONLY services we auto-disabled (marker-based)
+        if services_q is not None:
+            disabled_services = services_q.filter(Service.is_active.is_(False)).all()
+            for svc in disabled_services:
+                note = (svc.moderation_note or "")
+                if AUTO_MARKER in note:
+                    svc.is_active = True
+
+                    # remove marker cleanly
+                    new_note = note.replace(AUTO_MARKER, "").strip()
+                    svc.moderation_note = new_note or None
+
+                    if hasattr(svc, "moderated_at"):
+                        svc.moderated_at = datetime.utcnow()
+
         flash(f"User {target.email} enabled.", "success")
 
     db.session.commit()
     return redirect(url_for("admin.users"))
-
 
 # --------------------
 # Services (Admin Moderation)
