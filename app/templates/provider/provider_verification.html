@@ -32,10 +32,7 @@
     box-shadow:0 14px 30px rgba(15,23,42,.055);
   }
 
-  .verify-header{
-    padding:18px 22px;
-    flex:0 0 auto;
-  }
+  .verify-header{ padding:18px 22px; }
 
   .verify-title{
     margin:0;
@@ -66,36 +63,12 @@
     color:#334155;
     white-space:nowrap;
   }
+  .verify-pill.good{ background:#ecfdf5; border-color:#bbf7d0; color:var(--green); }
+  .verify-pill.pending{ background:#fffbeb; border-color:#fde68a; color:var(--yellow); }
+  .verify-pill.bad{ background:#fef2f2; border-color:#fecaca; color:var(--red); }
 
-  .verify-pill.good{
-    background:#ecfdf5;
-    border-color:#bbf7d0;
-    color:var(--green);
-  }
-
-  .verify-pill.pending{
-    background:#fffbeb;
-    border-color:#fde68a;
-    color:var(--yellow);
-  }
-
-  .verify-pill.bad{
-    background:#fef2f2;
-    border-color:#fecaca;
-    color:var(--red);
-  }
-
-  .verify-nav{
-    display:flex;
-    gap:8px;
-    flex-wrap:wrap;
-  }
-
-  .verify-nav .btn{
-    border-radius:12px;
-    padding:9px 13px;
-    font-weight:850;
-  }
+  .verify-nav{ display:flex; gap:8px; flex-wrap:wrap; }
+  .verify-nav .btn{ border-radius:12px; padding:9px 13px; font-weight:850; }
 
   .verify-grid{
     flex:1;
@@ -133,37 +106,20 @@
     padding:12px 0;
     border-top:1px solid rgba(15,23,42,.07);
   }
-
-  .step:first-of-type{
-    margin-top:8px;
-  }
+  .step:first-of-type{ margin-top:8px; }
 
   .step-num{
-    width:30px;
-    height:30px;
-    border-radius:999px;
-    background:#eff6ff;
-    color:#1d4ed8;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-weight:950;
-    flex:0 0 auto;
+    width:30px;height:30px;border-radius:999px;
+    background:#eff6ff;color:#1d4ed8;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:950;flex:0 0 auto;
   }
-
-  .step strong{
-    color:var(--ink);
-    font-size:15px;
-  }
-
+  .step strong{ color:var(--ink); font-size:15px; }
   .step div:last-child{
-    color:var(--muted);
-    font-weight:700;
-    font-size:14px;
-    line-height:1.28;
+    color:var(--muted); font-weight:700; font-size:14px; line-height:1.28;
   }
 
-    .status-box{
+  .status-box{
     border-radius:14px;
     padding:10px 14px;
     border:1px solid var(--line);
@@ -171,26 +127,11 @@
     font-size:13px;
     line-height:1.3;
   }
+  .status-box.good{ background:#ecfdf5; border-color:#bbf7d0; color:#166534; }
+  .status-box.pending{ background:#fffbeb; border-color:#fde68a; color:#92400e; }
+  .status-box.bad{ background:#fef2f2; border-color:#fecaca; color:#991b1b; }
 
-  .status-box.good{
-    background:#ecfdf5;
-    border-color:#bbf7d0;
-    color:#166534;
-  }
-
-  .status-box.pending{
-    background:#fffbeb;
-    border-color:#fde68a;
-    color:#92400e;
-  }
-
-  .status-box.bad{
-    background:#fef2f2;
-    border-color:#fecaca;
-    color:#991b1b;
-  }
-
-    .mini-card{
+  .mini-card{
     border:1px solid rgba(15,23,42,.10);
     border-radius:14px;
     padding:9px 13px;
@@ -215,32 +156,32 @@
     word-break:break-word;
   }
 
-  .form-label{
-    font-weight:850;
-    color:#1f2937;
-    font-size:13px;
-    margin-bottom:4px;
-  }
-
-  .form-control{
-    border-radius:12px;
-    padding:9px 11px;
-    font-weight:650;
-  }
-
   .btn-primary,
-  .btn-outline-secondary{
+  .btn-outline-secondary,
+  .btn-outline-danger{
     border-radius:12px;
     padding:9px 13px;
     font-weight:900;
   }
 
+  .action-row{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:flex-end;
+  }
+
+  .cta-card{
+    border:1px dashed rgba(15,23,42,.18);
+    background:#f8fafc;
+    border-radius:16px;
+    padding:14px;
+  }
+
   @media(max-width:950px){
     body{ overflow:auto; }
-    .verify-wrap{
-      height:auto;
-      width:min(1220px, calc(100vw - 24px));
-    }
+    .verify-wrap{ height:auto; width:min(1220px, calc(100vw - 24px)); }
     .verify-grid{ grid-template-columns:1fr; }
   }
 </style>
@@ -281,6 +222,7 @@
 
   <div class="verify-grid">
 
+    <!-- Left panel -->
     <div class="verify-card panel">
       <h2 class="panel-title">How verification works</h2>
       <div class="panel-sub">
@@ -310,26 +252,47 @@
           An admin approves the account or requests updates.
         </div>
       </div>
+
+      {% if vstatus == "not_submitted" %}
+        <div class="cta-card mt-3">
+          <div class="fw-bold" style="color:var(--ink);">Ready to get verified?</div>
+          <div class="text-muted small">
+            It only takes a minute. You can keep offering services while your verification is reviewed.
+          </div>
+          <div class="mt-2">
+            <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#verifyModal">
+              Get verified
+            </button>
+          </div>
+        </div>
+      {% endif %}
     </div>
 
+    <!-- Right panel -->
     <div class="verify-card panel">
-      <h2 class="panel-title">Verification status</h2>
+      <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">
+        <div>
+          <h2 class="panel-title">Verification status</h2>
+          <div class="panel-sub">Your current verification record and review state.</div>
+        </div>
+
+        <div class="action-row">
+          {% if vstatus == "not_submitted" %}
+            <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#verifyModal">
+              Get verified
+            </button>
+          {% else %}
+            <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#verifyModal">
+              Resubmit verification
+            </button>
+          {% endif %}
+        </div>
+      </div>
 
       {% if vstatus == "verified" %}
         <div class="status-box good mt-2">
           <div class="fw-bold">You are verified 🎉</div>
           Your provider account has been approved.
-
-          <div class="mt-2 d-flex align-items-center gap-2 flex-wrap">
-            <span style="color:#64748b; font-weight:700; font-size:13px;">
-              Need to add certifications or update details?
-            </span>
-            <a class="btn btn-outline-success btn-sm"
-               href="{{ url_for('provider.dashboard') }}"
-               style="border-radius:999px; font-weight:900;">
-              Request verification update
-            </a>
-          </div>
         </div>
       {% elif vstatus == "pending_review" %}
         <div class="status-box pending mt-2">
@@ -341,19 +304,15 @@
           <div class="fw-bold">Verification rejected</div>
           Review the admin notes and resubmit.
         </div>
+      {% else %}
+        <div class="status-box mt-2" style="background:#f8fafc;border-color:#e2e8f0;color:#0f172a;">
+          <div class="fw-bold">Not submitted</div>
+          You haven’t submitted verification yet.
+        </div>
       {% endif %}
 
       {% if verification %}
-        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mt-3 mb-2">
-          <div>
-            <h3 class="panel-title" style="font-size:18px;">What you’re verified for</h3>
-            <div class="panel-sub">This is the record connected to your provider account.</div>
-          </div>
-
-          
-        </div>
-
-        <div class="status-box mb-2" style="background:#f8fafc; border-color:#e2e8f0; color:#0f172a;">
+        <div class="status-box mt-3 mb-2" style="background:#f8fafc; border-color:#e2e8f0; color:#0f172a;">
           <div class="fw-bold">Provider identity verification</div>
           <div style="color:#64748b; font-weight:700;">
             Legal name, credential information, professional link, and supporting documents.
@@ -452,45 +411,89 @@
         {% endif %}
       {% endif %}
 
-      {% if vstatus not in ["verified", "pending_review"] %}
-        <form method="POST" enctype="multipart/form-data" class="mt-3">
-          <div class="row g-2">
+      <div class="mt-3 text-muted small">
+        {% if vstatus == "verified" %}
+          Want to update your verification? Click <strong>Resubmit verification</strong>. Your current verified badge stays until an admin approves the update.
+        {% elif vstatus == "pending_review" %}
+          You can resubmit if you need to correct details. Your latest submission will be reviewed.
+        {% elif vstatus == "rejected" %}
+          Fix the requested items and resubmit for another review.
+        {% else %}
+          Submit verification to get the <strong>Verified</strong> badge on your services.
+        {% endif %}
+      </div>
 
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="verifyModal" tabindex="-1" aria-labelledby="verifyModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content" style="border-radius:18px;">
+      <div class="modal-header">
+        <div>
+          <div class="text-muted small">Provider verification</div>
+          <h5 class="modal-title mb-0" id="verifyModalLabel">
+            {% if vstatus == "not_submitted" %}Get verified{% else %}Resubmit verification{% endif %}
+          </h5>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <form method="POST" enctype="multipart/form-data">
+        <div class="modal-body">
+          {# flag so backend can later implement “pending update” behavior #}
+          <input type="hidden" name="resubmit" value="{% if vstatus != 'not_submitted' %}1{% else %}0{% endif %}">
+
+          <div class="row g-2">
             <div class="col-md-6">
               <label class="form-label">Legal name</label>
               <input class="form-control" name="legal_name" value="{{ verification.legal_name if verification else '' }}" required>
             </div>
 
             <div class="col-md-6">
-              <label class="form-label">Credential #</label>
+              <label class="form-label">Credential # (optional)</label>
               <input class="form-control" name="license_number" value="{{ verification.license_number if verification else '' }}">
             </div>
 
             <div class="col-12">
-              <label class="form-label">Portfolio URL</label>
+              <label class="form-label">Portfolio URL (optional)</label>
               <input class="form-control" name="portfolio_url" value="{{ verification.portfolio_url if verification else '' }}">
             </div>
 
             <div class="col-md-6">
               <label class="form-label">ID document</label>
               <input class="form-control" type="file" name="id_document" accept=".pdf,.png,.jpg,.jpeg">
+              <div class="form-text small">PDF/JPG/PNG accepted.</div>
             </div>
 
             <div class="col-md-6">
-              <label class="form-label">Certification</label>
+              <label class="form-label">Certification (optional)</label>
               <input class="form-control" type="file" name="certification" accept=".pdf,.png,.jpg,.jpeg">
+              <div class="form-text small">Upload a license/cert if applicable.</div>
             </div>
-
-            <div class="col-12 d-flex gap-2 mt-1">
-              <button class="btn btn-primary" type="submit">Submit</button>
-              <a class="btn btn-outline-secondary" href="{{ url_for('provider.profile') }}">Back</a>
-            </div>
-
           </div>
-        </form>
-      {% endif %}
-    </div>
 
+          {% if vstatus == "verified" %}
+            <div class="status-box mt-3" style="background:#f8fafc;border-color:#e2e8f0;color:#0f172a;">
+              <div class="fw-bold">Note</div>
+              Resubmitting does not remove your current verified status. Your update becomes active only after admin approval.
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="modal-footer d-flex justify-content-between">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary" type="submit">
+            {% if vstatus == "not_submitted" %}Submit verification{% else %}Submit update{% endif %}
+          </button>
+        </div>
+      </form>
+
+    </div>
   </div>
 </div>
+
 {% endblock %}
