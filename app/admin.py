@@ -30,8 +30,6 @@ def dashboard():
     return redirect(url_for("admin.moderation"))
 
 
-# app/admin.py
-
 @admin_bp.route("/moderation")
 @login_required
 @role_required("admin")
@@ -47,9 +45,7 @@ def moderation():
     ).count()
 
     # Open service requests (client requests)
-    open_service_requests = ServiceRequest.query.filter_by(
-        status="open"
-    ).count()
+    open_service_requests = ServiceRequest.query.filter_by(status="open").count()
 
     # Hidden services (not active)
     hidden_services = Service.query.filter(Service.is_active.is_(False)).count()
@@ -62,7 +58,9 @@ def moderation():
     if hasattr(Booking, "refund_requested"):
         refund_requests = Booking.query.filter(Booking.refund_requested.is_(True)).count()
     elif hasattr(Booking, "client_requested_refund"):
-        refund_requests = Booking.query.filter(Booking.client_requested_refund.is_(True)).count()
+        refund_requests = Booking.query.filter(
+            Booking.client_requested_refund.is_(True)
+        ).count()
     elif hasattr(Booking, "status"):
         refund_requests = Booking.query.filter(
             Booking.status.in_(["refund_requested", "refund_request"])
@@ -78,9 +76,11 @@ def moderation():
 
     return render_template("admin/admin_moderation.html", notif=notif)
 
+
 # --------------------
 # Users (Admin Moderation)
 # --------------------
+
 
 @admin_bp.route("/users")
 @login_required
@@ -123,14 +123,48 @@ def toggle_user_active(user_id: int):
         target.disabled_reason = reason or "Disabled by admin"
 
         # If disabling a provider, also hide all their services from the marketplace.
-        # No ERD changes: we only flip Service.is_active.
+        # No ERD changes: we only flip Service.is_active (schema-safe).
         if target.has_role("provider"):
-            Service.query.filter(Service.provider_user_id == target.id).update(
-                {"is_active": False},
-                synchronize_session=False,
-            )
+            service_filter_applied = False
+
+            # Option A: Service.user_id -> User.id
+            if hasattr(Service, "user_id"):
+                Service.query.filter(Service.user_id == target.id).update(
+                    {"is_active": False},
+                    synchronize_session=False,
+                )
+                service_filter_applied = True
+
+            # Option B: Service.provider_id -> ProviderProfile.id (via user.provider_profile)
+            if (not service_filter_applied) and hasattr(Service, "provider_id"):
+                if hasattr(target, "provider_profile") and target.provider_profile:
+                    Service.query.filter(
+                        Service.provider_id == target.provider_profile.id
+                    ).update(
+                        {"is_active": False},
+                        synchronize_session=False,
+                    )
+                    service_filter_applied = True
+
+            # Option C: Service.provider_profile_id -> ProviderProfile.id
+            if (not service_filter_applied) and hasattr(Service, "provider_profile_id"):
+                if hasattr(target, "provider_profile") and target.provider_profile:
+                    Service.query.filter(
+                        Service.provider_profile_id == target.provider_profile.id
+                    ).update(
+                        {"is_active": False},
+                        synchronize_session=False,
+                    )
+                    service_filter_applied = True
+
+            if not service_filter_applied:
+                flash(
+                    "Provider disabled, but services could not be auto-hidden (unknown Service FK).",
+                    "warning",
+                )
 
         flash(f"User {target.email} disabled.", "success")
+
     else:
         # enable user
         target.is_active = True
@@ -143,9 +177,11 @@ def toggle_user_active(user_id: int):
     db.session.commit()
     return redirect(url_for("admin.users"))
 
+
 # --------------------
 # Services (Admin Moderation)
 # --------------------
+
 
 @admin_bp.route("/services")
 @login_required
@@ -186,12 +222,14 @@ def toggle_service(service_id: int):
 # Bookings (Admin Moderation)
 # --------------------
 
+
 @admin_bp.route("/bookings")
 @login_required
 @role_required("admin")
 def bookings():
     bookings = Booking.query.order_by(Booking.created_at.desc()).all()
     return render_template("admin/bookings.html", bookings=bookings)
+
 
 @admin_bp.route("/refund-requests")
 @login_required
@@ -228,26 +266,27 @@ def force_cancel_booking(booking_id: int):
 # Provider Verifications (Admin Review Queue)
 # --------------------
 
+
 @admin_bp.route("/verifications")
 @login_required
 @role_required("admin")
 def verifications():
     pending = (
-        ProviderVerification.query
-        .filter_by(status="pending_review")
+        ProviderVerification.query.filter_by(status="pending_review")
         .order_by(
             ProviderVerification.submitted_at.asc().nullslast(),
-            ProviderVerification.created_at.asc()
+            ProviderVerification.created_at.asc(),
         )
         .all()
     )
 
     reviewed = (
-        ProviderVerification.query
-        .filter(ProviderVerification.status.in_(["verified", "rejected"]))
+        ProviderVerification.query.filter(
+            ProviderVerification.status.in_(["verified", "rejected"])
+        )
         .order_by(
             ProviderVerification.reviewed_at.desc().nullslast(),
-            ProviderVerification.updated_at.desc()
+            ProviderVerification.updated_at.desc(),
         )
         .limit(20)
         .all()
@@ -304,6 +343,7 @@ def reject_verification(verification_id: int):
 # --------------------
 # Provider Verification Document Download (Admin-only)
 # --------------------
+
 
 @admin_bp.route("/verifications/<int:verification_id>/download/<string:kind>")
 @login_required
