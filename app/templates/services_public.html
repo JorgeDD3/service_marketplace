@@ -3,12 +3,12 @@
 
 {% block content %}
 <style>
-  /* Page-specific layout overrides (keeps other pages unchanged) */
   .container{
-    padding-top: 24px;
-    padding-bottom: 28px;
-    max-width: 1400px;
-  }
+  padding-top: 24px;
+  padding-bottom: 28px;
+  max-width: 1400px;
+  margin: 0 auto;     /* <-- THIS is the missing part */
+}
 
   /* One consistent column system for the whole page */
   .services-page {
@@ -138,11 +138,31 @@
 
   /* Cards grid: consistent columns + equal heights */
   .services-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 18px;
-    align-items: stretch;
+  display: grid;
+  gap: 18px;
+  align-items: stretch;
+
+  /* Center the whole grid "track" */
+  justify-content: center;
+
+  /* Cards have consistent width and the grid stays centered */
+  grid-template-columns: repeat(3, minmax(320px, 360px));
+}
+
+/* Responsive: 2 columns, still centered */
+@media (max-width: 1200px){
+  .services-grid {
+    grid-template-columns: repeat(2, minmax(320px, 360px));
   }
+}
+
+/* Mobile: 1 column */
+@media (max-width: 768px){
+  .services-grid {
+    grid-template-columns: minmax(0, 1fr);
+    justify-content: stretch;
+  }
+}
 
   @media (max-width: 1200px){
     .services-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
