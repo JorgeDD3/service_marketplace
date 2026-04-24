@@ -349,27 +349,23 @@ def book_service(service_id: int):
     if not service.is_active:
         abort(404)
 
-    # Read selected slot from form (ISO string)
     selected = (request.form.get("booking_datetime") or "").strip()
     if not selected:
         flash("Please select a booking time.", "danger")
         return redirect(url_for("main.service_detail", service_id=service.id))
 
-    # Parse ISO datetime safely (expects "YYYY-MM-DDTHH:MM" or with seconds)
     try:
-        booking_dt = datetime.fromisoformat(selected)
-        booking_dt = booking_dt.replace(second=0, microsecond=0)
+        booking_dt = datetime.fromisoformat(selected).replace(second=0, microsecond=0)
     except ValueError:
         flash("Invalid booking time format.", "danger")
         return redirect(url_for("main.service_detail", service_id=service.id))
 
-    # Reject past times
     now = datetime.utcnow().replace(second=0, microsecond=0)
     if booking_dt < now:
         flash("That time is in the past. Please choose another slot.", "warning")
         return redirect(url_for("main.service_detail", service_id=service.id))
 
-    # Race-condition safety: ensure the selected slot is still available
+    # Ensure selected slot is still available
     available = generate_available_slots(service, days_ahead=7)
     available_set = {dt.replace(second=0, microsecond=0) for dt in available}
     if booking_dt not in available_set:
@@ -378,36 +374,43 @@ def book_service(service_id: int):
 
     provider_user_id = service.provider_profile.user_id
 
-    # ✅ KEY FIX: if an inquiry booking exists for this same client/provider/service,
-    # convert it into the real booking instead of creating a second booking (and second thread).
-    inquiry = Booking.find_open_inquiry(
-        client_id=current_user.id,
-        provider_id=provider_user_id,
-        service_id=service.id,
+    # ✅ KEY FIX (inline): reuse existing inquiry booking to avoid a second thread
+    inquiry = (
+        Booking.query.filter_by(
+            client_id=current_user.id,
+            provider_id=provider_user_id,
+            service_id=service.id,
+        )
+        .filter(Booking.provider_note.isnot(None))
+        .filter(Booking.provider_note.like("[INQUIRY]%"))
+        .order_by(Booking.created_at.desc())
+        .first()
     )
 
     if inquiry:
-        # Convert inquiry booking into a real booking
+        # Convert inquiry booking into a real booking (same booking id => same conversation/thread)
         inquiry.booking_datetime = booking_dt
         inquiry.duration_minutes = 60
         inquiry.status = Booking.STATUS_PENDING
 
-        # Ensure inquiry marker is removed so it shows in Sessions dashboard
+        # Remove inquiry marker so it behaves like a normal booking
         inquiry.provider_note = None
 
-        # If your model has payment_status, reset it explicitly (safe)
+        # Reset payment fields if present
         if hasattr(inquiry, "payment_status"):
             inquiry.payment_status = "unpaid"
             inquiry.paid_at = None
             inquiry.payment_reference = None
 
-        # clear decision timestamps if present
         if hasattr(inquiry, "decided_at"):
             inquiry.decided_at = None
 
         db.session.commit()
 
-        flash("Booking requested! Proceed to checkout (demo) to confirm, then message the provider.", "success")
+        flash(
+            "Booking requested! Proceed to checkout (demo) to confirm, then message the provider.",
+            "success",
+        )
         return redirect(url_for("main.checkout", booking_id=inquiry.id))
 
     # Otherwise create a new booking as normal
@@ -420,15 +423,18 @@ def book_service(service_id: int):
         status=Booking.STATUS_PENDING,
     )
 
-    # If your model has payment_status, set explicitly (safe)
     if hasattr(booking, "payment_status"):
         booking.payment_status = "unpaid"
 
     db.session.add(booking)
     db.session.commit()
 
-    flash("Booking requested! Proceed to checkout (demo) to confirm, then message the provider.", "success")
+    flash(
+        "Booking requested! Proceed to checkout (demo) to confirm, then message the provider.",
+        "success",
+    )
     return redirect(url_for("main.checkout", booking_id=booking.id))
+
 
 @main.route("/checkout/<int:booking_id>", methods=["GET", "POST"])
 @login_required
