@@ -237,52 +237,74 @@ def bookings():
     return render_template("admin/bookings.html", bookings=bookings)
 
 
-@admin_bp.get("/refunds")
+@admin_bp.route("/refunds")
 @login_required
 @role_required("admin")
 def refund_requests():
     """
-    Shows bookings where a client requested a refund.
-
-    We detect a refund request if:
-      - Booking.admin_action contains "REFUND" (covers admin_action="REFUND_REQUEST", etc.)
-      - OR Booking.admin_note contains "[REFUND_REQUEST]"
+    Admin: Refund Requests queue.
+    A booking appears here when [REFUND_REQUEST] exists in Booking.admin_note.
+    Supports search across booking id, service title, client/provider emails.
     """
-    tag = "[REFUND_REQUEST]"
+    from flask import request, render_template
+    from sqlalchemy import or_, cast
+    from sqlalchemy.types import String
+
     q = (request.args.get("q") or "").strip()
 
-    # Base filter: match either admin_action or admin_note tag
-    query = Booking.query.filter(
-        (
-            Booking.admin_action.isnot(None)
-            & Booking.admin_action.ilike("%REFUND%")
-        )
-        | (
-            Booking.admin_note.isnot(None)
-            & Booking.admin_note.ilike(f"%{tag}%")
-        )
+    # Base query: refund requests are recorded in admin_note
+    query = (
+        Booking.query
+        .outerjoin(Service, Booking.service_id == Service.id)
+        .outerjoin(User, Booking.client_id == User.id)
+        .outerjoin(User, Booking.provider_id == User.id)  # harmless if same alias isn't required in your setup
     )
 
-    # Optional search (booking id / admin_note / admin_action)
+    # If your Booking model has relationships (b.service, b.client, b.provider),
+    # the joins above are not strictly required, but they help filtering.
+    query = query.filter(Booking.admin_note.ilike("%[REFUND_REQUEST]%"))
+
     if q:
         like = f"%{q}%"
         query = query.filter(
-            (Booking.id.cast(db.String).ilike(like))
-            | (Booking.admin_note.isnot(None) & Booking.admin_note.ilike(like))
-            | (Booking.admin_action.isnot(None) & Booking.admin_action.ilike(like))
+            or_(
+                cast(Booking.id, String).ilike(like),
+                Service.title.ilike(like),
+                Booking.admin_note.ilike(like),
+                # Use relationship-safe access if you have it; otherwise fall back to ids
+                cast(Booking.client_id, String).ilike(like),
+                cast(Booking.provider_id, String).ilike(like),
+            )
         )
 
-    refund_bookings = query.order_by(
-        Booking.admin_action_at.desc().nullslast(),
-        Booking.created_at.desc(),
-    ).all()
+        # If you DO have relationships and emails in User, uncomment this instead of the id filters:
+        # query = query.filter(or_(
+        #     cast(Booking.id, String).ilike(like),
+        #     Service.title.ilike(like),
+        #     Booking.admin_note.ilike(like),
+        #     Booking.client.has(User.email.ilike(like)),
+        #     Booking.provider.has(User.email.ilike(like)),
+        # ))
+
+    total = query.count()
+
+    bookings = (
+        query
+        .order_by(
+            Booking.admin_action_at.desc().nullslast(),
+            Booking.created_at.desc()
+        )
+        .all()
+    )
 
     return render_template(
         "admin/refund_requests.html",
-        refund_bookings=refund_bookings,
-        refund_total=len(refund_bookings),
-        q=q,
+        bookings=bookings,
+        total=total,
+        q=q
     )
+
+
 
 
 @admin_bp.route("/bookings/<int:booking_id>/force-cancel", methods=["POST"])
