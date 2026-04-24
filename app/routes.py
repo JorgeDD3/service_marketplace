@@ -349,9 +349,6 @@ def book_service(service_id: int):
     if not service.is_active:
         abort(404)
 
-    # Allow multiple bookings per service.
-    # Conflicts are prevented by generate_available_slots() (provider availability + busy intervals).
-
     # Read selected slot from form (ISO string)
     selected = (request.form.get("booking_datetime") or "").strip()
     if not selected:
@@ -381,14 +378,51 @@ def book_service(service_id: int):
 
     provider_user_id = service.provider_profile.user_id
 
+    # ✅ KEY FIX: if an inquiry booking exists for this same client/provider/service,
+    # convert it into the real booking instead of creating a second booking (and second thread).
+    inquiry = Booking.find_open_inquiry(
+        client_id=current_user.id,
+        provider_id=provider_user_id,
+        service_id=service.id,
+    )
+
+    if inquiry:
+        # Convert inquiry booking into a real booking
+        inquiry.booking_datetime = booking_dt
+        inquiry.duration_minutes = 60
+        inquiry.status = Booking.STATUS_PENDING
+
+        # Ensure inquiry marker is removed so it shows in Sessions dashboard
+        inquiry.provider_note = None
+
+        # If your model has payment_status, reset it explicitly (safe)
+        if hasattr(inquiry, "payment_status"):
+            inquiry.payment_status = "unpaid"
+            inquiry.paid_at = None
+            inquiry.payment_reference = None
+
+        # clear decision timestamps if present
+        if hasattr(inquiry, "decided_at"):
+            inquiry.decided_at = None
+
+        db.session.commit()
+
+        flash("Booking requested! Proceed to checkout (demo) to confirm, then message the provider.", "success")
+        return redirect(url_for("main.checkout", booking_id=inquiry.id))
+
+    # Otherwise create a new booking as normal
     booking = Booking(
         provider_id=provider_user_id,
         client_id=current_user.id,
         service_id=service.id,
         booking_datetime=booking_dt,
         duration_minutes=60,
-        status="pending",
+        status=Booking.STATUS_PENDING,
     )
+
+    # If your model has payment_status, set explicitly (safe)
+    if hasattr(booking, "payment_status"):
+        booking.payment_status = "unpaid"
 
     db.session.add(booking)
     db.session.commit()
