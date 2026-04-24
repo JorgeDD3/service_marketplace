@@ -393,11 +393,14 @@
 
           {% if b.payment_status != "paid" and b.status in ["pending", "accepted"] %}
   <form method="POST"
-        action="{{ url_for('main.cancel_booking', booking_id=b.id) }}"
-        style="display:inline;"
-        onsubmit="return confirm('Cancel this session?');">
-    <button class="btn ghost" type="submit">Cancel</button>
-  </form>
+      action="{{ url_for('main.cancel_booking', booking_id=b.id) }}"
+      class="refund-form"
+      style="display:inline;">
+  <input type="hidden" name="refund_reason" value="">
+  <button class="btn ghost refund-btn" type="button" data-booking-title="{{ b.service.title }}">
+    Request refund
+  </button>
+</form>
 {% endif %}
         </div>
       </div>
@@ -405,9 +408,198 @@
   </div>
 {% endif %}
 
+<!-- Refund modal -->
+<div id="refundModalBackdrop" class="modal-backdrop" style="display:none;">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="refundModalTitle">
+    <div class="modal-head">
+      <div>
+        <div class="modal-kicker">Refund request</div>
+        <div id="refundModalTitle" class="modal-title">Request a refund</div>
+      </div>
+      <button type="button" class="modal-x" id="refundModalClose" aria-label="Close">×</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="modal-subtitle" id="refundModalServiceLine">
+        You’re requesting a refund and cancellation for this session.
+      </div>
+
+      <label class="modal-label" for="refundReason">Reason (optional)</label>
+      <textarea id="refundReason" class="modal-textarea" rows="3"
+        placeholder="e.g., schedule conflict, provider unavailable, booked wrong time"></textarea>
+
+      <div class="modal-check">
+        <input type="checkbox" id="refundConfirmCheck">
+        <label for="refundConfirmCheck">
+          I understand this sends a request to the admin for review.
+        </label>
+      </div>
+
+      <div class="modal-hint">
+        Tip: You can still message the provider while it’s pending, unless the admin force-cancels.
+      </div>
+    </div>
+
+    <div class="modal-foot">
+      <button type="button" class="btn ghost" id="refundModalCancel">Cancel</button>
+      <button type="button" class="btn" id="refundModalSubmit" disabled>Send request</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Modal (page-local) */
+  .modal-backdrop{
+    position: fixed;
+    inset: 0;
+    background: rgba(15,23,42,0.55);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 18px;
+    z-index: 9999;
+  }
+  .modal-card{
+    width: min(560px, 100%);
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.25);
+    border: 1px solid rgba(226,232,240,0.9);
+    overflow: hidden;
+  }
+  .modal-head{
+    padding: 16px 18px;
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f8fafc;
+  }
+  .modal-kicker{ color:#64748b; font-weight:900; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  .modal-title{ font-size: 20px; font-weight: 900; color:#0f172a; margin-top: 2px; }
+  .modal-x{
+    border: 0;
+    background: transparent;
+    font-size: 26px;
+    line-height: 1;
+    padding: 4px 8px;
+    cursor: pointer;
+    color: #334155;
+  }
+  .modal-body{ padding: 16px 18px; }
+  .modal-subtitle{ color:#334155; font-weight: 700; margin-bottom: 12px; }
+  .modal-label{ display:block; font-weight: 900; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color:#64748b; margin: 10px 0 6px; }
+  .modal-textarea{
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 10px 12px;
+    outline: none;
+    font-weight: 700;
+    color:#0f172a;
+    background:#fff;
+  }
+  .modal-textarea:focus{ border-color:#2563eb; box-shadow: 0 0 0 4px rgba(37,99,235,0.12); }
+  .modal-check{
+    display:flex;
+    gap: 10px;
+    align-items:flex-start;
+    margin-top: 12px;
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #f8fafc;
+    color:#334155;
+    font-weight: 700;
+  }
+  .modal-hint{ margin-top: 10px; color:#64748b; font-weight: 700; font-size: 12px; }
+  .modal-foot{
+    padding: 14px 18px;
+    display:flex;
+    justify-content:flex-end;
+    gap: 10px;
+    border-top: 1px solid #e5e7eb;
+    background:#fff;
+  }
+  .btn[disabled]{ opacity: .55; cursor: not-allowed; }
+</style>
+
 <script>
 (function () {
   const cards = Array.from(document.querySelectorAll(".booking-card"));
+
+    // ===== Refund modal wiring =====
+  const refundBackdrop = document.getElementById("refundModalBackdrop");
+  const refundClose = document.getElementById("refundModalClose");
+  const refundCancel = document.getElementById("refundModalCancel");
+  const refundSubmit = document.getElementById("refundModalSubmit");
+  const refundReason = document.getElementById("refundReason");
+  const refundCheck = document.getElementById("refundConfirmCheck");
+  const refundServiceLine = document.getElementById("refundModalServiceLine");
+
+  let activeRefundForm = null;
+
+  function openRefundModal(formEl, serviceTitle){
+    activeRefundForm = formEl;
+    if (refundServiceLine){
+      refundServiceLine.textContent = `You’re requesting a refund and cancellation for: ${serviceTitle || "this session"}.`;
+    }
+    if (refundReason) refundReason.value = "";
+    if (refundCheck) refundCheck.checked = false;
+    if (refundSubmit) refundSubmit.disabled = true;
+    if (refundBackdrop) refundBackdrop.style.display = "flex";
+  }
+
+  function closeRefundModal(){
+    if (refundBackdrop) refundBackdrop.style.display = "none";
+    activeRefundForm = null;
+  }
+
+  document.querySelectorAll(".refund-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const formEl = btn.closest("form");
+      const title = btn.getAttribute("data-booking-title") || "";
+      openRefundModal(formEl, title);
+    });
+  });
+
+  function updateRefundSubmitState(){
+    if (!refundSubmit) return;
+    refundSubmit.disabled = !(refundCheck && refundCheck.checked);
+  }
+
+  if (refundCheck) refundCheck.addEventListener("change", updateRefundSubmitState);
+
+  if (refundSubmit) {
+    refundSubmit.addEventListener("click", () => {
+      if (!activeRefundForm) return;
+
+      // write reason into the hidden input
+      const hidden = activeRefundForm.querySelector('input[name="refund_reason"]');
+      if (hidden && refundReason) hidden.value = refundReason.value.trim();
+
+      activeRefundForm.submit();
+    });
+  }
+
+  if (refundClose) refundClose.addEventListener("click", closeRefundModal);
+  if (refundCancel) refundCancel.addEventListener("click", closeRefundModal);
+
+  // Close on backdrop click (but not when clicking inside modal)
+  if (refundBackdrop) {
+    refundBackdrop.addEventListener("click", (e) => {
+      if (e.target === refundBackdrop) closeRefundModal();
+    });
+  }
+
+  // Escape key closes modal
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && refundBackdrop && refundBackdrop.style.display !== "none") {
+      closeRefundModal();
+    }
+  });
+  // ===== end refund modal wiring =====
   const tabs = Array.from(document.querySelectorAll("#bookingTabs .tab"));
 
   const upcomingStatuses = new Set(["pending", "accepted"]);

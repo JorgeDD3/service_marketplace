@@ -2,10 +2,11 @@
 import hashlib
 import secrets
 from datetime import datetime, timedelta
+
 from flask_login import UserMixin
 from sqlalchemy import UniqueConstraint
 
-from .extensions import db  # <-- IMPORTANT: import from extensions, not app
+from .extensions import db  # IMPORTANT: import from extensions, not app
 
 
 # Role Model
@@ -52,20 +53,20 @@ class User(db.Model, UserMixin):
     bookings_as_client = db.relationship(
         "Booking",
         foreign_keys="Booking.client_id",
-        back_populates="client"
+        back_populates="client",
     )
 
     bookings_as_provider = db.relationship(
         "Booking",
         foreign_keys="Booking.provider_id",
-        back_populates="provider"
+        back_populates="provider",
     )
 
     # IMPORTANT: disambiguate client vs claimed_by_provider_id
     service_requests = db.relationship(
         "ServiceRequest",
         foreign_keys="ServiceRequest.client_id",
-        back_populates="client"
+        back_populates="client",
     )
 
     # --- RBAC helpers (clean + scalable) ---
@@ -77,7 +78,11 @@ class User(db.Model, UserMixin):
         if not self.role:
             return False
         return self.role.role_name in roles
- 
+
+    def __repr__(self):
+        return f"<User {self.email} role={self.role_display}>"
+
+
 def hash_token(raw_token: str) -> str:
     """Hash a raw reset token so we never store it in plaintext."""
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
@@ -102,7 +107,10 @@ class PasswordResetToken(db.Model):
     request_ip = db.Column(db.String(45), nullable=True)
     user_agent = db.Column(db.String(255), nullable=True)
 
-    user = db.relationship("User", backref=db.backref("password_reset_tokens", lazy="dynamic"))
+    user = db.relationship(
+        "User",
+        backref=db.backref("password_reset_tokens", lazy="dynamic"),
+    )
 
     @property
     def is_used(self) -> bool:
@@ -113,7 +121,14 @@ class PasswordResetToken(db.Model):
         return datetime.utcnow() >= self.expires_at
 
     @classmethod
-    def create_for_user(cls, user, *, ttl_minutes: int = 30, request_ip: str | None = None, user_agent: str | None = None):
+    def create_for_user(
+        cls,
+        user,
+        *,
+        ttl_minutes: int = 30,
+        request_ip: str | None = None,
+        user_agent: str | None = None,
+    ):
         """
         Creates a reset token row and returns (raw_token, token_row).
         raw_token is what you show to the user (or email later).
@@ -129,6 +144,7 @@ class PasswordResetToken(db.Model):
         db.session.add(row)
         db.session.commit()
         return raw, row
+
 
 class ProviderProfile(db.Model):
     __tablename__ = "provider_profiles"
@@ -196,7 +212,11 @@ class ProviderAvailability(db.Model):
     provider_profile = db.relationship("ProviderProfile", backref="availability_rules")
 
     def __repr__(self):
-        return f"<ProviderAvailability profile={self.provider_profile_id} dow={self.day_of_week} {self.start_time}-{self.end_time}>"
+        return (
+            f"<ProviderAvailability profile={self.provider_profile_id} "
+            f"dow={self.day_of_week} {self.start_time}-{self.end_time}>"
+        )
+
 
 # Provider Timeoff
 class ProviderTimeOff(db.Model):
@@ -218,6 +238,7 @@ class ProviderTimeOff(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     provider_profile = db.relationship("ProviderProfile", backref="time_off_entries")
+
 
 # Provider Verification
 class ProviderVerification(db.Model):
@@ -275,7 +296,11 @@ class ProviderVerification(db.Model):
         return self.status == "verified"
 
     def __repr__(self) -> str:
-        return f"<ProviderVerification provider_profile_id={self.provider_profile_id} status={self.status}>"
+        return (
+            f"<ProviderVerification provider_profile_id={self.provider_profile_id} "
+            f"status={self.status}>"
+        )
+
 
 # Services
 class Service(db.Model):
@@ -384,6 +409,24 @@ class Booking(db.Model):
 
     service = db.relationship("Service", back_populates="bookings")
 
+    @classmethod
+    def find_open_inquiry(cls, *, client_id: int, provider_id: int, service_id: int):
+        """
+        Inquiry bookings are pseudo-bookings that store an inquiry marker in provider_note.
+        We reuse/convert these into a real booking to avoid creating a second conversation/thread.
+        """
+        return (
+            cls.query.filter_by(
+                client_id=client_id,
+                provider_id=provider_id,
+                service_id=service_id,
+            )
+            .filter(cls.provider_note.isnot(None))
+            .filter(cls.provider_note.like("[INQUIRY]%"))
+            .order_by(cls.created_at.desc())
+            .first()
+        )
+
     def get_or_create_conversation(self):
         """
         Lazy-create the 1:1 conversation for this booking.
@@ -405,9 +448,9 @@ class Booking(db.Model):
     def __repr__(self):
         return f"<Booking {self.id}>"
 
+
 # Service Requests
 class ServiceRequest(db.Model):
-
     __tablename__ = "service_requests"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -432,18 +475,19 @@ class ServiceRequest(db.Model):
     client = db.relationship(
         "User",
         foreign_keys=[client_id],
-        back_populates="service_requests"
+        back_populates="service_requests",
     )
 
     # optional relationship (useful later for UI)
     claimed_by_provider = db.relationship(
         "User",
-        foreign_keys=[claimed_by_provider_id]
+        foreign_keys=[claimed_by_provider_id],
     )
 
     def __repr__(self):
         return f"<ServiceRequest {self.subject}>"
-    
+
+
 class Conversation(db.Model):
     __tablename__ = "conversations"
 
@@ -466,7 +510,8 @@ class Conversation(db.Model):
 
     # Relationships
     booking = db.relationship(
-        "Booking", backref=db.backref("conversation", uselist=False)
+        "Booking",
+        backref=db.backref("conversation", uselist=False),
     )
     client = db.relationship("User", foreign_keys=[client_id])
     provider = db.relationship("User", foreign_keys=[provider_id])
@@ -514,6 +559,7 @@ class Message(db.Model):
 
     def __repr__(self) -> str:
         return f"<Message id={self.id} convo={self.conversation_id} sender={self.sender_id}>"
+
 
 class ConversationRead(db.Model):
     __tablename__ = "conversation_reads"
