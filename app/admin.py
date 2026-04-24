@@ -243,32 +243,43 @@ def bookings():
 def refund_requests():
     """
     Shows bookings where a client requested a refund.
-    Detected via Booking.admin_note containing the tag [REFUND_REQUEST].
+
+    We detect a refund request if:
+      - Booking.admin_action contains "REFUND" (covers admin_action="REFUND_REQUEST", etc.)
+      - OR Booking.admin_note contains "[REFUND_REQUEST]"
     """
     tag = "[REFUND_REQUEST]"
     q = (request.args.get("q") or "").strip()
 
+    # Base filter: match either admin_action or admin_note tag
     query = Booking.query.filter(
-        Booking.admin_note.isnot(None),
-        Booking.admin_note.ilike(f"%{tag}%"),  # <-- contains, not "starts with"
+        (
+            Booking.admin_action.isnot(None)
+            & Booking.admin_action.ilike("%REFUND%")
+        )
+        | (
+            Booking.admin_note.isnot(None)
+            & Booking.admin_note.ilike(f"%{tag}%")
+        )
     )
 
-    # Optional search (booking id or note text)
+    # Optional search (booking id / admin_note / admin_action)
     if q:
         like = f"%{q}%"
         query = query.filter(
-            (Booking.id.cast(db.String).ilike(like)) |
-            (Booking.admin_note.ilike(like))
+            (Booking.id.cast(db.String).ilike(like))
+            | (Booking.admin_note.isnot(None) & Booking.admin_note.ilike(like))
+            | (Booking.admin_action.isnot(None) & Booking.admin_action.ilike(like))
         )
 
     refund_bookings = query.order_by(
         Booking.admin_action_at.desc().nullslast(),
-        Booking.created_at.desc()
+        Booking.created_at.desc(),
     ).all()
 
     return render_template(
         "admin/refund_requests.html",
-        refund_bookings=refund_bookings,   # <-- TEMPLATE EXPECTS THIS
+        refund_bookings=refund_bookings,
         refund_total=len(refund_bookings),
         q=q,
     )
