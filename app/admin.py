@@ -237,15 +237,41 @@ def bookings():
     return render_template("admin/bookings.html", bookings=bookings)
 
 
-@admin_bp.route("/refund-requests")
+@admin_bp.get("/refunds")
 @login_required
 @role_required("admin")
 def refund_requests():
     """
-    Dedicated admin view for refund/cancel requests.
-    Template-only page (links into bookings for action).
+    Shows bookings where a client requested a refund.
+    Detected via Booking.admin_note containing the tag [REFUND_REQUEST].
     """
-    return render_template("admin/refund_requests.html")
+    tag = "[REFUND_REQUEST]"
+    q = (request.args.get("q") or "").strip()
+
+    query = Booking.query.filter(
+        Booking.admin_note.isnot(None),
+        Booking.admin_note.ilike(f"%{tag}%"),  # <-- contains, not "starts with"
+    )
+
+    # Optional search (booking id or note text)
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            (Booking.id.cast(db.String).ilike(like)) |
+            (Booking.admin_note.ilike(like))
+        )
+
+    refund_bookings = query.order_by(
+        Booking.admin_action_at.desc().nullslast(),
+        Booking.created_at.desc()
+    ).all()
+
+    return render_template(
+        "admin/refund_requests.html",
+        refund_bookings=refund_bookings,   # <-- TEMPLATE EXPECTS THIS
+        refund_total=len(refund_bookings),
+        q=q,
+    )
 
 
 @admin_bp.route("/bookings/<int:booking_id>/force-cancel", methods=["POST"])
