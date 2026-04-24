@@ -377,13 +377,7 @@
             {% if b.payment_status == "paid" %}
               <a class="btn secondary" href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">Message</a>
               <a class="btn ghost" href="{{ url_for('main.service_detail', service_id=b.service.id) }}">View</a>
-              <form method="POST"
-      action="{{ url_for('main.cancel_booking', booking_id=b.id) }}"
-      style="display:inline;"
-      onsubmit="return confirm('Request a refund and cancel this session?');">
-  <input type="hidden" name="refund_reason" value="">
-  <button class="btn ghost" type="submit">Request refund</button>
-</form>
+              
             {% else %}
               <a class="btn" href="{{ url_for('main.checkout', booking_id=b.id) }}">Checkout</a>
               <span class="hint">Pay to unlock messaging.</span>
@@ -391,16 +385,28 @@
             {% endif %}
           </div>
 
-          {% if b.payment_status != "paid" and b.status in ["pending", "accepted"] %}
+          {# Refund button (paid only) #}
+{% set refund_requested = (b.admin_note or "").startswith("[REFUND_REQUEST]") %}
+
+{% if b.payment_status == "paid" and b.status in ["pending", "accepted"] %}
   <form method="POST"
-      action="{{ url_for('main.cancel_booking', booking_id=b.id) }}"
-      class="refund-form"
-      style="display:inline;">
-  <input type="hidden" name="refund_reason" value="">
-  <button class="btn ghost refund-btn" type="button" data-booking-title="{{ b.service.title }}">
-    Request refund
-  </button>
-</form>
+        action="{{ url_for('main.cancel_booking', booking_id=b.id) }}"
+        class="refund-form"
+        style="display:inline;">
+    <input type="hidden" name="refund_reason" value="">
+
+    {% if refund_requested %}
+      <button class="btn ghost" type="button" disabled style="opacity:.7; cursor:not-allowed;">
+        Refund requested
+      </button>
+    {% else %}
+      <button class="btn ghost refund-btn"
+              type="button"
+              data-booking-title="{{ b.service.title }}">
+        Request refund
+      </button>
+    {% endif %}
+  </form>
 {% endif %}
         </div>
       </div>
