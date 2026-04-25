@@ -288,8 +288,26 @@
               </a>
             </div>
             <div class="provider-line">
-              Provider: <span class="muted" style="font-weight:800;">{{ b.provider.first_name }} {{ b.provider.last_name }}</span>
-            </div>
+  Provider:
+  <span class="muted" style="font-weight:800;">
+    {{ b.provider.first_name }} {{ b.provider.last_name }}
+  </span>
+
+  <button
+    type="button"
+    class="about-btn"
+    data-bs-toggle="modal"
+    data-bs-target="#providerAboutModal"
+    data-provider-id="{{ b.provider.id }}"
+    data-provider-name="{{ (b.provider.first_name ~ ' ' ~ b.provider.last_name)|e }}"
+    data-provider-email="{{ (b.provider.email or '')|e }}"
+    data-provider-bio="{{ (b.provider.provider_profile.bio if b.provider.provider_profile else '')|e }}"
+    data-provider-hourly="{{ (b.provider.provider_profile.hourly_rate if b.provider.provider_profile else '')|e }}"
+    data-provider-notes="{{ (b.provider.provider_profile.availability_notes if b.provider.provider_profile else '')|e }}"
+  >
+    About
+  </button>
+</div>
           </div>
 
                     <div class="badge-row">
@@ -458,8 +476,58 @@
   </div>
 {% endif %}
 
+<!-- Provider About Modal -->
+<div class="modal fade" id="providerAboutModal" tabindex="-1" aria-labelledby="providerAboutModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content" style="border-radius: 18px;">
+      <div class="modal-header">
+        <div>
+          <div class="text-muted small">Provider profile</div>
+          <h5 class="modal-title" id="providerAboutModalLabel" style="margin:0;">About</h5>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="h5 mb-1" id="p_name">—</div>
+        <div class="text-muted small mb-3" id="p_email">—</div>
+
+        <div class="row g-3">
+          <div class="col-12 col-lg-4">
+            <div class="border rounded-3 p-3 h-100">
+              <div class="fw-semibold mb-1">Rate</div>
+              <div class="text-muted small">Hourly rate</div>
+              <div class="mt-2 fw-bold" id="p_hourly">—</div>
+            </div>
+          </div>
+
+          <div class="col-12 col-lg-8">
+            <div class="border rounded-3 p-3 h-100">
+              <div class="fw-semibold mb-2">Bio</div>
+              <div class="text-muted small" style="white-space: pre-wrap;" id="p_bio">—</div>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="border rounded-3 p-3">
+              <div class="fw-semibold mb-2">Availability notes</div>
+              <div class="text-muted small" style="white-space: pre-wrap;" id="p_notes">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+  <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+    Done
+  </button>
+</div>
+    </div>
+  </div>
+</div>
+
 <!-- Refund modal -->
-<div id="refundModalBackdrop" class="modal-backdrop" style="display:none;">
+<div id="refundModalBackdrop" class="refund-backdrop" style="display:none;">
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="refundModalTitle">
     <div class="modal-head">
       <div>
@@ -498,8 +566,23 @@
 </div>
 
 <style>
+
+  .about-btn{
+  margin-left: 10px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-weight: 900;
+  font-size: 12px;
+  cursor: pointer;
+}
+.about-btn:hover{
+  background:#f1f5f9;
+}
   /* Modal (page-local) */
-  .modal-backdrop{
+  .refund-backdrop{
     position: fixed;
     inset: 0;
     background: rgba(15,23,42,0.55);
@@ -578,6 +661,33 @@
 <script>
 (function () {
   const cards = Array.from(document.querySelectorAll(".booking-card"));
+    // ===== Provider About modal wiring =====
+  const aboutModal = document.getElementById("providerAboutModal");
+  if (aboutModal) {
+    aboutModal.addEventListener("show.bs.modal", function (event) {
+      const btn = event.relatedTarget;
+      if (!btn) return;
+
+      const providerId = btn.getAttribute("data-provider-id") || "";
+      const name = btn.getAttribute("data-provider-name") || "—";
+      const email = btn.getAttribute("data-provider-email") || "";
+      const bio = btn.getAttribute("data-provider-bio") || "";
+      const hourly = btn.getAttribute("data-provider-hourly") || "";
+      const notes = btn.getAttribute("data-provider-notes") || "";
+
+      document.getElementById("p_name").textContent = name;
+      document.getElementById("p_email").textContent = email ? email : "—";
+      document.getElementById("p_bio").textContent = bio ? bio : "No bio provided.";
+      document.getElementById("p_notes").textContent = notes ? notes : "No availability notes.";
+      document.getElementById("p_hourly").textContent = hourly ? `$${hourly}/hr` : "—";
+
+      const link = document.getElementById("p_fullProfileLink");
+      if (link) {
+        link.href = providerId ? `/providers/${providerId}` : "#";
+      }
+    });
+  }
+  // ===== end Provider About modal wiring =====
 
     // ===== Refund modal wiring =====
   const refundBackdrop = document.getElementById("refundModalBackdrop");

@@ -13,10 +13,24 @@
 
       <p>
         <strong>Provider:</strong>
-        <a href="{{ url_for('main.provider_public_profile', provider_id=service.provider_profile.user.id) }}"
-           style="text-decoration:none; font-weight:800;">
-          {{ service.provider_profile.user.first_name }} {{ service.provider_profile.user.last_name }}
-        </a>
+<a href="{{ url_for('main.provider_public_profile', provider_id=service.provider_profile.user.id) }}"
+   style="text-decoration:none; font-weight:800;">
+  {{ service.provider_profile.user.first_name }} {{ service.provider_profile.user.last_name }}
+</a>
+
+<button
+  type="button"
+  class="about-btn"
+  data-bs-toggle="modal"
+  data-bs-target="#providerAboutModal"
+  data-provider-name="{{ (service.provider_profile.user.first_name ~ ' ' ~ service.provider_profile.user.last_name)|e }}"
+  data-provider-email="{{ (service.provider_profile.user.email or '')|e }}"
+  data-provider-bio="{{ (service.provider_profile.bio if service.provider_profile else '')|e }}"
+  data-provider-hourly="{{ (service.provider_profile.hourly_rate if service.provider_profile else '')|e }}"
+  data-provider-notes="{{ (service.provider_profile.availability_notes if service.provider_profile else '')|e }}"
+>
+  About
+</button>
 
         {% if service.provider_profile.verification and service.provider_profile.verification.status == "verified" %}
           <span class="badge text-bg-success ms-2">Verified</span>
@@ -180,7 +194,7 @@
 </div>
 
 {# --- Confirm Booking Modal --- #}
-<div id="confirmModal" class="modal-backdrop" aria-hidden="true">
+<div id="confirmModal" class="confirm-backdrop" aria-hidden="true">
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
     <div class="modal-header">
       <h2 id="confirmTitle" class="modal-title">Confirm Booking</h2>
@@ -231,7 +245,72 @@
   </div>
 </div>
 
+<!-- Provider About Modal -->
+<div class="modal fade" id="providerAboutModal" tabindex="-1" aria-labelledby="providerAboutModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content" style="border-radius: 18px;">
+      <div class="modal-header">
+        <div>
+          <div class="text-muted small">Provider profile</div>
+          <h5 class="modal-title" id="providerAboutModalLabel" style="margin:0;">About</h5>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="h5 mb-1" id="p_name">—</div>
+        <div class="text-muted small mb-3" id="p_email">—</div>
+
+        <div class="row g-3">
+          <div class="col-12 col-lg-4">
+            <div class="border rounded-3 p-3 h-100">
+              <div class="fw-semibold mb-1">Rate</div>
+              <div class="text-muted small">Hourly rate</div>
+              <div class="mt-2 fw-bold" id="p_hourly">—</div>
+            </div>
+          </div>
+
+          <div class="col-12 col-lg-8">
+            <div class="border rounded-3 p-3 h-100">
+              <div class="fw-semibold mb-2">Bio</div>
+              <div class="text-muted small" style="white-space: pre-wrap;" id="p_bio">—</div>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="border rounded-3 p-3">
+              <div class="fw-semibold mb-2">Availability notes</div>
+              <div class="text-muted small" style="white-space: pre-wrap;" id="p_notes">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <style>
+
+  .about-btn{
+  margin-left: 10px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-weight: 900;
+  font-size: 12px;
+  cursor: pointer;
+}
+.about-btn:hover{
+  background:#f1f5f9;
+}
   /* Only the time list scrolls */
 #timeSlots{
   display:grid;
@@ -398,7 +477,7 @@
   }
 
   /* --- Modal styles --- */
-  .modal-backdrop{
+  .confirm-backdrop{
     position:fixed;
     inset:0;
     background:rgba(15, 23, 42, 0.55);
@@ -408,7 +487,7 @@
     padding:24px;
     z-index:9999;
   }
-  .modal-backdrop.is-open{ display:flex; }
+  .confirm-backdrop.is-open{ display:flex; }
 
   .modal-card{
     width:100%;
@@ -669,6 +748,27 @@ document.addEventListener("DOMContentLoaded", function () {
   filterSlots(selectedDate);
   buildCalendar();
 });
+
+  // Provider About modal wiring
+  const providerAboutModal = document.getElementById("providerAboutModal");
+  if (providerAboutModal) {
+    providerAboutModal.addEventListener("show.bs.modal", function (event) {
+      const btn = event.relatedTarget;
+      if (!btn) return;
+
+      const name = btn.getAttribute("data-provider-name") || "—";
+      const email = btn.getAttribute("data-provider-email") || "";
+      const bio = btn.getAttribute("data-provider-bio") || "";
+      const hourly = btn.getAttribute("data-provider-hourly") || "";
+      const notes = btn.getAttribute("data-provider-notes") || "";
+
+      document.getElementById("p_name").textContent = name;
+      document.getElementById("p_email").textContent = email ? email : "—";
+      document.getElementById("p_bio").textContent = bio ? bio : "No bio provided.";
+      document.getElementById("p_notes").textContent = notes ? notes : "No availability notes.";
+      document.getElementById("p_hourly").textContent = hourly ? `$${hourly}/hr` : "—";
+    });
+  }
 </script>
 
 {% endblock %}
