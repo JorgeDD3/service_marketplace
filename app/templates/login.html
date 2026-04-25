@@ -7,7 +7,7 @@
   <div class="row justify-content-center">
     <div class="col-12">
 
-      <div class="card border-0 shadow-sm rounded-4 overflow-hidden auth-shell">
+      <div class="card border-0 shadow-sm rounded-4 auth-shell">
         <div class="row g-0 auth-row">
 
           <!-- LEFT: Brand + Visual -->
@@ -54,7 +54,7 @@
                 </li>
               </ul>
 
-              <!-- Hero photo (fixed height so no scrolling) -->
+              <!-- Hero photo -->
               <div class="mt-auto">
                 <div class="rounded-4 overflow-hidden border border-white border-opacity-25 auth-hero"
                      style="box-shadow: 0 10px 26px rgba(0,0,0,0.25);">
@@ -111,7 +111,7 @@
             </div>
           </div>
 
-          <!-- RIGHT: Login form (vertically centered) -->
+          <!-- RIGHT: Login form -->
           <div class="col-12 col-md-7">
             <div class="p-4 p-lg-5 h-100 d-flex flex-column justify-content-center auth-right">
 
@@ -174,7 +174,7 @@
                 {% endif %}
               </form>
 
-              <!-- Mobile-only hero (so it still looks great on phones) -->
+              <!-- Mobile-only hero -->
               <div class="d-md-none mt-4">
                 <div class="rounded-4 overflow-hidden border"
                      style="box-shadow: 0 10px 26px rgba(0,0,0,0.10);">
@@ -198,19 +198,24 @@
 </div>
 
 <style>
-  /* Keep everything within one viewport height on desktop */
+  /* HARD OVERRIDE: ensure the document can scroll */
+  html, body { height: auto !important; }
+  body { overflow-y: auto !important; }
+
+  /* Allow the login card to grow naturally */
   .auth-shell{
-    max-height: calc(100vh - 170px); /* nav + container padding buffer */
+    max-height: none !important;
+    overflow: visible !important;
   }
   .auth-row{
-    height: 100%;
+    height: auto !important;
   }
+
   .auth-left, .auth-right{
     min-height: 520px;
   }
 
   .auth-hero{
-    /* if the viewport is short, this prevents the photo from causing scroll */
     max-height: 200px;
   }
 
@@ -237,9 +242,8 @@
     background: #eef2ff;
   }
 
-  /* On smaller heights, reduce padding a bit (prevents scroll) */
+  /* If viewport is short, reduce padding a bit */
   @media (max-height: 760px) and (min-width: 768px) {
-    .auth-shell{ max-height: calc(100vh - 140px); }
     .auth-left{ padding: 1.25rem !important; }
     .auth-right{ padding: 1.25rem !important; }
     .auth-hero img{ height: 170px !important; }

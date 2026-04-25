@@ -293,41 +293,63 @@
           </div>
 
                     <div class="badge-row">
-            {% set refund_requested = (b.admin_note or "").startswith("[REFUND_REQUEST]") %}
+  {# Refund state derived from admin_note + payment_status (NO ERD changes) #}
+  {% set note = (b.admin_note or "") %}
+  {% set refund_state = "none" %}
 
-            <span class="status-badge {{ b.status }}">{{ b.status }}</span>
+  {% if b.payment_status == "refunded" %}
+    {% set refund_state = "refunded" %}
+  {% elif "[REFUND_APPROVED]" in note %}
+    {% set refund_state = "approved" %}
+  {% elif "[REFUND_DENIED]" in note %}
+    {% set refund_state = "denied" %}
+  {% elif note.startswith("[REFUND_REQUEST]") %}
+    {% set refund_state = "requested" %}
+  {% endif %}
 
-            {% if b.payment_status == "paid" %}
-              {% if refund_requested %}
-                <span class="pill unpaid">awaiting refund</span>
-              {% else %}
-                <span class="pill paid">paid</span>
-              {% endif %}
-            {% else %}
-              <span class="pill unpaid">unpaid</span>
-            {% endif %}
+  <span class="status-badge {{ b.status }}">{{ b.status }}</span>
 
-            {% if refund_requested %}
-  {# Refund is already shown via the payment pill "awaiting refund" above #}
-{% else %}
-  {% if b.payment_status != "paid" %}
-    <span class="pill next warn">needs checkout</span>
+  {# Payment/refund pill #}
+  {% if refund_state == "requested" %}
+    <span class="pill unpaid">awaiting refund</span>
+  {% elif refund_state in ["approved", "refunded"] %}
+    <span class="pill paid">refunded</span>
+  {% elif refund_state == "denied" %}
+    <span class="pill unpaid">refund denied</span>
   {% else %}
-    {% if b.status == "pending" %}
-      <span class="pill next">awaiting provider</span>
+    {% if b.payment_status == "paid" %}
+      <span class="pill paid">paid</span>
     {% else %}
-      <span class="pill next good">ready to message</span>
+      <span class="pill unpaid">unpaid</span>
     {% endif %}
   {% endif %}
-{% endif %}
-          </div>
+
+  {# Next-step pill (only when not in a refund flow) #}
+  {% if refund_state in ["requested", "approved", "refunded", "denied"] %}
+    {# no next-step pill #}
+  {% else %}
+    {% if b.payment_status != "paid" %}
+      <span class="pill next warn">needs checkout</span>
+    {% else %}
+      {% if b.status == "pending" %}
+        <span class="pill next">awaiting provider</span>
+      {% else %}
+        <span class="pill next good">ready to message</span>
+      {% endif %}
+    {% endif %}
+  {% endif %}
+</div>
         </div>
 
         <div class="meta-grid">
           <div class="meta-item">
             <span class="meta-label">Scheduled</span>
             <span class="meta-value">
-              {{ b.booking_datetime.strftime("%a %b %d, %Y %I:%M %p") if b.booking_datetime else "—" }}
+              {% if b.booking_datetime %}
+  <span class="js-local-dt" data-utc="{{ b.booking_datetime.isoformat() }}"></span>
+{% else %}
+  —
+{% endif %}
             </span>
           </div>
 
@@ -339,18 +361,22 @@
           <div class="meta-item">
             <span class="meta-label">Requested</span>
             <span class="meta-value">
-              {{ b.created_at.strftime("%b %d, %Y %I:%M %p") if b.created_at else "—" }}
+              {% if b.created_at %}
+  <span class="js-local-dt" data-utc="{{ b.created_at.isoformat() }}"></span>
+{% else %}
+  —
+{% endif %}
             </span>
           </div>
 
           <div class="meta-item">
             <span class="meta-label">Paid</span>
             <span class="meta-value">
-              {% if b.payment_status == "paid" and b.paid_at %}
-                {{ b.paid_at.strftime("%b %d, %Y %I:%M %p") }}
-              {% else %}
-                —
-              {% endif %}
+              {% if b.paid_at %}
+  <span class="js-local-dt" data-utc="{{ b.paid_at.isoformat() }}"></span>
+{% else %}
+  —
+{% endif %}
             </span>
           </div>
         </div>
@@ -374,15 +400,33 @@
 
         <div class="actions">
           <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-            {% if b.payment_status == "paid" %}
-              <a class="btn secondary" href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">Message</a>
-              <a class="btn ghost" href="{{ url_for('main.service_detail', service_id=b.service.id) }}">View</a>
-              
-            {% else %}
-              <a class="btn" href="{{ url_for('main.checkout', booking_id=b.id) }}">Checkout</a>
-              <span class="hint">Pay to unlock messaging.</span>
-              <a class="btn ghost" href="{{ url_for('main.service_detail', service_id=b.service.id) }}">View</a>
-            {% endif %}
+            {# Actions: disable checkout for cancelled/refunded/past sessions #}
+{% set is_refunded = (b.payment_status == "refunded") or ("[REFUND_APPROVED]" in (b.admin_note or "")) %}
+{% set is_past_state = b.status in ["cancelled", "declined", "completed"] %}
+
+{% if b.payment_status == "paid" %}
+  <a class="btn secondary" href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">Message</a>
+  <a class="btn ghost" href="{{ url_for('main.service_detail', service_id=b.service.id) }}">View</a>
+
+{% else %}
+  {% if is_refunded or is_past_state %}
+    <button class="btn" type="button" disabled style="opacity:.6; cursor:not-allowed;">
+      Checkout
+    </button>
+    <span class="hint">
+      {% if is_refunded %}
+        Refunded sessions cannot be checked out.
+      {% else %}
+        Cancelled/declined sessions cannot be checked out.
+      {% endif %}
+    </span>
+    <a class="btn ghost" href="{{ url_for('main.service_detail', service_id=b.service.id) }}">View</a>
+  {% else %}
+    <a class="btn" href="{{ url_for('main.checkout', booking_id=b.id) }}">Checkout</a>
+    <span class="hint">Pay to unlock messaging.</span>
+    <a class="btn ghost" href="{{ url_for('main.service_detail', service_id=b.service.id) }}">View</a>
+  {% endif %}
+{% endif %}
           </div>
 
           {# Refund button (paid only) #}
@@ -670,6 +714,37 @@
 
   updateCounts();
   applyFilter("upcoming");
+
+    // ===== Local datetime rendering (browser local timezone) =====
+  function toDate(iso) {
+    if (!iso) return null;
+
+    // If server sends naive ISO (no timezone), treat as UTC by appending "Z"
+    const hasTZ = /[zZ]|[+-]\d\d:\d\d$/.test(iso);
+    const normalized = hasTZ ? iso : (iso + "Z");
+    const d = new Date(normalized);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function fmt(d) {
+    return new Intl.DateTimeFormat(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    }).format(d);
+  }
+
+  document.querySelectorAll(".js-local-dt").forEach((el) => {
+    const iso = el.getAttribute("data-utc");
+    const d = toDate(iso);
+    el.textContent = d ? fmt(d) : "—";
+  });
+  // ===== end local datetime rendering =====
+
+
 })();
 </script>
 {% endblock %}

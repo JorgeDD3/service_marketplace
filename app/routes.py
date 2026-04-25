@@ -441,6 +441,24 @@ def book_service(service_id: int):
 def checkout(booking_id: int):
     booking = Booking.query.get_or_404(booking_id)
 
+        # Block checkout for cancelled/declined/completed/refunded OR refund-pending sessions (server-side safety)
+    note = (booking.admin_note or "")
+
+    is_refunded = (getattr(booking, "payment_status", "") == "refunded") or ("[REFUND_APPROVED]" in note)
+    is_refund_pending = note.startswith("[REFUND_REQUEST]")
+    is_past_state = (booking.status or "").lower() in ["cancelled", "declined", "completed"]
+
+    if is_refunded or is_refund_pending or is_past_state:
+        if is_refunded:
+            msg = "Checkout is not available for refunded sessions."
+        elif is_refund_pending:
+            msg = "Checkout is disabled while a refund request is pending review."
+        else:
+            msg = "Checkout is not available for cancelled/declined/completed sessions."
+
+        flash(msg, "warning")
+        return redirect(url_for("main.my_bookings"))
+
     # Only booking participants can access checkout (admins too)
     is_admin = current_user.is_authenticated and current_user.has_role("admin")
     if (current_user.id not in (booking.client_id, booking.provider_id)) and not is_admin:
