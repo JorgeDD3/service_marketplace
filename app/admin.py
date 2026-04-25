@@ -237,6 +237,8 @@ def bookings():
     return render_template("admin/bookings.html", bookings=bookings)
 
 
+# app/admin.py
+
 @admin_bp.route("/refunds")
 @login_required
 @role_required("admin")
@@ -244,7 +246,7 @@ def refund_requests():
     """
     Admin: Refund Requests queue.
     A booking appears here when [REFUND_REQUEST] exists in Booking.admin_note.
-    Supports search across booking id, service title, client/provider emails.
+    Supports search across booking id, service title, client/provider emails, and note.
     """
     from flask import request, render_template
     from sqlalchemy import or_, cast
@@ -252,17 +254,13 @@ def refund_requests():
 
     q = (request.args.get("q") or "").strip()
 
-    # Base query: refund requests are recorded in admin_note
+    # Base query: DO NOT join User twice (causes ambiguous users.id in SQLite).
+    # Keep Service join (safe) + use relationship filters for emails.
     query = (
         Booking.query
         .outerjoin(Service, Booking.service_id == Service.id)
-        .outerjoin(User, Booking.client_id == User.id)
-        .outerjoin(User, Booking.provider_id == User.id)  # harmless if same alias isn't required in your setup
+        .filter(Booking.admin_note.ilike("%[REFUND_REQUEST]%"))
     )
-
-    # If your Booking model has relationships (b.service, b.client, b.provider),
-    # the joins above are not strictly required, but they help filtering.
-    query = query.filter(Booking.admin_note.ilike("%[REFUND_REQUEST]%"))
 
     if q:
         like = f"%{q}%"
@@ -271,41 +269,109 @@ def refund_requests():
                 cast(Booking.id, String).ilike(like),
                 Service.title.ilike(like),
                 Booking.admin_note.ilike(like),
-                # Use relationship-safe access if you have it; otherwise fall back to ids
+
+                # Search emails safely via relationships (no joins needed)
+                Booking.client.has(User.email.ilike(like)),
+                Booking.provider.has(User.email.ilike(like)),
+
+                # Also allow searching raw ids
                 cast(Booking.client_id, String).ilike(like),
                 cast(Booking.provider_id, String).ilike(like),
             )
         )
 
-        # If you DO have relationships and emails in User, uncomment this instead of the id filters:
-        # query = query.filter(or_(
-        #     cast(Booking.id, String).ilike(like),
-        #     Service.title.ilike(like),
-        #     Booking.admin_note.ilike(like),
-        #     Booking.client.has(User.email.ilike(like)),
-        #     Booking.provider.has(User.email.ilike(like)),
-        # ))
-
     total = query.count()
 
     bookings = (
-        query
-        .order_by(
+        query.order_by(
             Booking.admin_action_at.desc().nullslast(),
-            Booking.created_at.desc()
-        )
-        .all()
+            Booking.created_at.desc(),
+        ).all()
     )
 
     return render_template(
         "admin/refund_requests.html",
         bookings=bookings,
         total=total,
-        q=q
+        q=q,
     )
 
 
+@admin_bp.route("/refunds/<int:booking_id>/decision", methods=["POST"])
+@login_required
+@role_required("admin")
+def decide_refund_request(booking_id: int):
+    """
+    Admin decision on a refund request.
+    Records decision using existing fields ONLY (NO ERD changes).
 
+    Approve:
+      - marks payment_status = 'refunded' (if field exists)
+      - cancels booking if still pending/accepted
+      - appends audit line to admin_note
+
+    Deny:
+      - appends audit line to admin_note
+    """
+    booking = Booking.query.get_or_404(booking_id)
+
+    current_note = (booking.admin_note or "").strip()
+    if "[REFUND_REQUEST]" not in current_note:
+        flash("This booking does not have an open refund request.", "warning")
+        return redirect(url_for("admin.refund_requests"))
+
+    decision = (request.form.get("decision") or "").strip().lower()
+    admin_reason = (request.form.get("admin_reason") or "").strip()
+
+    if decision not in {"approve", "deny"}:
+        flash("Invalid refund decision.", "danger")
+        return redirect(url_for("admin.refund_requests"))
+
+    if not admin_reason:
+        flash("Admin decision note is required.", "danger")
+        return redirect(url_for("admin.refund_requests"))
+
+    # Prevent double-processing
+    existing = current_note
+    if decision == "approve" and "[REFUND_APPROVED]" in existing:
+        flash("This refund request was already approved.", "warning")
+        return redirect(url_for("admin.refund_requests"))
+    if decision == "deny" and "[REFUND_DENIED]" in existing:
+        flash("This refund request was already denied.", "warning")
+        return redirect(url_for("admin.refund_requests"))
+
+    timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+
+    if decision == "approve":
+        # Cancel booking if still active-ish so it drops off provider “upcoming/active” views
+        if getattr(booking, "status", None) in ["pending", "accepted"]:
+            booking.status = "cancelled"
+
+        # Mark payment as refunded if your schema has payment_status
+        if hasattr(booking, "payment_status"):
+            booking.payment_status = "refunded"
+
+        decision_line = f"[REFUND_APPROVED] {timestamp} — {admin_reason}"
+        flash_message = "Refund request approved and marked as refunded."
+    else:
+        decision_line = f"[REFUND_DENIED] {timestamp} — {admin_reason}"
+        flash_message = "Refund request denied."
+
+    # Append to admin_note for audit trail
+    updated_note = current_note + ("\n" if current_note else "") + decision_line
+    booking.admin_note = updated_note
+
+    # Timestamp admin action
+    if hasattr(booking, "admin_action_at"):
+        booking.admin_action_at = datetime.utcnow()
+
+    # Optional: if your schema has decided_at, stamp it too
+    if hasattr(booking, "decided_at"):
+        booking.decided_at = datetime.utcnow()
+
+    db.session.commit()
+    flash(flash_message, "success")
+    return redirect(url_for("admin.refund_requests"))
 
 @admin_bp.route("/bookings/<int:booking_id>/force-cancel", methods=["POST"])
 @login_required

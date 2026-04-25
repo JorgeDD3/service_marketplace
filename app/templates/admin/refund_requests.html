@@ -12,7 +12,7 @@
           <div class="text-muted small mb-1">Admin Console</div>
           <h1 class="h3 mb-1">Refund Requests</h1>
           <div class="text-muted">
-            Review client refund/cancel requests and decide whether admin intervention is required.
+            Review refund/cancel requests. Open a request to approve or deny with an audit note.
           </div>
         </div>
 
@@ -25,7 +25,7 @@
     </div>
   </div>
 
-  <!-- Top row: Search + Summary -->
+  <!-- Search + Summary -->
   <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
     <div class="card-body py-3">
       <div class="row g-2 align-items-end">
@@ -41,7 +41,7 @@
             onkeydown="if(event.key==='Enter'){applyRefundSearch();}"
           />
           <div class="form-text small">
-            Refund requests are detected when <code>[REFUND_REQUEST]</code> is present in the booking admin note.
+            Requests are detected when <code>[REFUND_REQUEST]</code> is present in the booking admin note.
           </div>
         </div>
 
@@ -65,7 +65,7 @@
           <div class="d-flex align-items-center justify-content-between px-3 py-3 border-bottom">
             <div class="fw-semibold">Refund queue</div>
             <div class="text-muted small">
-              Open each booking to review context and take action.
+              Click <strong>Review</strong> to open a decision modal.
             </div>
           </div>
 
@@ -74,30 +74,65 @@
               <table class="table mb-0 align-middle" style="min-width: 980px;">
                 <thead class="table-light" style="position: sticky; top: 0; z-index: 2;">
                   <tr>
-                    <th class="ps-3" style="width: 36%;">Booking</th>
-                    <th style="width: 28%;">Client / Provider</th>
-                    <th style="width: 18%;">Requested</th>
-                    <th style="width: 18%;">Created</th>
+                    <th class="ps-3" style="width: 42%;">Booking</th>
+                    <th style="width: 26%;">Client / Provider</th>
+                    <th style="width: 16%;">Requested</th>
+                    <th style="width: 16%;">Created</th>
                     <th class="text-end pe-3" style="width: 1%;">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {% for b in bookings %}
+                    {% set service_title = (b.service.title if b.service else "Service") %}
+                    {% set client_label = (b.client.email if b.client else b.client_id) %}
+                    {% set provider_label = (b.provider.email if b.provider else b.provider_id) %}
+                    {% set admin_note_full = (b.admin_note or "") %}
+
+                    {# Refund state (UI-only; no ERD changes) #}
+                    {% set refund_state = "requested" %}
+                    {% if b.payment_status is defined and b.payment_status == "refunded" %}
+                      {% set refund_state = "refunded" %}
+                    {% elif "[REFUND_APPROVED]" in admin_note_full %}
+                      {% set refund_state = "approved" %}
+                    {% elif "[REFUND_DENIED]" in admin_note_full %}
+                      {% set refund_state = "denied" %}
+                    {% endif %}
+
                     <tr>
                       <!-- Booking -->
                       <td class="ps-3">
                         <div class="d-flex align-items-start justify-content-between gap-2">
-                          <div>
-                            <div class="fw-semibold">
-                              {{ b.service.title if b.service else "Service" }}
+                          <div style="min-width: 0;">
+                            <div class="fw-semibold text-truncate" style="max-width: 520px;">
+                              {{ service_title }}
                               <span class="text-muted">#{{ b.id }}</span>
                             </div>
-                            <div class="small text-muted mt-1">
-                              <span class="badge bg-warning text-dark me-2">Refund request</span>
-                              {% if b.admin_note %}
-                                <span title="{{ b.admin_note }}">{{ b.admin_note|truncate(110) }}</span>
+
+                            <div class="small text-muted mt-1 d-flex align-items-center gap-2 flex-wrap">
+                              <span class="badge bg-warning text-dark">Refund request</span>
+
+                              {# Booking lifecycle status #}
+                              {% if b.status %}
+                                <span class="badge bg-light text-dark border">Status: {{ b.status }}</span>
+                              {% endif %}
+
+                              {# Refund decision status #}
+                              {% if refund_state == "refunded" %}
+                                <span class="badge bg-success">Refund: refunded</span>
+                              {% elif refund_state == "approved" %}
+                                <span class="badge bg-success">Refund: approved</span>
+                              {% elif refund_state == "denied" %}
+                                <span class="badge bg-danger">Refund: denied</span>
                               {% else %}
-                                <span>—</span>
+                                <span class="badge bg-secondary">Refund: pending</span>
+                              {% endif %}
+
+                              {% if admin_note_full %}
+                                <span class="text-muted" title="{{ admin_note_full }}">
+                                  {{ admin_note_full|truncate(95) }}
+                                </span>
+                              {% else %}
+                                <span class="text-muted">—</span>
                               {% endif %}
                             </div>
                           </div>
@@ -107,13 +142,13 @@
                       <!-- Client / Provider -->
                       <td>
                         <div class="small">
-                          <div>
+                          <div class="text-truncate" style="max-width: 260px;">
                             <span class="text-muted">Client:</span>
-                            <span class="fw-semibold">{{ b.client.email if b.client else b.client_id }}</span>
+                            <span class="fw-semibold">{{ client_label }}</span>
                           </div>
-                          <div class="mt-1">
+                          <div class="mt-1 text-truncate" style="max-width: 260px;">
                             <span class="text-muted">Provider:</span>
-                            <span class="fw-semibold">{{ b.provider.email if b.provider else b.provider_id }}</span>
+                            <span class="fw-semibold">{{ provider_label }}</span>
                           </div>
                         </div>
                       </td>
@@ -141,9 +176,28 @@
                       <!-- Action -->
                       <td class="text-end pe-3">
                         <div class="d-flex justify-content-end gap-2 flex-wrap">
-                          <a class="btn btn-sm btn-outline-primary"
+                          <button
+                            type="button"
+                            class="btn btn-sm btn-primary"
+                            data-bs-toggle="modal"
+                            data-bs-target="#refundModal"
+                            data-booking-id="{{ b.id }}"
+                            data-service-title="{{ service_title|e }}"
+                            data-client="{{ client_label|e }}"
+                            data-provider="{{ provider_label|e }}"
+                            data-status="{{ (b.status or '')|e }}"
+                            data-refund-state="{{ refund_state|e }}"
+                            data-booking-datetime="{{ (b.booking_datetime.strftime('%b %d, %Y %I:%M %p') if b.booking_datetime else '')|e }}"
+                            data-created="{{ (b.created_at.strftime('%b %d, %Y %I:%M %p') if b.created_at else '')|e }}"
+                            data-requested="{{ (b.admin_action_at.strftime('%b %d, %Y %I:%M %p') if b.admin_action_at else '')|e }}"
+                            data-admin-note="{{ admin_note_full|e }}"
+                          >
+                            Review
+                          </button>
+
+                          <a class="btn btn-sm btn-outline-secondary"
                              href="{{ url_for('admin.bookings') }}?q={{ b.id }}">
-                            Open →
+                            View in Bookings
                           </a>
                         </div>
                       </td>
@@ -154,7 +208,7 @@
             </div>
 
             <div class="px-3 py-2 border-top small text-muted">
-              Tip: In <strong>Bookings</strong>, enable “Show refund requests only” to process these quickly.
+              Tip: Use <strong>Review</strong> to approve/deny directly, or open the booking console for deeper context.
             </div>
 
           {% else %}
@@ -182,8 +236,8 @@
         <div class="card-body py-3">
           <div class="fw-semibold mb-2">What counts as a refund request?</div>
           <div class="text-muted small">
-            This queue includes bookings where the client requested a refund/cancel action and the system
-            logged <code>[REFUND_REQUEST]</code> in the booking’s admin note.
+            This queue includes bookings where the system logged <code>[REFUND_REQUEST]</code>
+            in the booking’s admin note.
           </div>
         </div>
       </div>
@@ -192,10 +246,10 @@
         <div class="card-body py-3">
           <div class="fw-semibold mb-2">Recommended workflow</div>
           <ol class="small text-muted mb-3 ps-3" style="line-height: 1.55;">
-            <li class="mb-1">Open the booking in the Bookings console.</li>
-            <li class="mb-1">Review service context, notes, and conversation.</li>
-            <li class="mb-1">If appropriate, force-cancel pending/accepted bookings with an admin note.</li>
-            <li>Leave a clear reason for auditability.</li>
+            <li class="mb-1">Click <strong>Review</strong> to view details.</li>
+            <li class="mb-1">Approve or deny with a clear admin reason.</li>
+            <li class="mb-1">Use the Bookings console for deeper context if needed.</li>
+            <li>Keep notes clean for auditability.</li>
           </ol>
 
           <div class="d-grid gap-2">
@@ -214,6 +268,110 @@
 
 </div>
 
+<!-- Refund Review Modal -->
+<div class="modal fade" id="refundModal" tabindex="-1" aria-labelledby="refundModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content" style="border-radius: 18px;">
+      <div class="modal-header">
+        <div>
+          <div class="text-muted small">Refund Request</div>
+          <h5 class="modal-title" id="refundModalLabel" style="margin: 0;">
+            Review booking
+          </h5>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+          <div style="min-width: 0;">
+            <div class="h5 mb-1" id="m_serviceTitle">Service</div>
+            <div class="text-muted small d-flex align-items-center gap-2 flex-wrap">
+              <span>Booking <span class="fw-semibold" id="m_bookingId">#—</span></span>
+              <span class="badge bg-light text-dark border" id="m_bookingStatusPill">Status: —</span>
+              <span class="badge bg-secondary" id="m_refundPill">Refund: pending</span>
+            </div>
+          </div>
+        </div>
+
+        <hr class="my-3"/>
+
+        <div class="row g-3">
+          <div class="col-12 col-lg-6">
+            <div class="border rounded-3 p-3 h-100">
+              <div class="fw-semibold mb-2">People</div>
+              <div class="small">
+                <div class="mb-1"><span class="text-muted">Client:</span> <span class="fw-semibold" id="m_client">—</span></div>
+                <div><span class="text-muted">Provider:</span> <span class="fw-semibold" id="m_provider">—</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-lg-6">
+            <div class="border rounded-3 p-3 h-100">
+              <div class="fw-semibold mb-2">Timing</div>
+              <div class="small">
+                <div class="mb-1"><span class="text-muted">Service time:</span> <span class="fw-semibold" id="m_bookingDatetime">—</span></div>
+                <div class="mb-1"><span class="text-muted">Requested:</span> <span class="fw-semibold" id="m_requested">—</span></div>
+                <div><span class="text-muted">Created:</span> <span class="fw-semibold" id="m_created">—</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="border rounded-3 p-3">
+              <div class="fw-semibold mb-2">Request note</div>
+              <div class="small text-muted" style="white-space: pre-wrap;" id="m_adminNote">—</div>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label fw-semibold">Admin decision note</label>
+            <textarea
+              id="m_adminReason"
+              class="form-control"
+              rows="3"
+              placeholder="Explain why you approved/denied (for audit trail)..."
+            ></textarea>
+            <div class="form-text">
+              This will be appended to <code>bookings.admin_note</code> and timestamped with <code>admin_action_at</code>.
+            </div>
+            <div class="small text-muted mt-2" id="m_lockedHint" style="display:none;">
+              This request has already been processed. Decisions are locked.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer d-flex justify-content-between gap-2 flex-wrap">
+        <div class="d-flex gap-2 flex-wrap">
+          <a class="btn btn-outline-secondary" id="m_viewBookingLink" href="#">
+            View in Bookings
+          </a>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+          <form id="m_denyForm" method="POST" action="#">
+            <input type="hidden" name="decision" value="deny">
+            <input type="hidden" name="admin_reason" id="m_denyReason">
+            <button type="submit" class="btn btn-outline-danger" id="m_denyBtn" onclick="return injectReason('deny');">
+              Deny
+            </button>
+          </form>
+
+          <form id="m_approveForm" method="POST" action="#">
+            <input type="hidden" name="decision" value="approve">
+            <input type="hidden" name="admin_reason" id="m_approveReason">
+            <button type="submit" class="btn btn-success" id="m_approveBtn" onclick="return injectReason('approve');">
+              Approve
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
   function applyRefundSearch() {
     const q = (window._refundQ || "").trim();
@@ -222,5 +380,101 @@
     else url.searchParams.delete("q");
     window.location.href = url.toString();
   }
+
+  function injectReason(which) {
+    const approveBtn = document.getElementById("m_approveBtn");
+    const denyBtn = document.getElementById("m_denyBtn");
+    if (approveBtn.disabled || denyBtn.disabled) {
+      return false;
+    }
+
+    const reason = (document.getElementById("m_adminReason").value || "").trim();
+    if (!reason) {
+      alert("Please enter an admin decision note (required).");
+      return false;
+    }
+    if (which === "approve") {
+      document.getElementById("m_approveReason").value = reason;
+    } else {
+      document.getElementById("m_denyReason").value = reason;
+    }
+    return true;
+  }
+
+  function setRefundPill(state) {
+    const pill = document.getElementById("m_refundPill");
+    pill.className = "badge"; // reset
+    if (state === "refunded") {
+      pill.classList.add("bg-success");
+      pill.textContent = "Refund: refunded";
+    } else if (state === "approved") {
+      pill.classList.add("bg-success");
+      pill.textContent = "Refund: approved";
+    } else if (state === "denied") {
+      pill.classList.add("bg-danger");
+      pill.textContent = "Refund: denied";
+    } else {
+      pill.classList.add("bg-secondary");
+      pill.textContent = "Refund: pending";
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const modal = document.getElementById("refundModal");
+    if (!modal) return;
+
+    modal.addEventListener("show.bs.modal", function (event) {
+      const btn = event.relatedTarget;
+      if (!btn) return;
+
+      const bookingId = btn.getAttribute("data-booking-id") || "";
+      const serviceTitle = btn.getAttribute("data-service-title") || "Service";
+      const client = btn.getAttribute("data-client") || "—";
+      const provider = btn.getAttribute("data-provider") || "—";
+      const status = btn.getAttribute("data-status") || "—";
+      const refundState = btn.getAttribute("data-refund-state") || "requested";
+      const bookingDatetime = btn.getAttribute("data-booking-datetime") || "—";
+      const created = btn.getAttribute("data-created") || "—";
+      const requested = btn.getAttribute("data-requested") || "—";
+      const adminNote = btn.getAttribute("data-admin-note") || "—";
+
+      document.getElementById("m_serviceTitle").textContent = serviceTitle;
+      document.getElementById("m_bookingId").textContent = "#" + bookingId;
+      document.getElementById("m_client").textContent = client;
+      document.getElementById("m_provider").textContent = provider;
+      document.getElementById("m_bookingDatetime").textContent = bookingDatetime;
+      document.getElementById("m_created").textContent = created;
+      document.getElementById("m_requested").textContent = requested;
+      document.getElementById("m_adminNote").textContent = adminNote || "—";
+
+      const bookingStatusEl = document.getElementById("m_bookingStatusPill");
+      bookingStatusEl.textContent = "Status: " + (status || "—");
+
+      setRefundPill(refundState);
+
+      // Reset reason box each open
+      const reasonBox = document.getElementById("m_adminReason");
+      reasonBox.value = "";
+
+      // Wire forms to the decision endpoint
+      const decisionUrl = "{{ url_for('admin.decide_refund_request', booking_id=0) }}".replace("/0/", "/" + bookingId + "/");
+      document.getElementById("m_approveForm").action = decisionUrl;
+      document.getElementById("m_denyForm").action = decisionUrl;
+
+      // Wire bookings console link
+      const bookingLink = "{{ url_for('admin.bookings') }}?q=" + encodeURIComponent(bookingId);
+      document.getElementById("m_viewBookingLink").href = bookingLink;
+
+      // Lock buttons if already processed
+      const approveBtn = document.getElementById("m_approveBtn");
+      const denyBtn = document.getElementById("m_denyBtn");
+      const lockedHint = document.getElementById("m_lockedHint");
+
+      const processed = (refundState === "approved" || refundState === "denied" || refundState === "refunded");
+      approveBtn.disabled = processed;
+      denyBtn.disabled = processed;
+      lockedHint.style.display = processed ? "block" : "none";
+    });
+  });
 </script>
 {% endblock %}
