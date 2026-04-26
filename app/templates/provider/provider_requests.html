@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}Provider: Service Requests{% endblock %}
+
+{% block content %}
+<div class="container-dashboard" style="max-width: 1400px;">
+
+  <!-- Header -->
+  <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
+    <div class="card-body py-3">
+      <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+        <div>
+          <div class="text-muted small mb-1">Provider Console</div>
+          <h1 class="h3 mb-1">Client Service Requests</h1>
+          <div class="text-muted">
+            Browse what clients are asking for. Use this to decide what services to add next.
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('provider.dashboard') }}">
+            ← Back to Dashboard
+          </a>
+          <a class="btn btn-sm btn-primary" href="{{ url_for('provider.services') }}">
+            Create a Service
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search + count -->
+  <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
+    <div class="card-body py-3">
+      <div class="row g-2 align-items-center">
+        <div class="col-12 col-lg-8">
+          <label class="form-label small text-muted mb-1" for="reqSearch">Search</label>
+          <input id="reqSearch"
+                 type="text"
+                 class="form-control"
+                 placeholder="Search by subject or description…"
+                 autocomplete="off">
+          <div class="form-text small">Tip: Search is instant and doesn’t hit the server.</div>
+        </div>
+        <div class="col-12 col-lg-4">
+          <div class="d-flex gap-2 justify-content-lg-end flex-wrap">
+            <span class="badge bg-light text-dark border align-self-center">
+              Open: <span id="cntTotal">{{ (requests or [])|length }}</span>
+            </span>
+            <span class="badge bg-light text-dark border align-self-center">
+              Showing: <span id="cntShowing">0</span>
+            </span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="reqClear">Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if not requests %}
+    <div class="card border-0 shadow-sm" style="border-radius: 18px;">
+      <div class="card-body py-3">
+        <div class="fw-semibold">No open service requests right now</div>
+        <div class="text-muted small">
+          When clients submit requests, they will appear here.
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="d-flex flex-column gap-2">
+      {% for r in requests %}
+        {% set req_title = (r.subject or 'Untitled request') %}
+        {% set desc = (r.description or '') %}
+        {% set is_long = desc|length > 220 %}
+        {% set created_str = (r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "—") %}
+
+        {# Keep provider-side PII minimal: show first name + last initial if possible #}
+        {% set requester_name = (
+          (r.client.first_name ~ ' ' ~ (r.client.last_name[:1] ~ '.'))|trim
+          if r.client and r.client.first_name and r.client.last_name
+          else (r.client.first_name if r.client and r.client.first_name else "Client")
+        ) %}
+
+        <div class="card shadow-sm border-0 req-row"
+             style="border-radius: 18px;"
+             data-search="{{ (req_title ~ ' ' ~ desc)|lower }}">
+
+          <div class="card-body py-3">
+            <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+
+              <div class="flex-grow-1">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <div class="fw-semibold">{{ req_title }}</div>
+                  <span class="badge bg-info-subtle text-info border">Open</span>
+                  <span class="text-muted small">#{{ r.id }}</span>
+                </div>
+
+                <div class="text-muted small mt-1">
+                  <span class="me-3">
+                    <span class="text-muted">Requested by:</span>
+                    <span class="fw-semibold">{{ requester_name }}</span>
+                  </span>
+                  <span class="me-3">
+                    <span class="text-muted">Created:</span>
+                    {{ created_str }}
+                  </span>
+                </div>
+
+                {% if desc %}
+                  <div class="text-muted small mt-2">
+                    {{ desc[:220] }}{% if is_long %}…{% endif %}
+                    {% if is_long %}
+                      <button class="btn btn-sm btn-link p-0 ms-1 align-baseline"
+                              type="button"
+                              data-bs-toggle="collapse"
+                              data-bs-target="#reqDesc{{ r.id }}"
+                              aria-expanded="false"
+                              aria-controls="reqDesc{{ r.id }}"
+                              data-toggle-text
+                              data-target-id="reqDesc{{ r.id }}">
+                        Show more
+                      </button>
+                    {% endif %}
+                  </div>
+
+                  {% if is_long %}
+                    <div class="collapse mt-2" id="reqDesc{{ r.id }}">
+                      <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
+                        <div class="card-body py-2">
+                          <div class="small" style="white-space: pre-wrap;">{{ desc }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  {% endif %}
+                {% endif %}
+              </div>
+
+              <div class="flex-shrink-0" style="min-width: 260px;">
+                <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
+                  <div class="card-body py-2">
+                    <div class="text-muted small mb-2">Next step</div>
+                    <div class="small text-muted mb-2">
+                      If you offer this, add a new service listing.
+                    </div>
+                    <a class="btn btn-sm btn-primary w-100" href="{{ url_for('provider.services') }}">
+                      Create service
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+
+<script>
+(function () {
+  const search = document.getElementById('reqSearch');
+  const clearBtn = document.getElementById('reqClear');
+  const rows = Array.from(document.querySelectorAll('.req-row'));
+  const showingEl = document.getElementById('cntShowing');
+
+  // toggle show more/less
+  document.querySelectorAll('[data-toggle-text]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-target-id');
+      if (!targetId) return;
+      const targetEl = document.getElementById(targetId);
+      if (!targetEl) return;
+
+      setTimeout(() => {
+        btn.textContent = targetEl.classList.contains('show') ? 'Show less' : 'Show more';
+      }, 20);
+    });
+  });
+
+  function applyFilter() {
+    const q = (search?.value || '').trim().toLowerCase();
+    let shown = 0;
+    rows.forEach((row) => {
+      const hay = row.dataset.search || '';
+      const match = !q || hay.includes(q);
+      row.style.display = match ? '' : 'none';
+      if (match) shown += 1;
+    });
+    if (showingEl) showingEl.textContent = String(shown);
+  }
+
+  applyFilter();
+  search?.addEventListener('input', applyFilter);
+  clearBtn?.addEventListener('click', () => {
+    if (search) search.value = '';
+    search?.focus();
+    applyFilter();
+  });
+})();
+</script>
+{% endblock %}

@@ -5,7 +5,7 @@ import os
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from app.models import ProviderProfile, ProviderAvailability, ProviderVerification
+from app.models import ProviderProfile, ProviderAvailability, ProviderVerification, ServiceRequest
 from app.extensions import db
 from app.decorators import role_required
 
@@ -590,6 +590,7 @@ def time_off():
 @login_required
 @role_required("provider")
 def availability_preset():
+
     profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
     if not profile:
         flash("Create your provider profile before setting availability.", "warning")
@@ -617,3 +618,26 @@ def availability_preset():
 
     flash("Unknown preset.", "danger")
     return redirect(url_for("provider.availability"))
+
+
+@provider.route("/requests")
+@login_required
+@role_required("provider")
+def requests_board():
+    """
+    Provider-facing view of open service requests.
+    Read-only MVP: helps providers see unmet demand and decide what to offer next.
+    """
+    # Open requests only
+    open_statuses = ["open", "active", "pending"]
+    requests_q = (
+        ServiceRequest.query
+        .filter(ServiceRequest.status.in_(open_statuses))
+        .order_by(ServiceRequest.created_at.desc())
+        .all()
+    )
+
+    return render_template(
+        "provider/provider_requests.html",
+        requests=requests_q,
+    )

@@ -4,19 +4,19 @@
 {% block content %}
 <style>
   .container{
-  padding-top: 24px;
-  padding-bottom: 28px;
-  max-width: 1400px;
-  margin: 0 auto;     /* <-- THIS is the missing part */
-}
+    padding-top: 24px;
+    padding-bottom: 28px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
 
   /* One consistent column system for the whole page */
   .services-page {
-    --content-max: 1200px;    /* everything aligns to this */
-    --controls-max: 1040px;   /* filters + quick access align to this */
-    max-width: var(--content-max);
-    margin: 0 auto;
-  }
+  --content-max: 1400px;   /* was 1200 */
+  --controls-max: 1040px;  /* keep controls narrower */
+  max-width: var(--content-max);
+  margin: 0 auto;
+}
 
   .services-hero {
     text-align: center;
@@ -109,11 +109,11 @@
     font-size: 0.95rem;
   }
 
-  /* Quick access aligned to controls, not wider/narrower */
+  /* Quick access aligned to controls */
   .quick-access-wrap {
-    max-width: var(--controls-max);
-    margin: 0 auto 18px auto;
-  }
+  max-width: var(--content-max); /* wider */
+  margin: 0 auto 18px auto;
+}
 
   .quick-access {
     display: flex;
@@ -136,40 +136,92 @@
     padding-right: 16px;
   }
 
-  /* Cards grid: consistent columns + equal heights */
-  .services-grid {
-  display: grid;
-  gap: 18px;
-  align-items: stretch;
-
-  /* Center the whole grid "track" */
-  justify-content: center;
-
-  /* Cards have consistent width and the grid stays centered */
-  grid-template-columns: repeat(3, minmax(320px, 360px));
-}
-
-/* Responsive: 2 columns, still centered */
-@media (max-width: 1200px){
-  .services-grid {
-    grid-template-columns: repeat(2, minmax(320px, 360px));
+  /* Balanced quick access layout */
+  .quick-access-balanced {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 1.35rem 1.5rem;
   }
-}
 
-/* Mobile: 1 column */
-@media (max-width: 768px){
-  .services-grid {
-    grid-template-columns: minmax(0, 1fr);
-    justify-content: stretch;
+  .quick-access-copy {
+    flex: 1 1 auto;
+    min-width: 0;
   }
-}
+
+  .quick-access-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.25rem;
+  }
+
+  .quick-access-text {
+    font-size: 0.98rem;
+    color: #6b7280;
+    line-height: 1.45;
+    margin: 0;
+  }
+
+  .quick-access-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
+  .quick-access-btn {
+    min-width: 180px;
+    height: 46px;
+    border-radius: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 768px) {
+    .quick-access-balanced {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .quick-access-actions {
+      width: 100%;
+      justify-content: stretch;
+      flex-direction: column;
+    }
+
+    .quick-access-btn {
+      width: 100%;
+      min-width: 0;
+    }
+  }
+
+  /* Cards grid: centered tracks + consistent widths */
+  .services-grid {
+    display: grid;
+    gap: 18px;
+    align-items: stretch;
+    justify-content: center;
+    grid-template-columns: repeat(3, minmax(320px, 360px));
+  }
 
   @media (max-width: 1200px){
-    .services-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .services-grid {
+      grid-template-columns: repeat(2, minmax(320px, 360px));
+    }
   }
 
   @media (max-width: 768px){
-    .services-grid { grid-template-columns: 1fr; }
+    .services-grid {
+      grid-template-columns: minmax(0, 1fr);
+      justify-content: stretch;
+    }
   }
 
   .service-card {
@@ -359,12 +411,22 @@
 
   {% if current_user.is_authenticated and current_user.has_role('client') %}
     <div class="quick-access-wrap">
-      <div class="quick-access">
-        <div>
-          <div class="fw-bold">Quick access</div>
-          <div class="text-muted small">View upcoming sessions, checkout, and messages.</div>
+      <div class="quick-access quick-access-balanced">
+        <div class="quick-access-copy">
+          <div class="quick-access-title">Quick access</div>
+          <div class="quick-access-text">
+            View upcoming sessions, checkout, and messages, or request a service if you can’t find what you need.
+          </div>
         </div>
-        <a class="btn btn-primary" href="{{ url_for('main.my_bookings') }}">My Sessions</a>
+
+        <div class="quick-access-actions">
+          <a class="btn btn-primary quick-access-btn" href="{{ url_for('main.my_bookings') }}">
+            My Sessions
+          </a>
+          <a class="btn btn-outline-primary quick-access-btn" href="{{ url_for('main.request_service') }}">
+            Request a Service
+          </a>
+        </div>
       </div>
     </div>
   {% endif %}

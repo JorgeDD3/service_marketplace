@@ -45,7 +45,7 @@
           <input id="reqSearch"
                  type="text"
                  class="form-control"
-                 placeholder="Search by request title, description, or requester email…"
+                 placeholder="Search by subject/title, description, or requester email…"
                  autocomplete="off">
           <div class="form-text small">Tip: search works across both Active and History.</div>
         </div>
@@ -125,13 +125,21 @@
       {% else %}
         <div class="d-flex flex-column gap-2" id="activeList">
           {% for r in active_requests %}
-            {% set requester = (r.user.email if r.user and r.user.email else "—") %}
+            {# IMPORTANT: use safe fallback so we show what user submitted (subject) #}
+            {% set req_title = (r.subject or r.title or 'Untitled request') %}
+            {% set requester_email = (r.client.email if r.client and r.client.email else "—") %}
+{% set requester_name = (
+  (r.client.first_name ~ ' ' ~ r.client.last_name)|trim
+  if r.client and (r.client.first_name or r.client.last_name)
+  else ""
+) %}
             {% set created_str = (r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "—") %}
             {% set desc = (r.description or "") %}
             {% set is_long = desc|length > 220 %}
+
             <div class="card shadow-sm border-0 req-row"
                  style="border-radius: 18px;"
-                 data-search="{{ ((r.title or '') ~ ' ' ~ desc ~ ' ' ~ requester)|lower }}"
+                 data-search="{{ (req_title ~ ' ' ~ desc ~ ' ' ~ requester_name ~ ' ' ~ requester_email)|lower }}"
                  data-section="active">
 
               <div class="card-body py-3">
@@ -140,7 +148,7 @@
                   <!-- Left: request info -->
                   <div class="flex-grow-1">
                     <div class="d-flex flex-wrap align-items-center gap-2">
-                      <div class="fw-semibold">{{ r.title }}</div>
+                      <div class="fw-semibold">{{ req_title }}</div>
 
                       <span class="badge bg-warning-subtle text-warning border">Active</span>
 
@@ -150,7 +158,13 @@
                     <div class="text-muted small mt-1">
                       <span class="me-3">
                         <span class="text-muted">Requested by:</span>
-                        <span class="fw-semibold">{{ requester }}</span>
+<span class="fw-semibold">
+  {% if requester_name %}
+    {{ requester_name }} <span class="text-muted">({{ requester_email }})</span>
+  {% else %}
+    {{ requester_email }}
+  {% endif %}
+</span>
                       </span>
                       <span class="me-3">
                         <span class="text-muted">Created:</span>
@@ -163,23 +177,20 @@
                         {{ desc[:220] }}{% if is_long %}…{% endif %}
                         {% if is_long %}
                           <button class="btn btn-sm btn-link p-0 ms-1 align-baseline"
-                                  type="button"
-                                  data-bs-toggle="collapse"
-                                  data-bs-target="#reqDesc{{ r.id }}"
-                                  aria-expanded="false"
-                                  aria-controls="reqDesc{{ r.id }}"
-                                  onclick="
-                                    const el=document.getElementById('reqDesc{{ r.id }}');
-                                    const btn=this;
-                                    setTimeout(()=>{ btn.textContent = el.classList.contains('show') ? 'Show less' : 'Show more'; }, 10);
-                                  ">
-                            Show more
-                          </button>
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#activeDesc{{ r.id }}"
+        aria-expanded="false"
+        aria-controls="activeDesc{{ r.id }}"
+        data-toggle-text
+        data-target-id="activeDesc{{ r.id }}">
+  Show more
+</button>
                         {% endif %}
                       </div>
 
                       {% if is_long %}
-                        <div class="collapse mt-2" id="reqDesc{{ r.id }}">
+                        <div class="collapse mt-2" id="activeDesc{{ r.id }}">
                           <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
                             <div class="card-body py-2">
                               <div class="small" style="white-space: pre-wrap;">{{ desc }}</div>
@@ -235,13 +246,20 @@
       {% else %}
         <div class="d-flex flex-column gap-2" id="historyList">
           {% for r in closed_requests %}
-            {% set requester = (r.user.email if r.user and r.user.email else "—") %}
+            {% set req_title = (r.subject or r.title or 'Untitled request') %}
+            {% set requester_email = (r.client.email if r.client and r.client.email else "—") %}
+{% set requester_name = (
+  (r.client.first_name ~ ' ' ~ r.client.last_name)|trim
+  if r.client and (r.client.first_name or r.client.last_name)
+  else ""
+) %}
             {% set created_str = (r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "—") %}
             {% set desc = (r.description or "") %}
             {% set is_long = desc|length > 220 %}
+
             <div class="card shadow-sm border-0 req-row"
                  style="border-radius: 18px;"
-                 data-search="{{ ((r.title or '') ~ ' ' ~ desc ~ ' ' ~ requester ~ ' ' ~ (r.status or ''))|lower }}"
+                 data-search="{{ (req_title ~ ' ' ~ desc ~ ' ' ~ requester_name ~ ' ' ~ requester_email ~ ' ' ~ (r.status or ''))|lower }}"
                  data-section="history">
 
               <div class="card-body py-3">
@@ -249,7 +267,7 @@
 
                   <div class="flex-grow-1">
                     <div class="d-flex flex-wrap align-items-center gap-2">
-                      <div class="fw-semibold">{{ r.title }}</div>
+                      <div class="fw-semibold">{{ req_title }}</div>
 
                       <span class="badge bg-secondary-subtle text-secondary border">
                         {{ r.status or 'closed' }}
@@ -261,7 +279,13 @@
                     <div class="text-muted small mt-1">
                       <span class="me-3">
                         <span class="text-muted">Requested by:</span>
-                        <span class="fw-semibold">{{ requester }}</span>
+<span class="fw-semibold">
+  {% if requester_name %}
+    {{ requester_name }} <span class="text-muted">({{ requester_email }})</span>
+  {% else %}
+    {{ requester_email }}
+  {% endif %}
+</span>
                       </span>
                       <span class="me-3">
                         <span class="text-muted">Created:</span>
@@ -276,9 +300,11 @@
                           <button class="btn btn-sm btn-link p-0 ms-1 align-baseline"
         type="button"
         data-bs-toggle="collapse"
-        data-bs-target="#reqDesc{{ r.id }}"
+        data-bs-target="#histDesc{{ r.id }}"
         aria-expanded="false"
-        aria-controls="reqDesc{{ r.id }}">
+        aria-controls="histDesc{{ r.id }}"
+        data-toggle-text
+        data-target-id="histDesc{{ r.id }}">
   Show more
 </button>
                         {% endif %}
@@ -326,15 +352,33 @@
   const rows = Array.from(document.querySelectorAll('.req-row'));
   const showingEl = document.getElementById('cntShowing');
 
+  // Toggle "Show more/less" text (no inline JS, avoids const redeclare warnings)
+  document.querySelectorAll('[data-toggle-text]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-target-id');
+      if (!targetId) return;
+
+      const targetEl = document.getElementById(targetId);
+      if (!targetEl) return;
+
+      // Wait a tick for Bootstrap to toggle the collapse "show" class
+      setTimeout(() => {
+        btn.textContent = targetEl.classList.contains('show') ? 'Show less' : 'Show more';
+      }, 20);
+    });
+  });
+
   function applyFilter() {
     const q = (search?.value || '').trim().toLowerCase();
     let shown = 0;
+
     rows.forEach((row) => {
       const hay = row.dataset.search || '';
       const match = !q || hay.includes(q);
       row.style.display = match ? '' : 'none';
       if (match) shown += 1;
     });
+
     if (showingEl) showingEl.textContent = String(shown);
   }
 

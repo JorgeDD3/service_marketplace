@@ -19,7 +19,7 @@ from flask_login import login_required, current_user
 
 from app.decorators import role_required
 from app.extensions import db
-from app.models import User, Service, Booking, Message, ProviderProfile, ProviderAvailability, ProviderTimeOff
+from app.models import User, Service, Booking, Message, ProviderProfile, ProviderAvailability, ProviderTimeOff, ServiceRequest
 
 main = Blueprint("main", __name__)
 
@@ -523,6 +523,40 @@ def checkout(booking_id: int):
         )
 
     return render_template("checkout.html", booking=booking)
+
+# ---- Client service requests (MVP) ----
+@main.route("/requests/new", methods=["GET", "POST"])
+@login_required
+@role_required("client")
+def request_service():
+    if request.method == "POST":
+        subject = (request.form.get("subject") or "").strip()
+        description = (request.form.get("description") or "").strip()
+
+        if not subject or not description:
+            flash_warning("Subject and description are required.")
+            return render_template("requests_new.html")
+
+        if len(subject) > 150:
+            flash_warning("Subject is too long (max 150 characters).")
+            return render_template("requests_new.html")
+
+        sr = ServiceRequest(
+            client_id=current_user.id,
+            subject=subject,
+            description=description,
+            status="open",
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+
+        db.session.add(sr)
+        db.session.commit()
+
+        flash_success("Service request submitted. An admin will review it.")
+        return redirect(url_for("main.services"))
+
+    return render_template("requests_new.html")
 
 # ---- Client bookings ----
 @main.route("/my/bookings")

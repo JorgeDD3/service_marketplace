@@ -1,18 +1,248 @@
 {% extends "base.html" %}
+{% block title %}Request a Service{% endblock %}
+
 {% block content %}
-<h2>Request a Service</h2>
+<style>
+  .request-page{
+    max-width: 1040px;
+    margin: 0 auto;
+    padding-top: 10px;
+  }
 
-<form method="POST" class="form-card">
-  <div class="form-group">
-    <label for="subject">Subject</label>
-    <input id="subject" name="subject" type="text" required maxlength="150">
+  .request-hero{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap: 16px;
+    margin: 6px 0 18px 0;
+  }
+
+  .request-hero h1{
+    margin:0;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    font-size: 2.1rem;
+    color:#0f172a;
+  }
+
+  .request-hero p{
+    margin:6px 0 0 0;
+    color:#64748b;
+    font-size: 1.02rem;
+  }
+
+  .request-grid{
+    display:grid;
+    grid-template-columns: 1.6fr 0.9fr;
+    gap: 18px;
+    align-items:start;
+  }
+
+  @media (max-width: 992px){
+    .request-grid{ grid-template-columns: 1fr; }
+  }
+
+  .card-panel{
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius: 18px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+    padding: 18px;
+  }
+
+  .card-title{
+    font-weight: 800;
+    font-size: 1.1rem;
+    margin: 0 0 14px 0;
+    color:#0f172a;
+  }
+
+  .form-row{
+    display:grid;
+    gap: 12px;
+  }
+
+  .field label{
+    display:block;
+    font-weight: 700;
+    color:#111827;
+    margin-bottom: 6px;
+  }
+
+  .field .hint{
+    margin-top: 6px;
+    color:#6b7280;
+    font-size: 0.92rem;
+    line-height: 1.35;
+  }
+
+  .field input,
+  .field textarea{
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    padding: 12px 12px;
+    background: #fff;
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+
+  .field input{ height: 48px; }
+
+  .field textarea{
+    min-height: 160px;
+    resize: vertical;
+  }
+
+  .field input:focus,
+  .field textarea:focus{
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37,99,235,0.14);
+  }
+
+  .actions{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  @media (max-width: 576px){
+    .actions{ flex-direction: column; align-items: stretch; }
+  }
+
+  .btn-primary-lg{
+    height: 46px;
+    border-radius: 12px;
+    font-weight: 800;
+    padding: 0 18px;
+  }
+
+  .btn-ghost{
+    height: 46px;
+    border-radius: 12px;
+    font-weight: 800;
+    padding: 0 18px;
+  }
+
+  .tip{
+    display:flex;
+    gap: 10px;
+    align-items:flex-start;
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+    background: #f8fafc;
+    margin-bottom: 12px;
+  }
+
+  .tip .icon{
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background: rgba(37,99,235,0.12);
+    color: #1d4ed8;
+    font-weight: 900;
+    flex: 0 0 auto;
+  }
+
+  .tip b{ display:block; margin-bottom: 2px; color:#0f172a; }
+  .tip span{ color:#64748b; font-size: 0.95rem; line-height: 1.35; }
+
+  .small-muted{
+    color:#6b7280;
+    font-size: 0.92rem;
+    line-height: 1.35;
+    margin-top: 10px;
+  }
+</style>
+
+<div class="request-page">
+  <div class="request-hero">
+    <div>
+      <h1>Request a Service</h1>
+      <p>Tell us what you need. Providers can use requests to create new offerings.</p>
+    </div>
+
+    <div class="d-none d-md-block">
+      <a class="btn btn-outline-secondary" href="{{ url_for('main.services') }}">← Back to Services</a>
+    </div>
   </div>
 
-  <div class="form-group">
-    <label for="description">Describe what you need</label>
-    <textarea id="description" name="description" rows="6" required></textarea>
-  </div>
+  <div class="request-grid">
+    <!-- Main form -->
+    <div class="card-panel">
+      <div class="card-title">Request details</div>
 
-  <button type="submit">Submit Request</button>
-</form>
+      <form method="POST" class="form-row">
+        <div class="field">
+          <label for="subject">Subject</label>
+          <input
+            id="subject"
+            name="subject"
+            type="text"
+            required
+            maxlength="150"
+            placeholder="Example: Calculus help (integration by parts)"
+          >
+          <div class="hint">Keep it short and specific. This helps providers understand the request quickly.</div>
+        </div>
+
+        <div class="field">
+          <label for="description">Describe what you need</label>
+          <textarea
+            id="description"
+            name="description"
+            rows="7"
+            required
+            placeholder="Include details like goals, preferred day/time, experience level, and any materials you have."
+          ></textarea>
+          <div class="hint">The more context you provide, the faster a provider can decide if they can help.</div>
+        </div>
+
+        <div class="actions">
+          <a class="btn btn-outline-secondary btn-ghost" href="{{ url_for('main.services') }}">Cancel</a>
+          <button type="submit" class="btn btn-primary btn-primary-lg">Submit request</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="card-panel">
+      <div class="card-title">Tips for a great request</div>
+
+      <div class="tip">
+        <div class="icon">1</div>
+        <div>
+          <b>Add a goal</b>
+          <span>“Prepare for Exam 2” or “Fix bugs in my Flask app.”</span>
+        </div>
+      </div>
+
+      <div class="tip">
+        <div class="icon">2</div>
+        <div>
+          <b>Share timing</b>
+          <span>Include preferred days/times (and your timezone if remote).</span>
+        </div>
+      </div>
+
+      <div class="tip">
+        <div class="icon">3</div>
+        <div>
+          <b>Mention constraints</b>
+          <span>Budget range, session length, or any requirements.</span>
+        </div>
+      </div>
+
+      <div class="small-muted">
+        Note: Requests are reviewed by admins for quality and safety. Avoid sharing sensitive personal info.
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
