@@ -50,7 +50,47 @@ def _save_verification_file(file_storage, provider_profile_id: int, kind: str) -
 @login_required
 @role_required("provider")
 def dashboard():
-    return render_template("provider_dashboard.html")
+    from datetime import datetime
+    from app.models import Booking, Service
+
+    now = datetime.utcnow()
+
+    # 1) Pending paid bookings (paid but still pending decision)
+    pending_paid_count = (
+        Booking.query
+        .filter(Booking.provider_id == current_user.id)
+        .filter(Booking.payment_status == "paid")
+        .filter(Booking.status == Booking.STATUS_PENDING)
+        .count()
+    )
+
+    # 2) Upcoming accepted bookings (future)
+    upcoming_count = (
+        Booking.query
+        .filter(Booking.provider_id == current_user.id)
+        .filter(Booking.status == Booking.STATUS_ACCEPTED)
+        .filter(Booking.booking_datetime >= now)
+        .count()
+    )
+
+    # 3) Active services visible to clients
+    profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
+    services_count = 0
+    if profile:
+        services_count = (
+            Service.query
+            .filter(Service.provider_profile_id == profile.id)
+            .filter(Service.is_active.is_(True))
+            .count()
+        )
+
+    return render_template(
+        "provider_dashboard.html",
+        pending_paid_count=pending_paid_count,
+        upcoming_count=upcoming_count,
+        services_count=services_count,
+    )
+
 
 
 @provider.route("/verification", methods=["GET", "POST"])
