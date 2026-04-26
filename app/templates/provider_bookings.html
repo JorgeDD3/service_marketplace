@@ -433,9 +433,9 @@
                     <div class="client-line">Client: {{ b.client.first_name }} {{ b.client.last_name }}</div>
                   </div>
                   <div class="badge-row">
-                    <span class="pb-pill pending">pending</span>
-                    <span class="pb-pill paid">paid</span>
-                  </div>
+  <span class="pb-pill pending">pending</span>
+  <span class="pb-pill paid">paid</span>
+</div>
                 </div>
 
                 <div class="compact-row">
@@ -496,9 +496,9 @@
                   </div>
 
                   <div class="badge-row">
-                    <span class="pb-pill pending">pending</span>
-                    <span class="pb-pill pending">unpaid</span>
-                  </div>
+  <span class="pb-pill pending">pending</span>
+  <span class="pb-pill pending">unpaid</span>
+</div>
                 </div>
 
                 <div class="compact-row" style="margin-top:8px;">
@@ -563,17 +563,29 @@
                 </div>
 
                 <div class="d-flex gap-2 flex-wrap justify-content-end">
-                  <span class="pb-pill {% if b.status in ['declined', 'cancelled'] %}bad{% endif %}">{{ b.status }}</span>
-                  <span class="pb-pill {% if b.payment_status == 'paid' %}paid{% elif b.payment_status != 'paid' %}pending{% endif %}">{{ b.payment_status }}</span>
+  {% set note = (b.admin_note or "") %}
 
-                  {% if b.payment_status == "paid" %}
-                          <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">
-                            Messages
-                          </a>
-                        {% else %}
-                          <span class="client-line">No provider action</span>
-                        {% endif %}
-                </div>
+  <span class="pb-pill {% if b.status in ['declined', 'cancelled'] %}bad{% endif %}">
+    {{ b.status }}
+  </span>
+
+  {% if "[AUTO] Cancelled:" in note %}
+    <span class="pb-pill bad">auto-cancelled</span>
+  {% endif %}
+
+  <span class="pb-pill {% if b.payment_status == 'paid' %}paid{% else %}pending{% endif %}">
+    {{ b.payment_status }}
+  </span>
+
+  {% if b.payment_status == "paid" %}
+    <a class="btn btn-outline-secondary btn-sm"
+       href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">
+      Messages
+    </a>
+  {% else %}
+    <span class="client-line">No provider action</span>
+  {% endif %}
+</div>
               </div>
             {% endfor %}
           </div>

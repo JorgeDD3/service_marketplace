@@ -24,6 +24,20 @@ from app.models import User, Service, Booking, Message, ProviderProfile, Provide
 main = Blueprint("main", __name__)
 
 
+def _run_booking_housekeeping():
+    """
+    MVP housekeeping:
+    - Auto-cancel unpaid pending bookings within 24h of start.
+    Called from high-traffic routes so we don't need a background job.
+    """
+    try:
+        Booking.auto_cancel_unpaid_within_hours(hours=24)
+    except Exception:
+        # MVP safety: never break page loads due to housekeeping.
+        # If you want logging later, we can add current_app.logger.exception(...)
+        pass
+
+
 @main.route("/favicon.ico")
 def favicon():
     return send_from_directory(current_app.static_folder, "favicon.ico")
@@ -219,6 +233,9 @@ def provider_public_profile(provider_id: int):
 
 @main.route("/services/<int:service_id>")
 def service_detail(service_id: int):
+    # Auto-cancel unpaid bookings that are now within 24h of start
+    Booking.auto_cancel_unpaid_within_hours(hours=24)
+
     service = Service.query.get_or_404(service_id)
 
     # Block hidden services from public view (admins + owning provider may still view)
@@ -258,6 +275,7 @@ def service_detail(service_id: int):
         active_status=active_status,
         available_slots=available_slots,
     )
+
 
 @main.route("/services/<int:service_id>/inquiry", methods=["POST"])
 @login_required
@@ -361,8 +379,15 @@ def book_service(service_id: int):
         return redirect(url_for("main.service_detail", service_id=service.id))
 
     now = datetime.utcnow().replace(second=0, microsecond=0)
+
     if booking_dt < now:
         flash("That time is in the past. Please choose another slot.", "warning")
+        return redirect(url_for("main.service_detail", service_id=service.id))
+
+    # ✅ Hard lead-time rule: clients must book at least 24 hours in advance
+    min_start = now + timedelta(hours=24)
+    if booking_dt < min_start:
+        flash("Bookings must be scheduled at least 24 hours in advance.", "warning")
         return redirect(url_for("main.service_detail", service_id=service.id))
 
     # Ensure selected slot is still available
@@ -434,7 +459,6 @@ def book_service(service_id: int):
         "success",
     )
     return redirect(url_for("main.checkout", booking_id=booking.id))
-
 
 @main.route("/checkout/<int:booking_id>", methods=["GET", "POST"])
 @login_required
@@ -563,6 +587,9 @@ def request_service():
 @login_required
 @role_required("client")
 def my_bookings():
+    # Auto-cancel unpaid bookings that are now within 24h of start
+    Booking.auto_cancel_unpaid_within_hours(hours=24)
+
     # Hide inquiry-only "pseudo bookings" from the Sessions dashboard.
     # Inquiries are still accessible via Messages.
     inquiry_prefix = "[INQUIRY]"
@@ -578,6 +605,7 @@ def my_bookings():
         .all()
     )
     return render_template("my_bookings.html", bookings=bookings)
+
 
 # ---- Client cancel / refund request ----
 @main.route("/bookings/<int:booking_id>/cancel", methods=["POST"])
@@ -633,6 +661,9 @@ def cancel_booking(booking_id: int):
 @login_required
 @role_required("provider")
 def provider_bookings():
+    # Auto-cancel unpaid bookings that are now within 24h of start
+    Booking.auto_cancel_unpaid_within_hours(hours=24)
+
     profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
     if not profile:
         flash("Create your provider profile before viewing bookings.", "warning")
@@ -645,7 +676,6 @@ def provider_bookings():
         .all()
     )
     return render_template("provider_bookings.html", bookings=bookings)
-
 
 # ---- Provider can update booking status ----
 @main.route("/provider/bookings/<int:booking_id>/status", methods=["POST"])

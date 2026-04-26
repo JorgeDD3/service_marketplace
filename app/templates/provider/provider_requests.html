@@ -20,7 +20,7 @@
           <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('provider.dashboard') }}">
             ← Back to Dashboard
           </a>
-          <a class="btn btn-sm btn-primary" href="{{ url_for('provider.services') }}">
+          <a class="btn btn-sm btn-primary" href="{{ url_for('provider_services.my_services') }}">
             Create a Service
           </a>
         </div>
@@ -141,7 +141,7 @@
                     <div class="small text-muted mb-2">
                       If you offer this, add a new service listing.
                     </div>
-                    <a class="btn btn-sm btn-primary w-100" href="{{ url_for('provider.services') }}">
+                    <a class="btn btn-sm btn-primary w-100" href="{{ url_for('provider_services.my_services') }}">
                       Create service
                     </a>
                   </div>

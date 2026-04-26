@@ -7,15 +7,19 @@
 {% block content %}
 <style>
   :root{
-    --ink:#0b1220;
-    --muted:#64748b;
-    --line:#e5e7eb;
+  --ink:#0b1220;
+  --muted:#64748b;
+  --line:#e5e7eb;
 
-    --blueA:#1d4ed8;  --blueB:#2563eb;
-    --greenA:#059669; --greenB:#10b981;
-    --purpleA:#6d28d9;--purpleB:#7c3aed;
-    --orangeA:#c2410c;--orangeB:#f97316;
-  }
+  --blueA:#1d4ed8;  --blueB:#2563eb;
+  --greenA:#059669; --greenB:#10b981;
+  --purpleA:#6d28d9;--purpleB:#7c3aed;
+  --orangeA:#c2410c;--orangeB:#f97316;
+
+  /* NEW (unique tile colors) */
+  --tealA:#0f766e;  --tealB:#14b8a6;
+  --slateA:#334155; --slateB:#0f172a;
+}
 
   /* Prevent tiny “1–10px” scrollbars from rounding/margins */
   html, body { height: 100%; }
@@ -224,9 +228,11 @@
   }
 
   .bg-blue{   background: linear-gradient(135deg, var(--blueA), var(--blueB)); }
-  .bg-green{  background: linear-gradient(135deg, var(--greenA), var(--greenB)); }
-  .bg-purple{ background: linear-gradient(135deg, var(--purpleA), var(--purpleB)); }
-  .bg-orange{ background: linear-gradient(135deg, var(--orangeA), var(--orangeB)); }
+.bg-green{  background: linear-gradient(135deg, var(--greenA), var(--greenB)); }
+.bg-purple{ background: linear-gradient(135deg, var(--purpleA), var(--purpleB)); }
+.bg-orange{ background: linear-gradient(135deg, var(--orangeA), var(--orangeB)); }
+.bg-teal{   background: linear-gradient(135deg, var(--tealA), var(--tealB)); }
+.bg-slate{  background: linear-gradient(135deg, var(--slateA), var(--slateB)); }
 
   .secondary-grid{
     display:grid;
@@ -269,7 +275,7 @@
   }
 
   .hero{
-  height: 700px;      
+  height: 600px;      
   flex: 0 0 auto;     
   min-height: 0;
   position: relative;
@@ -406,7 +412,7 @@
     </div>
 
     <div class="pd-actions-top">
-      <a class="mini-link" href="{{ url_for('provider.calendar_view') }}">Calendar</a>
+    
       <a class="mini-link" href="{{ url_for('provider.profile') }}">Profile</a>
       <a class="mini-link" href="{{ url_for('provider.settings') }}">Settings</a>
       {% if nav_verification_status != "verified" %}
@@ -422,30 +428,42 @@
         <p>Everything you do day-to-day starts here.</p>
 
         <div class="action-grid">
-          <a class="action bg-blue" href="{{ url_for('main.provider_bookings') }}">
-            <div class="action-title">Bookings</div>
-            <div class="action-text">Review and respond to new booking requests.</div>
-            <div class="action-chip">Open bookings →</div>
-          </a>
+  <a class="action bg-teal" href="{{ url_for('provider.calendar_view') }}">
+    <div class="action-title">Calendar</div>
+    <div class="action-text">View your week with bookings, availability, and time off.</div>
+    <div class="action-chip">Open calendar →</div>
+  </a>
 
-          <a class="action bg-green" href="{{ url_for('messages.inbox') }}">
-            <div class="action-title">Messages</div>
-            <div class="action-text">Keep conversations organized with clients.</div>
-            <div class="action-chip">Go to inbox →</div>
-          </a>
+  <a class="action bg-blue" href="{{ url_for('main.provider_bookings') }}">
+    <div class="action-title">Bookings</div>
+    <div class="action-text">Review and respond to new booking requests.</div>
+    <div class="action-chip">Open bookings →</div>
+  </a>
 
-          <a class="action bg-purple" href="{{ url_for('provider.availability') }}">
-            <div class="action-title">Availability</div>
-            <div class="action-text">Set working hours so clients can book accurately.</div>
-            <div class="action-chip">Edit hours →</div>
-          </a>
+  <a class="action bg-purple" href="{{ url_for('messages.inbox') }}">
+    <div class="action-title">Messages</div>
+    <div class="action-text">Keep conversations organized with clients.</div>
+    <div class="action-chip">Go to inbox →</div>
+  </a>
 
-          <a class="action bg-orange" href="{{ url_for('provider_services.my_services') }}">
-            <div class="action-title">Services</div>
-            <div class="action-text">Create and manage listings clients can browse.</div>
-            <div class="action-chip">Manage services →</div>
-          </a>
-        </div>
+  <a class="action bg-green" href="{{ url_for('provider.availability') }}">
+    <div class="action-title">Availability</div>
+    <div class="action-text">Set working hours so clients can book accurately.</div>
+    <div class="action-chip">Edit hours →</div>
+  </a>
+
+  <a class="action bg-orange" href="{{ url_for('provider_services.my_services') }}">
+    <div class="action-title">Services</div>
+    <div class="action-text">Create and manage listings clients can browse.</div>
+    <div class="action-chip">Manage services →</div>
+  </a>
+
+  <a class="action bg-slate" href="{{ url_for('provider.requests_board') }}">
+    <div class="action-title">Client Requests</div>
+    <div class="action-text">Browse what clients need and plan your next service.</div>
+    <div class="action-chip">View requests →</div>
+  </a>
+</div>
       </div>
 
       <div class="action-grid">

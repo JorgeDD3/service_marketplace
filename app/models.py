@@ -427,6 +427,40 @@ class Booking(db.Model):
             .first()
         )
 
+    @classmethod
+    def auto_cancel_unpaid_within_hours(cls, *, hours: int = 24) -> int:
+        """
+        Auto-cancel unpaid pending bookings that are now within `hours` of the session start.
+        Called from request-handling routes (no background job required).
+        Returns the number of bookings cancelled.
+        """
+        now = datetime.utcnow()
+        cutoff = now + timedelta(hours=hours)
+
+        candidates = (
+            cls.query
+            .filter(cls.status == cls.STATUS_PENDING)
+            .filter(cls.payment_status != "paid")
+            # ✅ Don't touch inquiry pseudo-bookings
+            .filter((cls.provider_note.is_(None)) | (~cls.provider_note.like("[INQUIRY]%")))
+            .filter(cls.booking_datetime <= cutoff)
+            .all()
+        )
+
+        if not candidates:
+            return 0
+
+        for b in candidates:
+            b.status = cls.STATUS_CANCELLED
+            b.decided_at = now
+
+            note = f"[AUTO] Cancelled: unpaid within {hours}h of session."
+            b.admin_note = f"{b.admin_note}\n{note}" if b.admin_note else note
+            b.admin_action_at = now
+
+        db.session.commit()
+        return len(candidates)
+
     def get_or_create_conversation(self):
         """
         Lazy-create the 1:1 conversation for this booking.

@@ -325,7 +325,11 @@
     {% set refund_state = "requested" %}
   {% endif %}
 
-  <span class="status-badge {{ b.status }}">{{ b.status }}</span>
+<span class="status-badge {{ b.status }}">{{ b.status }}</span>
+
+{% if "[AUTO] Cancelled:" in note %}
+  <span class="pill unpaid" title="{{ note }}">auto-cancelled</span>
+{% endif %}
 
   {# Payment/refund pill #}
   {% if refund_state == "requested" %}
