@@ -307,6 +307,8 @@ def settings():
         username=str(current_user.id),
     )
 
+
+
 @provider.route("/availability", methods=["GET", "POST"])
 @login_required
 @role_required("provider")

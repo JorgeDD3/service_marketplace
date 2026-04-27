@@ -4,6 +4,23 @@
 
 {% block content %}
 <style>
+
+.pw-eye {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  cursor: pointer;
+  color: #64748b;
+}
+
+.pw-eye:hover {
+  color: #0b1220;
+}
+
   :root{
     --ink:#0b1220;
     --muted:#64748b;
@@ -364,17 +381,26 @@
             <div class="row g-2">
               <div class="col-12">
                 <label class="form-label fw-semibold mb-1">Current password</label>
-                <input class="form-control" type="password" name="current_password" required>
+                <div class="position-relative">
+  <input class="form-control pe-5" type="password" name="current_password" id="current_password" required>
+  <button type="button" class="pw-eye" data-target="current_password">👁</button>
+</div>
               </div>
 
               <div class="col-md-6">
                 <label class="form-label fw-semibold mb-1">New password</label>
-                <input class="form-control" type="password" name="new_password" minlength="8" required>
+                <div class="position-relative">
+  <input class="form-control pe-5" type="password" name="new_password" id="new_password" minlength="8" required>
+  <button type="button" class="pw-eye" data-target="new_password">👁</button>
+</div>
               </div>
 
               <div class="col-md-6">
                 <label class="form-label fw-semibold mb-1">Confirm new password</label>
-                <input class="form-control" type="password" name="confirm_password" minlength="8" required>
+                <div class="position-relative">
+  <input class="form-control pe-5" type="password" name="confirm_password" id="confirm_password" minlength="8" required>
+  <button type="button" class="pw-eye" data-target="confirm_password">👁</button>
+</div>
               </div>
 
               <div class="col-12 d-flex gap-2 pt-2">
@@ -419,5 +445,20 @@
       });
     }
   })();
+document.querySelectorAll(".pw-eye").forEach(btn => {
+  btn.addEventListener("click", function () {
+    const input = document.getElementById(this.dataset.target);
+    if (!input) return;
+
+    if (input.type === "password") {
+      input.type = "text";
+      this.textContent = "🙈";
+    } else {
+      input.type = "password";
+      this.textContent = "👁";
+    }
+  });
+});
+
 </script>
 {% endblock %}
