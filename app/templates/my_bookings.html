@@ -428,7 +428,19 @@
 
 {% if b.payment_status == "paid" %}
   <a class="btn secondary" href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">Message</a>
-  <a class="btn ghost" href="{{ url_for('main.service_detail', service_id=b.service.id) }}">View</a>
+  <button
+  type="button"
+  class="btn ghost js-view-service"
+  data-bs-toggle="modal"
+  data-bs-target="#servicePreviewModal"
+  data-service-title="{{ (b.service.title or '')|e }}"
+  data-service-price="{{ '%.2f'|format(b.service.price or 0) }}"
+  data-service-duration="{{ b.service.duration_minutes or '' }}"
+  data-service-description="{{ (b.service.description or 'No description provided.')|e }}"
+  data-provider-name="{{ ((b.provider.first_name ~ ' ' ~ b.provider.last_name) if b.provider else '')|e }}"
+>
+  View
+</button>
 
 {% else %}
   {% if is_refunded or is_past_state %}
@@ -442,11 +454,35 @@
         Cancelled/declined sessions cannot be checked out.
       {% endif %}
     </span>
-    <a class="btn ghost" href="{{ url_for('main.service_detail', service_id=b.service.id) }}">View</a>
+    <button
+  type="button"
+  class="btn ghost js-view-service"
+  data-bs-toggle="modal"
+  data-bs-target="#servicePreviewModal"
+  data-service-title="{{ (b.service.title or '')|e }}"
+  data-service-price="{{ '%.2f'|format(b.service.price or 0) }}"
+  data-service-duration="{{ b.service.duration_minutes or '' }}"
+  data-service-description="{{ (b.service.description or 'No description provided.')|e }}"
+  data-provider-name="{{ ((b.provider.first_name ~ ' ' ~ b.provider.last_name) if b.provider else '')|e }}"
+>
+  View
+</button>
   {% else %}
     <a class="btn" href="{{ url_for('main.checkout', booking_id=b.id) }}">Checkout</a>
     <span class="hint">Pay to unlock messaging.</span>
-    <a class="btn ghost" href="{{ url_for('main.service_detail', service_id=b.service.id) }}">View</a>
+    <button
+  type="button"
+  class="btn ghost js-view-service"
+  data-bs-toggle="modal"
+  data-bs-target="#servicePreviewModal"
+  data-service-title="{{ (b.service.title or '')|e }}"
+  data-service-price="{{ '%.2f'|format(b.service.price or 0) }}"
+  data-service-duration="{{ b.service.duration_minutes or '' }}"
+  data-service-description="{{ (b.service.description or 'No description provided.')|e }}"
+  data-provider-name="{{ ((b.provider.first_name ~ ' ' ~ b.provider.last_name) if b.provider else '')|e }}"
+>
+  View
+</button>
   {% endif %}
 {% endif %}
           </div>
@@ -479,6 +515,52 @@
     {% endfor %}
   </div>
 {% endif %}
+
+<!-- Service Preview Modal -->
+<div class="modal fade" id="servicePreviewModal" tabindex="-1" aria-labelledby="servicePreviewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content" style="border-radius: 18px;">
+      <div class="modal-header">
+        <div>
+          <div class="text-muted small">Service</div>
+          <h5 class="modal-title" id="servicePreviewModalLabel" style="margin:0;">Details</h5>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="h4 mb-1" id="svcTitle">—</div>
+        <div class="text-muted small mb-3" id="svcProvider">—</div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-md-6">
+            <div class="border rounded-3 p-3 h-100">
+              <div class="fw-semibold mb-1">Price</div>
+              <div class="text-muted small">Service price</div>
+              <div class="mt-2 fw-bold" id="svcPrice">—</div>
+            </div>
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="border rounded-3 p-3 h-100">
+              <div class="fw-semibold mb-1">Duration</div>
+              <div class="text-muted small">Minutes</div>
+              <div class="mt-2 fw-bold" id="svcDuration">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="border rounded-3 p-3">
+          <div class="fw-semibold mb-2">Description</div>
+          <div class="text-muted small" id="svcDescription" style="white-space: pre-wrap;">—</div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Provider About Modal -->
 <div class="modal fade" id="providerAboutModal" tabindex="-1" aria-labelledby="providerAboutModalLabel" aria-hidden="true">
@@ -665,6 +747,35 @@
 <script>
 (function () {
   const cards = Array.from(document.querySelectorAll(".booking-card"));
+
+    // ===== Service Preview modal wiring =====
+  const svcModal = document.getElementById("servicePreviewModal");
+  if (svcModal) {
+    svcModal.addEventListener("show.bs.modal", function (event) {
+      const btn = event.relatedTarget;
+      if (!btn) return;
+
+      const title = btn.getAttribute("data-service-title") || "—";
+      const price = btn.getAttribute("data-service-price") || "0.00";
+      const duration = btn.getAttribute("data-service-duration") || "—";
+      const desc = btn.getAttribute("data-service-description") || "No description provided.";
+      const provider = btn.getAttribute("data-provider-name") || "";
+
+      const titleEl = document.getElementById("svcTitle");
+      const priceEl = document.getElementById("svcPrice");
+      const durEl = document.getElementById("svcDuration");
+      const descEl = document.getElementById("svcDescription");
+      const provEl = document.getElementById("svcProvider");
+
+      if (titleEl) titleEl.textContent = title;
+      if (priceEl) priceEl.textContent = `$${price}`;
+      if (durEl) durEl.textContent = duration !== "—" ? `${duration} minutes` : "—";
+      if (descEl) descEl.textContent = desc;
+      if (provEl) provEl.textContent = provider ? `Provider: ${provider}` : "—";
+    });
+  }
+  // ===== end Service Preview modal wiring =====
+
     // ===== Provider About modal wiring =====
   const aboutModal = document.getElementById("providerAboutModal");
   if (aboutModal) {
