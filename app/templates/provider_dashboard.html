@@ -395,6 +395,39 @@
 
 <div class="pd-shell">
   <div class="pd-top">
+    {% if show_setup_notice %}
+  <div style="
+      width:100%;
+      margin-top:14px;
+      padding:14px 18px;
+      border-radius:14px;
+      background:#fff7ed;
+      border:1px solid #fed7aa;
+      color:#9a3412;
+      font-weight:700;
+      box-shadow: 0 8px 20px rgba(15,23,42,.06);
+  ">
+    <div style="margin-bottom:6px;">
+      ⚠️ You must complete your provider setup before clients can book you.
+    </div>
+
+    <ul style="margin:0; padding-left:18px; font-weight:600;">
+      {% if needs_profile_setup %}
+        <li>
+          Add your bio in 
+          <a href="{{ url_for('provider.profile') }}">Profile</a>
+        </li>
+      {% endif %}
+
+      {% if needs_availability_setup %}
+        <li>
+          Set your weekly availability in 
+          <a href="{{ url_for('provider.availability') }}">Availability</a>
+        </li>
+      {% endif %}
+    </ul>
+  </div>
+{% endif %}
     <div>
       <h1 class="pd-title">Provider Dashboard</h1>
       <div class="pd-sub">Manage bookings, availability, services, and messages — all in one place.</div>

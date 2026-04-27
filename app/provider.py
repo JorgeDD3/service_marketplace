@@ -81,6 +81,27 @@ def dashboard():
 
     # 3) Active services visible to clients
     profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
+
+        # --- Setup completion check ---
+    needs_profile_setup = False
+    needs_availability_setup = False
+
+    if not profile or not profile.bio:
+        needs_profile_setup = True
+
+    availability_count = 0
+    if profile:
+        availability_count = ProviderAvailability.query.filter_by(
+            provider_profile_id=profile.id
+        ).count()
+
+    if availability_count == 0:
+        needs_availability_setup = True
+
+    show_setup_notice = needs_profile_setup or needs_availability_setup
+
+
+    
     services_count = 0
     if profile:
         services_count = (
@@ -91,11 +112,14 @@ def dashboard():
         )
 
     return render_template(
-        "provider_dashboard.html",
-        pending_paid_count=pending_paid_count,
-        upcoming_count=upcoming_count,
-        services_count=services_count,
-    )
+    "provider_dashboard.html",
+    pending_paid_count=pending_paid_count,
+    upcoming_count=upcoming_count,
+    services_count=services_count,
+    show_setup_notice=show_setup_notice,
+    needs_profile_setup=needs_profile_setup,
+    needs_availability_setup=needs_availability_setup,
+)
 
 
 
@@ -599,6 +623,8 @@ def availability_preset():
     if not profile:
         flash("Create your provider profile before setting availability.", "warning")
         return redirect(url_for("provider.profile"))
+
+    
 
     preset = (request.form.get("preset") or "").strip()
 
