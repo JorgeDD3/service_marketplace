@@ -183,16 +183,16 @@
   }
 
   .tick{
-    height:37px;
-    border-bottom:1px solid #eef2f7;
-    padding:7px 8px;
-    font-size:13px;
-    color:#64748b;
-    display:flex;
-    justify-content:flex-end;
-    align-items:flex-start;
-    font-weight:750;
-  }
+  height:37px;
+  border-bottom:1px solid #e2e8f0;
+  display:flex;
+  align-items:flex-start;
+  justify-content:flex-end;
+  padding:4px 8px 0 8px; /* small top padding only */
+  font-size:13px;
+  color:#64748b;
+  font-weight:750;
+}
 
       .day-col{
     position:relative;
@@ -202,19 +202,22 @@
   .day-col:last-child{ border-right:none; }
 
   .day-body{
-    position:relative;
-    height:407px;
-    background:#fff;
-  }
+  position:relative;
+  height:407px;
+  background:#fff;
+}
 
       .slot{
-    height:18.5px;
-    border-bottom:1px solid rgba(148,163,184,.22);
-  }
+  height:18.5px;
+  border-bottom:1px solid rgba(148,163,184,.25);
+}
 
-  .slot:nth-child(2n){
-    border-bottom:1px solid rgba(100,116,139,.38);
-  }
+/* Slightly darker line every full hour */
+.slot:nth-child(2n){
+  border-bottom:1px solid rgba(100,116,139,.45);
+}
+
+
 
     .slot.unavail{ background:#f1f5f9; }
   .slot.past{ background:#e0f2fe; }
@@ -340,7 +343,7 @@
 {% set day_start_hour = 8 %}
 {% set day_end_hour = 19 %}
 {% set total_minutes = (day_end_hour - day_start_hour) * 60 %}
-{% set ppm = 0.8 %}
+{% set ppm = (18.5 / 30) %}
 {% set has_now = (now_local is defined and now_local is not none) %}
 {% set today = (now_local.date() if has_now else None) %}
 {% set now_minute_of_day = ((now_local.hour * 60 + now_local.minute) if has_now else 0) %}
