@@ -5,7 +5,13 @@ import os
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from app.models import ProviderProfile, ProviderAvailability, ProviderVerification, ServiceRequest
+from app.models import (
+    ProviderProfile,
+    ProviderAvailability,
+    ProviderVerification,
+    ProviderTimeOff,
+    ServiceRequest,
+)
 from app.extensions import db
 from app.decorators import role_required
 
@@ -97,25 +103,21 @@ def dashboard():
 @login_required
 @role_required("provider")
 def verification():
-    # Provider must have a profile
     profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
     if not profile:
         flash("Create your provider profile before requesting verification.", "warning")
         return redirect(url_for("provider.profile"))
 
-    # Source of truth: provider_verifications.provider_profile_id
     verification = ProviderVerification.query.filter_by(provider_profile_id=profile.id).first()
     if verification is None:
-        verification = ProviderVerification(provider_profile_id=profile.id, status="not_submitted")
+        verification = ProviderVerification(
+            provider_profile_id=profile.id,
+            status="not_submitted"
+        )
         db.session.add(verification)
         db.session.commit()
 
     if request.method == "POST":
-        # Guard: prevent resubmitting if already pending/verified
-        if verification.status in ("pending_review", "verified"):
-            flash("Your verification is already in progress or completed.", "info")
-            return redirect(url_for("provider.verification"))
-
         legal_name = (request.form.get("legal_name") or "").strip()
         license_number = (request.form.get("license_number") or "").strip()
         portfolio_url = (request.form.get("portfolio_url") or "").strip()
@@ -124,40 +126,22 @@ def verification():
             flash("Legal name is required.", "danger")
             return redirect(url_for("provider.verification"))
 
-        # Optional uploads (your helper already enforces type/size rules)
-        try:
-            id_doc = _save_verification_file(request.files.get("id_document"), profile.id, "id")
-            cert_doc = _save_verification_file(request.files.get("certification"), profile.id, "cert")
-        except ValueError as e:
-            flash(str(e), "danger")
-            return redirect(url_for("provider.verification"))
-
-        if id_doc:
-            verification.id_document_filename = id_doc
-        if cert_doc:
-            verification.certification_filename = cert_doc
-
         verification.legal_name = legal_name or None
         verification.license_number = license_number or None
         verification.portfolio_url = portfolio_url or None
-
         verification.status = "pending_review"
         verification.submitted_at = datetime.utcnow()
-        verification.admin_notes = None
-        verification.reviewed_at = None
-        verification.reviewed_by_admin_id = None
 
         db.session.commit()
-        flash("Verification submitted! Status: pending review.", "success")
+        flash("Verification submitted!", "success")
         return redirect(url_for("provider.verification"))
-
-    
 
     return render_template(
         "provider/provider_verification.html",
         profile=profile,
         verification=verification,
     )
+
 
 @provider.route("/profile", methods=["GET", "POST"])
 @login_required
@@ -545,43 +529,12 @@ def time_off():
 
     from app.models import ProviderTimeOff
 
-    # --- Prefill defaults from query params (GET) ---
-    prefill = {
-        "all_day": False,
-        "start_date": "",
-        "end_date": "",
-        "start_time": "09:00",
-        "end_time": "17:00",
-        "reason": "",
-    }
-
-    start_q = (request.args.get("start") or "").strip()  # YYYY-MM-DDTHH:MM
-    end_q = (request.args.get("end") or "").strip()      # YYYY-MM-DDTHH:MM
-
-    def _parse_iso_local(s: str):
-        # Expect "YYYY-MM-DDTHH:MM"
-        return datetime.strptime(s, "%Y-%m-%dT%H:%M")
-
-    if start_q and end_q:
-        try:
-            sdt = _parse_iso_local(start_q)
-            edt = _parse_iso_local(end_q)
-            if edt > sdt:
-                prefill["start_date"] = sdt.strftime("%Y-%m-%d")
-                prefill["end_date"] = edt.strftime("%Y-%m-%d")
-                prefill["start_time"] = sdt.strftime("%H:%M")
-                prefill["end_time"] = edt.strftime("%H:%M")
-        except ValueError:
-            # Ignore bad query params; fall back to defaults
-            pass
-
     if request.method == "POST":
-        # Inputs
         all_day = (request.form.get("all_day") == "on")
-        start_date = (request.form.get("start_date") or "").strip()   # YYYY-MM-DD
-        end_date = (request.form.get("end_date") or "").strip()       # YYYY-MM-DD
-        start_time = (request.form.get("start_time") or "09:00").strip()  # HH:MM
-        end_time = (request.form.get("end_time") or "17:00").strip()      # HH:MM
+        start_date = (request.form.get("start_date") or "").strip()
+        end_date = (request.form.get("end_date") or "").strip()
+        start_time = (request.form.get("start_time") or "09:00").strip()
+        end_time = (request.form.get("end_time") or "17:00").strip()
         reason = (request.form.get("reason") or "").strip() or None
 
         if not start_date or not end_date:
@@ -591,7 +544,6 @@ def time_off():
         try:
             if all_day:
                 start_dt = datetime.strptime(start_date, "%Y-%m-%d")
-                # end at 23:59 on end_date
                 end_dt = datetime.strptime(end_date + " 23:59", "%Y-%m-%d %H:%M")
             else:
                 start_dt = datetime.strptime(start_date + " " + start_time, "%Y-%m-%d %H:%M")
@@ -602,14 +554,13 @@ def time_off():
 
         now = datetime.utcnow()
 
-# 🚫 Prevent creating time-off entirely in the past
-    if end_dt <= now:
-        flash("You cannot block time that has already passed.", "danger")
-        return redirect(url_for("provider.time_off"))
+        if end_dt <= now:
+            flash("You cannot block time that has already passed.", "danger")
+            return redirect(url_for("provider.time_off"))
 
-    if end_dt <= start_dt:
-        flash("End must be after start.", "danger")
-        return redirect(url_for("provider.time_off"))
+        if end_dt <= start_dt:
+            flash("End must be after start.", "danger")
+            return redirect(url_for("provider.time_off"))
 
         entry = ProviderTimeOff(
             provider_profile_id=profile.id,
@@ -618,11 +569,14 @@ def time_off():
             all_day=all_day,
             reason=reason,
         )
+
         db.session.add(entry)
         db.session.commit()
+
         flash("Time off saved.", "success")
         return redirect(url_for("provider.time_off"))
 
+    # GET
     entries = (
         ProviderTimeOff.query
         .filter_by(provider_profile_id=profile.id)
@@ -630,8 +584,11 @@ def time_off():
         .all()
     )
 
-    # Pass defaults so template can prefill inputs
-    return render_template("provider_time_off.html", entries=entries, prefill=prefill)
+    return render_template(
+        "provider_time_off.html",
+        entries=entries,
+    )
+
 
 @provider.route("/availability/preset", methods=["POST"])
 @login_required
