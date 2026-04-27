@@ -678,7 +678,7 @@ def cancel_booking(booking_id: int):
     return redirect(url_for("main.my_bookings", _anchor=f"booking-{booking.id}"))
 
 
-@main.route("/provider/time-off")
+@main.route("/provider/time-off", methods=["GET"])
 @login_required
 @role_required("provider")
 def provider_time_off():
@@ -696,9 +696,9 @@ def provider_time_off():
     )
 
     return render_template(
-    "provider_time_off.html",
-    entries=time_off_entries,
-)
+        "provider_time_off.html",
+        entries=time_off_entries
+    )
 
 @main.route("/provider/time-off/<int:time_off_id>/delete", methods=["POST"])
 @login_required
@@ -706,7 +706,6 @@ def provider_time_off():
 def delete_time_off(time_off_id: int):
     entry = ProviderTimeOff.query.get_or_404(time_off_id)
 
-    # Ownership check
     profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
     if not profile or entry.provider_profile_id != profile.id:
         abort(403)
@@ -715,9 +714,8 @@ def delete_time_off(time_off_id: int):
     db.session.commit()
 
     flash_success("Time off entry deleted.")
-
-    # 🔥 FIX: use main blueprint
     return redirect(url_for("main.provider_time_off"))
+
 
 @main.route("/provider/time-off/<int:time_off_id>/edit", methods=["POST"])
 @login_required
@@ -729,7 +727,6 @@ def edit_time_off(time_off_id: int):
     if not profile or entry.provider_profile_id != profile.id:
         abort(403)
 
-    # Get form values
     all_day = bool(request.form.get("all_day"))
     start_date = request.form.get("start_date")
     end_date = request.form.get("end_date")
@@ -755,11 +752,17 @@ def edit_time_off(time_off_id: int):
         flash_warning("Invalid date/time values.")
         return redirect(url_for("main.provider_time_off"))
 
+    now = datetime.utcnow()
+
+# 🚫 Prevent time-off that is entirely in the past
+    if end_dt <= now:
+        flash_warning("You cannot block time that has already passed.")
+        return redirect(url_for("main.provider_time_off"))
+
     if end_dt <= start_dt:
         flash_warning("End must be after start.")
         return redirect(url_for("main.provider_time_off"))
 
-    # Update entry
     entry.start_datetime = start_dt
     entry.end_datetime = end_dt
     entry.all_day = all_day
@@ -769,7 +772,6 @@ def edit_time_off(time_off_id: int):
 
     flash_success("Time off updated.")
     return redirect(url_for("main.provider_time_off"))
-
 
 # ---- Provider bookings ----
 @main.route("/provider/bookings")
