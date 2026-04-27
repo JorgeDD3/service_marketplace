@@ -600,9 +600,16 @@ def time_off():
             flash("Invalid date/time format.", "danger")
             return redirect(url_for("provider.time_off"))
 
-        if end_dt <= start_dt:
-            flash("End must be after start.", "danger")
-            return redirect(url_for("provider.time_off"))
+        now = datetime.utcnow()
+
+# 🚫 Prevent creating time-off entirely in the past
+    if end_dt <= now:
+        flash("You cannot block time that has already passed.", "danger")
+        return redirect(url_for("provider.time_off"))
+
+    if end_dt <= start_dt:
+        flash("End must be after start.", "danger")
+        return redirect(url_for("provider.time_off"))
 
         entry = ProviderTimeOff(
             provider_profile_id=profile.id,
