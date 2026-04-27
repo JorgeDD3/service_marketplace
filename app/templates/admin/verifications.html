@@ -284,10 +284,12 @@
           </form>
 
           <!-- Reviewed action placeholder (we'll wire backend next step) -->
-          <form method="POST" id="mUnverifyForm" action="" class="m-0">
-            <input type="hidden" name="admin_notes" id="mUnverifyNotes">
-            <button type="submit" class="btn btn-outline-danger" id="mUnverifyBtn">Unverify</button>
-          </form>
+          <form method="POST" id="mUnverifyForm" class="m-0">
+  <input type="hidden" name="admin_notes" id="mUnverifyNotes">
+  <button type="submit" class="btn btn-secondary" id="mUnverifyBtn">
+    Reset to pending
+  </button>
+</form>
         </div>
       </div>
 
@@ -425,7 +427,10 @@
 
       // Placeholder endpoint for unverify (we add backend next micro-step)
       // Keep it disabled for now so it doesn't 404.
-      if (unverifyForm) unverifyForm.action = "#";
+      if (unverifyForm)
+  unverifyForm.action =
+    "{{ url_for('admin.reset_verification', verification_id=0) }}"
+      .replace('/0', '/' + id);
 
       // Toggle which buttons are visible
       const isPending = (mode === 'pending');
@@ -433,7 +438,7 @@
       rejectForm.style.display = isPending ? '' : 'none';
 
       unverifyForm.style.display = (!isPending && status === 'verified') ? '' : 'none';
-      if (unverifyBtn) unverifyBtn.disabled = true;
+      if (unverifyBtn) unverifyBtn.disabled = false;
     });
   });
 

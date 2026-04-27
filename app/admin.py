@@ -432,29 +432,20 @@ def verifications():
 def approve_verification(verification_id: int):
     v = ProviderVerification.query.get_or_404(verification_id)
 
-    if v.status != "pending_review":
-        flash("Only pending verifications can be approved.", "warning")
-        return redirect(url_for("admin.verifications"))
-
     v.status = "verified"
     v.reviewed_at = datetime.utcnow()
     v.reviewed_by_admin_id = current_user.id
     v.admin_notes = (request.form.get("admin_notes") or "").strip() or None
 
     db.session.commit()
-    flash("Provider verification approved.", "success")
+    flash("Provider verification marked as verified.", "success")
     return redirect(url_for("admin.verifications"))
-
 
 @admin_bp.route("/verifications/<int:verification_id>/reject", methods=["POST"])
 @login_required
 @role_required("admin")
 def reject_verification(verification_id: int):
     v = ProviderVerification.query.get_or_404(verification_id)
-
-    if v.status != "pending_review":
-        flash("Only pending verifications can be rejected.", "warning")
-        return redirect(url_for("admin.verifications"))
 
     notes = (request.form.get("admin_notes") or "").strip()
     if not notes:
@@ -467,9 +458,22 @@ def reject_verification(verification_id: int):
     v.admin_notes = notes
 
     db.session.commit()
-    flash("Provider verification rejected.", "success")
+    flash("Provider verification marked as rejected.", "success")
     return redirect(url_for("admin.verifications"))
 
+@admin_bp.route("/verifications/<int:verification_id>/reset", methods=["POST"])
+@login_required
+@role_required("admin")
+def reset_verification(verification_id: int):
+    v = ProviderVerification.query.get_or_404(verification_id)
+
+    v.status = "pending_review"
+    v.reviewed_at = None
+    v.reviewed_by_admin_id = None
+
+    db.session.commit()
+    flash("Verification reset to pending review.", "success")
+    return redirect(url_for("admin.verifications"))
 
 # --------------------
 # Provider Verification Document Download (Admin-only)
