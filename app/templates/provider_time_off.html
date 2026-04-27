@@ -305,12 +305,41 @@
                 {% endif %}
               </div>
 
-              <div class="d-flex gap-2 flex-wrap">
-                <span class="pill timeoff">Time off</span>
-                {% if e.all_day %}
-                  <span class="pill allday">All day</span>
-                {% endif %}
-              </div>
+              <div class="d-flex gap-2 flex-wrap align-items-center">
+  <span class="pill timeoff">Time off</span>
+
+  {% if e.all_day %}
+    <span class="pill allday">All day</span>
+  {% endif %}
+
+  <div style="display:inline-flex; gap:6px;">
+
+  <!-- EDIT BUTTON -->
+  <button type="button"
+          class="btn btn-outline-primary btn-sm edit-btn"
+          data-id="{{ e.id }}"
+          data-start-date="{{ e.start_datetime.strftime('%Y-%m-%d') }}"
+          data-end-date="{{ e.end_datetime.strftime('%Y-%m-%d') }}"
+          data-start-time="{{ e.start_datetime.strftime('%H:%M') }}"
+          data-end-time="{{ e.end_datetime.strftime('%H:%M') }}"
+          data-all-day="{{ 'true' if e.all_day else 'false' }}"
+          data-reason="{{ e.reason|default('')|escape }}">
+    Edit
+  </button>
+
+  <!-- DELETE BUTTON -->
+  <form method="POST"
+        action="{{ url_for('main.delete_time_off', time_off_id=e.id) }}"
+        style="display:inline;">
+    <button type="submit"
+            class="btn btn-outline-danger btn-sm"
+            onclick="return confirm('Delete this time off block?');">
+      Delete
+    </button>
+  </form>
+
+</div>
+</div>
             </div>
           </div>
         {% endfor %}
@@ -399,6 +428,21 @@ document.addEventListener("DOMContentLoaded", function () {
   const allDay = document.getElementById("all_day");
   const timeFields = document.getElementById("timeFields");
 
+  document.querySelectorAll(".edit-btn").forEach(button => {
+  button.addEventListener("click", function () {
+
+    const id = this.dataset.id;
+    const startDate = this.dataset.startDate;
+    const endDate = this.dataset.endDate;
+    const startTime = this.dataset.startTime;
+    const endTime = this.dataset.endTime;
+    const allDay = this.dataset.allDay === "true";
+    const reason = this.dataset.reason;
+
+    openEditModal(id, startDate, endDate, startTime, endTime, allDay, reason);
+  });
+});
+
   function syncTimeFields() {
     if (!allDay || !timeFields) return;
     timeFields.style.opacity = allDay.checked ? "0.45" : "1";
@@ -417,6 +461,52 @@ document.addEventListener("DOMContentLoaded", function () {
       new bootstrap.Modal(modalEl).show();
     }
   }
+  function openEditModal(id, startDate, endDate, startTime, endTime, allDay, reason) {
+
+  const form = document.querySelector("#addTimeOffModal form");
+
+  // Change form action to edit route
+  form.action = `/provider/time-off/${id}/edit`;
+
+  // Fill fields
+  form.querySelector("[name='start_date']").value = startDate;
+  form.querySelector("[name='end_date']").value = endDate;
+  form.querySelector("[name='start_time']").value = startTime;
+  form.querySelector("[name='end_time']").value = endTime;
+  form.querySelector("[name='all_day']").checked = allDay;
+  form.querySelector("[name='reason']").value = reason;
+
+  // Visually update time fields opacity
+  const timeFields = document.getElementById("timeFields");
+  if (timeFields) {
+    timeFields.style.opacity = allDay ? "0.45" : "1";
+  }
+
+  // Change modal title
+  document.getElementById("addTimeOffModalLabel").innerText = "Edit blocked time";
+
+  // Change button text
+  form.querySelector("button[type='submit']").innerText = "Update blocked time";
+
+  // Open modal
+  const modalEl = document.getElementById("addTimeOffModal");
+  if (window.bootstrap) {
+    new bootstrap.Modal(modalEl).show();
+  }
+}
+const addBtn = document.querySelector("[data-bs-target='#addTimeOffModal']");
+if (addBtn) {
+  addBtn.addEventListener("click", function () {
+    const form = document.querySelector("#addTimeOffModal form");
+
+    form.action = ""; // back to default add route
+    form.reset();
+
+    document.getElementById("addTimeOffModalLabel").innerText = "Add blocked time";
+    form.querySelector("button[type='submit']").innerText = "Save blocked time";
+  });
+}
+
 });
 </script>
 {% endblock %}

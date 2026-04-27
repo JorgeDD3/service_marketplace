@@ -393,7 +393,7 @@ def book_service(service_id: int):
     provider_user_id = service.provider_profile.user_id
     duration_minutes = int(getattr(service, "duration_minutes", 60) or 60)
 
-    # ✅ Server-side hard block: prevent double-booking even if two clients click at once
+        # ✅ Server-side hard block: prevent double-booking even if two clients click at once
     if Booking.has_time_conflict(
         provider_id=provider_user_id,
         start_dt=booking_dt,
@@ -401,8 +401,8 @@ def book_service(service_id: int):
     ):
         flash("That time slot is no longer available. Please choose another slot.", "warning")
         return redirect(url_for("main.service_detail", service_id=service.id))
-    
-        # ✅ Client cannot book overlapping sessions (even with different providers/services)
+
+    # ✅ Client cannot book overlapping sessions (even with different providers/services)
     if Booking.client_has_time_conflict(
         client_id=current_user.id,
         start_dt=booking_dt,
@@ -410,6 +410,7 @@ def book_service(service_id: int):
     ):
         flash("You already have a booking at this time. Please choose a different time.", "warning")
         return redirect(url_for("main.service_detail", service_id=service.id))
+
 
     # Ensure selected slot is still available (UI consistency)
     # Note: use 21 days here to match service_detail’s calendar window
@@ -486,7 +487,7 @@ def book_service(service_id: int):
 def checkout(booking_id: int):
     booking = Booking.query.get_or_404(booking_id)
 
-        # Block checkout for cancelled/declined/completed/refunded OR refund-pending sessions (server-side safety)
+    # Block checkout for cancelled/declined/completed/refunded OR refund-pending sessions (server-side safety)
     note = (booking.admin_note or "")
 
     is_refunded = (getattr(booking, "payment_status", "") == "refunded") or ("[REFUND_APPROVED]" in note)
@@ -675,6 +676,99 @@ def cancel_booking(booking_id: int):
 
     flash_success("Refund requested. You’ll be notified once it’s reviewed.")
     return redirect(url_for("main.my_bookings", _anchor=f"booking-{booking.id}"))
+
+
+@main.route("/provider/time-off")
+@login_required
+@role_required("provider")
+def provider_time_off():
+    profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
+
+    if not profile:
+        flash_warning("Create your provider profile first.")
+        return redirect(url_for("provider.profile"))
+
+    time_off_entries = (
+        ProviderTimeOff.query
+        .filter_by(provider_profile_id=profile.id)
+        .order_by(ProviderTimeOff.start_datetime.desc())
+        .all()
+    )
+
+    return render_template(
+    "provider_time_off.html",
+    entries=time_off_entries,
+)
+
+@main.route("/provider/time-off/<int:time_off_id>/delete", methods=["POST"])
+@login_required
+@role_required("provider")
+def delete_time_off(time_off_id: int):
+    entry = ProviderTimeOff.query.get_or_404(time_off_id)
+
+    # Ownership check
+    profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
+    if not profile or entry.provider_profile_id != profile.id:
+        abort(403)
+
+    db.session.delete(entry)
+    db.session.commit()
+
+    flash_success("Time off entry deleted.")
+
+    # 🔥 FIX: use main blueprint
+    return redirect(url_for("main.provider_time_off"))
+
+@main.route("/provider/time-off/<int:time_off_id>/edit", methods=["POST"])
+@login_required
+@role_required("provider")
+def edit_time_off(time_off_id: int):
+    entry = ProviderTimeOff.query.get_or_404(time_off_id)
+
+    profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
+    if not profile or entry.provider_profile_id != profile.id:
+        abort(403)
+
+    # Get form values
+    all_day = bool(request.form.get("all_day"))
+    start_date = request.form.get("start_date")
+    end_date = request.form.get("end_date")
+    start_time = request.form.get("start_time")
+    end_time = request.form.get("end_time")
+    reason = (request.form.get("reason") or "").strip()
+
+    try:
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+
+        if not all_day:
+            st = datetime.strptime(start_time, "%H:%M").time()
+            et = datetime.strptime(end_time, "%H:%M").time()
+
+            start_dt = datetime.combine(start_dt.date(), st)
+            end_dt = datetime.combine(end_dt.date(), et)
+        else:
+            start_dt = datetime.combine(start_dt.date(), datetime.min.time())
+            end_dt = datetime.combine(end_dt.date(), datetime.max.time())
+
+    except Exception:
+        flash_warning("Invalid date/time values.")
+        return redirect(url_for("main.provider_time_off"))
+
+    if end_dt <= start_dt:
+        flash_warning("End must be after start.")
+        return redirect(url_for("main.provider_time_off"))
+
+    # Update entry
+    entry.start_datetime = start_dt
+    entry.end_datetime = end_dt
+    entry.all_day = all_day
+    entry.reason = reason or None
+
+    db.session.commit()
+
+    flash_success("Time off updated.")
+    return redirect(url_for("main.provider_time_off"))
 
 
 # ---- Provider bookings ----
