@@ -461,6 +461,97 @@ class Booking(db.Model):
         db.session.commit()
         return len(candidates)
 
+    @classmethod
+    def has_time_conflict(
+        cls,
+        *,
+        provider_id: int,
+        start_dt: datetime,
+        duration_minutes: int,
+        exclude_booking_id: int | None = None,
+    ) -> bool:
+        """
+        Returns True if the provider already has an overlapping booking during the requested window.
+
+        Blocks on: pending + accepted
+        Ignores: inquiry pseudo-bookings ([INQUIRY] in provider_note)
+        Works on SQLite and Postgres (no DB-specific interval math).
+        """
+        requested_end = start_dt + timedelta(minutes=duration_minutes)
+
+        q = (
+            cls.query
+            .filter(cls.provider_id == provider_id)
+            .filter(cls.status.in_([cls.STATUS_PENDING, cls.STATUS_ACCEPTED]))
+            .filter((cls.provider_note.is_(None)) | (~cls.provider_note.like("[INQUIRY]%")))
+        )
+
+        if exclude_booking_id is not None:
+            q = q.filter(cls.id != exclude_booking_id)
+
+        # Pull only likely candidates (same-day range) to keep it efficient
+        day_start = datetime(start_dt.year, start_dt.month, start_dt.day)
+        day_end = day_start + timedelta(days=1)
+
+        candidates = (
+            q.filter(cls.booking_datetime >= day_start)
+             .filter(cls.booking_datetime < day_end)
+             .all()
+        )
+
+        for b in candidates:
+            b_end = b.booking_datetime + timedelta(minutes=b.duration_minutes)
+            # overlap rule: start < existing_end AND end > existing_start
+            if start_dt < b_end and requested_end > b.booking_datetime:
+                return True
+
+        return False
+
+    @classmethod
+    def client_has_time_conflict(
+        cls,
+        *,
+        client_id: int,
+        start_dt: datetime,
+        duration_minutes: int,
+        exclude_booking_id: int | None = None,
+    ) -> bool:
+        """
+        Returns True if the client already has an overlapping booking during the requested window,
+        even with a different provider/service.
+
+        Blocks on: pending + accepted
+        Ignores: inquiry pseudo-bookings ([INQUIRY] in provider_note)
+        Works on SQLite and Postgres.
+        """
+        requested_end = start_dt + timedelta(minutes=duration_minutes)
+
+        q = (
+            cls.query
+            .filter(cls.client_id == client_id)
+            .filter(cls.status.in_([cls.STATUS_PENDING, cls.STATUS_ACCEPTED]))
+            .filter((cls.provider_note.is_(None)) | (~cls.provider_note.like("[INQUIRY]%")))
+        )
+
+        if exclude_booking_id is not None:
+            q = q.filter(cls.id != exclude_booking_id)
+
+        day_start = datetime(start_dt.year, start_dt.month, start_dt.day)
+        day_end = day_start + timedelta(days=1)
+
+        candidates = (
+            q.filter(cls.booking_datetime >= day_start)
+             .filter(cls.booking_datetime < day_end)
+             .all()
+        )
+
+        for b in candidates:
+            b_end = b.booking_datetime + timedelta(minutes=b.duration_minutes)
+            if start_dt < b_end and requested_end > b.booking_datetime:
+                return True
+
+        return False
+
     def get_or_create_conversation(self):
         """
         Lazy-create the 1:1 conversation for this booking.

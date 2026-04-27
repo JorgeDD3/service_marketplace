@@ -56,9 +56,10 @@ def generate_available_slots(service: Service, days_ahead: int = 7) -> list[date
 
     Blocking rules:
       - accepted always blocks
-      - pending blocks only if created within last 30 minutes (anti-spam hold)
+      - pending always blocks (prevents double-booking)
       - overlap-aware (uses booking duration_minutes)
       - provider time off blocks (vacation/partial blocks)
+      - inquiry pseudo-bookings do NOT block
 
     Lead time rule:
       - clients cannot book sooner than 24 hours from now
@@ -79,30 +80,29 @@ def generate_available_slots(service: Service, days_ahead: int = 7) -> list[date
     min_start = now + timedelta(hours=24)  # <-- lead time enforcement
 
     provider_user_id = provider_profile.user_id
-    pending_hold_minutes = 30
-    pending_cutoff = now - timedelta(minutes=pending_hold_minutes)
 
+    # Use the actual service duration for slot sizing/fit checks
+    service_duration = int(getattr(service, "duration_minutes", 60) or 60)
+
+    # Bookings that block time: pending + accepted (ignore inquiry pseudo-bookings)
     busy = (
         Booking.query
         .filter_by(provider_id=provider_user_id)
-        .filter(
-            (Booking.status == "accepted") |
-            ((Booking.status == "pending") & (Booking.created_at >= pending_cutoff))
-        )
+        .filter(Booking.status.in_([Booking.STATUS_PENDING, Booking.STATUS_ACCEPTED]))
+        .filter((Booking.provider_note.is_(None)) | (~Booking.provider_note.like("[INQUIRY]%")))
         .all()
     )
 
     # Build busy intervals: [start, end)
     busy_intervals: list[tuple[datetime, datetime]] = []
 
-    # 1) Existing bookings (accepted + recent pending holds)
     for b in busy:
         start = b.booking_datetime.replace(second=0, microsecond=0)
         dur = int(getattr(b, "duration_minutes", 60) or 60)
         end = start + timedelta(minutes=dur)
         busy_intervals.append((start, end))
 
-    # 2) Provider time off (vacation / blocked periods)
+    # Provider time off blocks
     window_start = now
     window_end = now + timedelta(days=days_ahead + 1)
 
@@ -141,9 +141,11 @@ def generate_available_slots(service: Service, days_ahead: int = 7) -> list[date
             end_dt = datetime.combine(day, end_t)
 
             cursor = start_dt
-            while cursor + timedelta(minutes=slot_minutes) <= end_dt:
+
+            # Only offer start times where the FULL service duration fits inside availability
+            while cursor + timedelta(minutes=service_duration) <= end_dt:
                 candidate = cursor.replace(second=0, microsecond=0)
-                candidate_end = candidate + timedelta(minutes=slot_minutes)
+                candidate_end = candidate + timedelta(minutes=service_duration)
 
                 # Enforce: no slots within the next 24 hours
                 if candidate >= min_start:
@@ -154,9 +156,7 @@ def generate_available_slots(service: Service, days_ahead: int = 7) -> list[date
                 cursor += timedelta(minutes=slot_minutes)
 
     slots.sort()
-    # Cap slots to avoid rendering huge pages, but allow ~3 weeks of 30-min slots
     return slots[:500]
-
 
 @main.route("/")
 def home():
@@ -390,16 +390,36 @@ def book_service(service_id: int):
         flash("Bookings must be scheduled at least 24 hours in advance.", "warning")
         return redirect(url_for("main.service_detail", service_id=service.id))
 
-    # Ensure selected slot is still available
-    available = generate_available_slots(service, days_ahead=7)
+    provider_user_id = service.provider_profile.user_id
+    duration_minutes = int(getattr(service, "duration_minutes", 60) or 60)
+
+    # ✅ Server-side hard block: prevent double-booking even if two clients click at once
+    if Booking.has_time_conflict(
+        provider_id=provider_user_id,
+        start_dt=booking_dt,
+        duration_minutes=duration_minutes,
+    ):
+        flash("That time slot is no longer available. Please choose another slot.", "warning")
+        return redirect(url_for("main.service_detail", service_id=service.id))
+    
+        # ✅ Client cannot book overlapping sessions (even with different providers/services)
+    if Booking.client_has_time_conflict(
+        client_id=current_user.id,
+        start_dt=booking_dt,
+        duration_minutes=duration_minutes,
+    ):
+        flash("You already have a booking at this time. Please choose a different time.", "warning")
+        return redirect(url_for("main.service_detail", service_id=service.id))
+
+    # Ensure selected slot is still available (UI consistency)
+    # Note: use 21 days here to match service_detail’s calendar window
+    available = generate_available_slots(service, days_ahead=21)
     available_set = {dt.replace(second=0, microsecond=0) for dt in available}
     if booking_dt not in available_set:
         flash("That time is no longer available. Please choose another slot.", "warning")
         return redirect(url_for("main.service_detail", service_id=service.id))
 
-    provider_user_id = service.provider_profile.user_id
-
-    # ✅ KEY FIX (inline): reuse existing inquiry booking to avoid a second thread
+    # ✅ KEY FIX: reuse existing inquiry booking to avoid a second thread
     inquiry = (
         Booking.query.filter_by(
             client_id=current_user.id,
@@ -415,7 +435,7 @@ def book_service(service_id: int):
     if inquiry:
         # Convert inquiry booking into a real booking (same booking id => same conversation/thread)
         inquiry.booking_datetime = booking_dt
-        inquiry.duration_minutes = 60
+        inquiry.duration_minutes = duration_minutes
         inquiry.status = Booking.STATUS_PENDING
 
         # Remove inquiry marker so it behaves like a normal booking
@@ -444,7 +464,7 @@ def book_service(service_id: int):
         client_id=current_user.id,
         service_id=service.id,
         booking_datetime=booking_dt,
-        duration_minutes=60,
+        duration_minutes=duration_minutes,
         status=Booking.STATUS_PENDING,
     )
 
@@ -459,6 +479,7 @@ def book_service(service_id: int):
         "success",
     )
     return redirect(url_for("main.checkout", booking_id=booking.id))
+
 
 @main.route("/checkout/<int:booking_id>", methods=["GET", "POST"])
 @login_required
