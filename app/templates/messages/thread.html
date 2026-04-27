@@ -288,7 +288,7 @@
               <span>
                 <span>
   <strong>When:</strong>
-  {{ convo.booking.booking_datetime|fmt_local_dt("%b %d, %Y • %I:%M %p") if convo.booking.booking_datetime else "—" }}
+  {{ convo.booking.booking_datetime.strftime("%b %d, %Y • %I:%M %p") if convo.booking.booking_datetime else "—" }}
 </span>
                 
               </span>

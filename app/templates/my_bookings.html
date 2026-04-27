@@ -368,7 +368,7 @@
             <span class="meta-label">Scheduled</span>
             <span class="meta-value">
               {% if b.booking_datetime %}
-  <span class="js-local-dt" data-utc="{{ b.booking_datetime.isoformat() }}"></span>
+  {{ b.booking_datetime.strftime("%a, %b %d, %Y, %I:%M %p") }}
 {% else %}
   —
 {% endif %}
