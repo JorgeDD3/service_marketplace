@@ -399,13 +399,10 @@
 
                       <div class="col-12">
                         <label class="form-label">Session length</label>
-                        <select class="form-select" name="slot_minutes">
-                          <option value="30" {% if first_rule.slot_minutes == 30 %}selected{% endif %}>30 minutes</option>
-                          <option value="45" {% if first_rule.slot_minutes == 45 %}selected{% endif %}>45 minutes</option>
-                          <option value="60" {% if first_rule.slot_minutes == 60 %}selected{% endif %}>60 minutes</option>
-                          <option value="90" {% if first_rule.slot_minutes == 90 %}selected{% endif %}>90 minutes</option>
-                          <option value="120" {% if first_rule.slot_minutes == 120 %}selected{% endif %}>120 minutes</option>
-                        </select>
+<div class="form-control fw-bold">
+  60 minutes
+</div>
+<input type="hidden" name="slot_minutes" value="60">
                       </div>
 
                       <div class="col-12 d-grid">
@@ -464,13 +461,10 @@
 
                       <div class="col-12">
                         <label class="form-label">Session length</label>
-                        <select class="form-select" name="slot_minutes">
-                          <option value="30" selected>30 minutes</option>
-                          <option value="45">45 minutes</option>
-                          <option value="60">60 minutes</option>
-                          <option value="90">90 minutes</option>
-                          <option value="120">120 minutes</option>
-                        </select>
+<div class="form-control fw-bold">
+  60 minutes
+</div>
+<input type="hidden" name="slot_minutes" value="60">
                       </div>
 
                       <div class="col-12 d-grid">
