@@ -168,7 +168,11 @@
                       </span>
                       <span class="me-3">
                         <span class="text-muted">Created:</span>
-                        {{ created_str }}
+{% if created_str != "—" %}
+  <span class="local-datetime" data-utc="{{ created_str }}">{{ created_str }}</span>
+{% else %}
+  —
+{% endif %}
                       </span>
                     </div>
 
@@ -253,7 +257,7 @@
   if r.client and (r.client.first_name or r.client.last_name)
   else ""
 ) %}
-            {% set created_str = (r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "—") %}
+            {% set created_str = (r.created_at.isoformat() ~ "Z" if r.created_at else "—") %}
             {% set desc = (r.description or "") %}
             {% set is_long = desc|length > 220 %}
 
@@ -289,7 +293,11 @@
                       </span>
                       <span class="me-3">
                         <span class="text-muted">Created:</span>
-                        {{ created_str }}
+{% if created_str != "—" %}
+  <span class="local-datetime" data-utc="{{ created_str }}">{{ created_str }}</span>
+{% else %}
+  —
+{% endif %}
                       </span>
                     </div>
 
@@ -351,6 +359,24 @@
   const clearBtn = document.getElementById('reqClear');
   const rows = Array.from(document.querySelectorAll('.req-row'));
   const showingEl = document.getElementById('cntShowing');
+
+  function formatLocalDateTime(value) {
+  if (!value || value === "—") return "—";
+  const d = new Date(value);
+  if (isNaN(d)) return value;
+
+  return d.toLocaleString([], {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+document.querySelectorAll(".local-datetime").forEach((el) => {
+  el.textContent = formatLocalDateTime(el.dataset.utc);
+});
 
   // Toggle "Show more/less" text (no inline JS, avoids const redeclare warnings)
   document.querySelectorAll('[data-toggle-text]').forEach((btn) => {
