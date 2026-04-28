@@ -150,9 +150,27 @@ def verification():
             flash("Legal name is required.", "danger")
             return redirect(url_for("provider.verification"))
 
+        try:
+            id_file = request.files.get("id_document")
+            cert_file = request.files.get("certification")
+
+            saved_id = _save_verification_file(id_file, profile.id, "id")
+            saved_cert = _save_verification_file(cert_file, profile.id, "cert")
+
+        except ValueError as e:
+            flash(str(e), "danger")
+            return redirect(url_for("provider.verification"))
+
         verification.legal_name = legal_name or None
         verification.license_number = license_number or None
         verification.portfolio_url = portfolio_url or None
+
+        if saved_id:
+            verification.id_document_filename = saved_id
+
+        if saved_cert:
+            verification.certification_filename = saved_cert
+
         verification.status = "pending_review"
         verification.submitted_at = datetime.utcnow()
 
@@ -165,7 +183,6 @@ def verification():
         profile=profile,
         verification=verification,
     )
-
 
 @provider.route("/profile", methods=["GET", "POST"])
 @login_required
