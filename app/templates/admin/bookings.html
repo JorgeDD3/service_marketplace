@@ -103,7 +103,7 @@
             {% set service_title = (b.service.title if b.service else '—') %}
             {% set client_email = (b.client.email if b.client else '—') %}
             {% set provider_email = (b.provider.email if b.provider else '—') %}
-            {% set created_str = (b.created_at.strftime("%Y-%m-%d %H:%M") if b.created_at else "—") %}
+            {% set created_str = (b.created_at.isoformat() ~ "Z" if b.created_at else "—") %}
             {% set refund_flag = (1 if (b.admin_note and '[REFUND_REQUEST]' in b.admin_note) else 0) %}
             {% set admin_note = (b.admin_note or '') %}
             {% set provider_note = (b.provider_note or '') %}
@@ -132,7 +132,12 @@
                     {% endif %}
                   </div>
                   <div class="text-muted small mt-1">
-                    <span class="text-muted">Created:</span> {{ created_str }}
+                    <span class="text-muted">Created:</span>
+{% if created_str != "—" %}
+  <span class="local-datetime" data-utc="{{ created_str }}">{{ created_str }}</span>
+{% else %}
+  —
+{% endif %}
                   </div>
                 </div>
 
@@ -253,6 +258,24 @@
   const rows = Array.from(document.querySelectorAll('.bk-row'));
   const showingEl = document.getElementById('bkShowing');
 
+  function formatLocalDateTime(value) {
+  if (!value || value === "—") return "—";
+  const d = new Date(value);
+  if (isNaN(d)) return value;
+
+  return d.toLocaleString([], {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+document.querySelectorAll(".local-datetime").forEach((el) => {
+  el.textContent = formatLocalDateTime(el.dataset.utc);
+});
+
   function applyFilter() {
     const q = (search?.value || '').trim().toLowerCase();
     const status = (statusSel?.value || 'all').toLowerCase();
@@ -333,7 +356,7 @@
       const messagesUrl = row.dataset.messagesUrl || '#';
 
       setText(mServiceTitle, title);
-      setText(mMeta, `Client: ${client} • Provider: ${provider} • Created: ${created} • #${id}`);
+      setText(mMeta, `Client: ${client} • Provider: ${provider} • Created: ${formatLocalDateTime(created)} • #${id}`);
       setStatusBadge(status);
 
       setText(mProviderNote, providerNote.trim() ? providerNote : '—');
