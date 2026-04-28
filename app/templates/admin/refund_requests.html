@@ -40,9 +40,7 @@
             oninput="window._refundQ=this.value"
             onkeydown="if(event.key==='Enter'){applyRefundSearch();}"
           />
-          <div class="form-text small">
-            Requests are detected when <code>[REFUND_REQUEST]</code> is present in the booking admin note.
-          </div>
+          
         </div>
 
         <div class="col-12 col-lg-4 d-flex justify-content-lg-end gap-2 flex-wrap">
@@ -129,7 +127,11 @@
 
                               {% if admin_note_full %}
                                 <span class="text-muted" title="{{ admin_note_full }}">
-                                  {{ admin_note_full|truncate(95) }}
+                                  {{ admin_note_full.split('[REFUND_APPROVED]')[0]
+   .split('[REFUND_DENIED]')[0]
+   |replace('[REFUND_REQUEST]', 'Refund requested:')
+   |truncate(95)
+}}
                                 </span>
                               {% else %}
                                 <span class="text-muted">—</span>
@@ -156,21 +158,19 @@
                       <!-- Requested -->
                       <td class="small">
                         {% if b.admin_action_at %}
-                          <span class="fw-semibold">{{ b.admin_action_at.strftime("%b %d, %Y") }}</span><br/>
-                          <span class="text-muted">{{ b.admin_action_at.strftime("%I:%M %p") }}</span>
-                        {% else %}
-                          <span class="text-muted">—</span>
-                        {% endif %}
+  <span class="local-datetime-two-line" data-utc="{{ b.admin_action_at.isoformat() }}Z"></span>
+{% else %}
+  <span class="text-muted">—</span>
+{% endif %}
                       </td>
 
                       <!-- Created -->
                       <td class="small">
                         {% if b.created_at %}
-                          <span class="fw-semibold">{{ b.created_at.strftime("%b %d, %Y") }}</span><br/>
-                          <span class="text-muted">{{ b.created_at.strftime("%I:%M %p") }}</span>
-                        {% else %}
-                          <span class="text-muted">—</span>
-                        {% endif %}
+  <span class="local-datetime-two-line" data-utc="{{ b.created_at.isoformat() }}Z"></span>
+{% else %}
+  <span class="text-muted">—</span>
+{% endif %}
                       </td>
 
                       <!-- Action -->
@@ -187,9 +187,9 @@
                             data-provider="{{ provider_label|e }}"
                             data-status="{{ (b.status or '')|e }}"
                             data-refund-state="{{ refund_state|e }}"
-                            data-booking-datetime="{{ (b.booking_datetime.strftime('%b %d, %Y %I:%M %p') if b.booking_datetime else '')|e }}"
-                            data-created="{{ (b.created_at.strftime('%b %d, %Y %I:%M %p') if b.created_at else '')|e }}"
-                            data-requested="{{ (b.admin_action_at.strftime('%b %d, %Y %I:%M %p') if b.admin_action_at else '')|e }}"
+                            data-booking-datetime="{{ (b.booking_datetime.isoformat() ~ 'Z' if b.booking_datetime else '')|e }}"
+data-created="{{ (b.created_at.isoformat() ~ 'Z' if b.created_at else '')|e }}"
+data-requested="{{ (b.admin_action_at.isoformat() ~ 'Z' if b.admin_action_at else '')|e }}"
                             data-admin-note="{{ admin_note_full|e }}"
                           >
                             Review
@@ -232,15 +232,7 @@
 
     <!-- Sidebar -->
     <div class="col-12 col-xl-3">
-      <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
-        <div class="card-body py-3">
-          <div class="fw-semibold mb-2">What counts as a refund request?</div>
-          <div class="text-muted small">
-            This queue includes bookings where the system logged <code>[REFUND_REQUEST]</code>
-            in the booking’s admin note.
-          </div>
-        </div>
-      </div>
+      
 
       <div class="card shadow-sm border-0" style="border-radius: 18px;">
         <div class="card-body py-3">
@@ -333,9 +325,6 @@
               rows="3"
               placeholder="Explain why you approved/denied (for audit trail)..."
             ></textarea>
-            <div class="form-text">
-              This will be appended to <code>bookings.admin_note</code> and timestamped with <code>admin_action_at</code>.
-            </div>
             <div class="small text-muted mt-2" id="m_lockedHint" style="display:none;">
               This request has already been processed. Decisions are locked.
             </div>
@@ -381,6 +370,39 @@
     window.location.href = url.toString();
   }
 
+    function formatLocalDateTime(value) {
+    if (!value || value === "—") return "—";
+    const d = new Date(value);
+    if (isNaN(d)) return value;
+
+    return d.toLocaleString([], {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  }
+
+  function formatLocalDateTimeTwoLine(value) {
+    if (!value || value === "—") return "—";
+    const d = new Date(value);
+    if (isNaN(d)) return value;
+
+    const datePart = d.toLocaleDateString([], {
+      month: "short",
+      day: "2-digit",
+      year: "numeric"
+    });
+
+    const timePart = d.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit"
+    });
+
+    return `<span class="fw-semibold">${datePart}</span><br><span class="text-muted">${timePart}</span>`;
+  }
+
   function injectReason(which) {
     const approveBtn = document.getElementById("m_approveBtn");
     const denyBtn = document.getElementById("m_denyBtn");
@@ -418,8 +440,20 @@
       pill.textContent = "Refund: pending";
     }
   }
+  function cleanRefundNote(note) {
+  if (!note || note === "—") return "—";
+
+  return note
+    .split("[REFUND_APPROVED]")[0]
+    .split("[REFUND_DENIED]")[0]
+    .replace("[REFUND_REQUEST]", "Refund requested:")
+    .trim() || "—";
+}
 
   document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll(".local-datetime-two-line").forEach((el) => {
+      el.innerHTML = formatLocalDateTimeTwoLine(el.dataset.utc);
+    });
     const modal = document.getElementById("refundModal");
     if (!modal) return;
 
@@ -442,10 +476,10 @@
       document.getElementById("m_bookingId").textContent = "#" + bookingId;
       document.getElementById("m_client").textContent = client;
       document.getElementById("m_provider").textContent = provider;
-      document.getElementById("m_bookingDatetime").textContent = bookingDatetime;
-      document.getElementById("m_created").textContent = created;
-      document.getElementById("m_requested").textContent = requested;
-      document.getElementById("m_adminNote").textContent = adminNote || "—";
+      document.getElementById("m_bookingDatetime").textContent = formatLocalDateTime(bookingDatetime);
+      document.getElementById("m_created").textContent = formatLocalDateTime(created);
+      document.getElementById("m_requested").textContent = formatLocalDateTime(requested);
+      document.getElementById("m_adminNote").textContent = cleanRefundNote(adminNote);
 
       const bookingStatusEl = document.getElementById("m_bookingStatusPill");
       bookingStatusEl.textContent = "Status: " + (status || "—");
