@@ -75,7 +75,7 @@
             {% set email = u.email %}
             {% set legal = v.legal_name or "" %}
             {% set license = v.license_number or "" %}
-            {% set submitted = (v.submitted_at.strftime("%Y-%m-%d %I:%M %p") if v.submitted_at else "—") %}
+            {% set submitted = (v.submitted_at.isoformat() ~ "Z" if v.submitted_at else "—") %}
 
             <div class="list-group-item px-3 py-3 ver-row"
                  data-section="pending"
@@ -103,7 +103,14 @@
                   <div class="text-muted small">
                     <div><span class="text-muted">Legal:</span> {{ v.legal_name or "—" }}</div>
                     <div><span class="text-muted">License #:</span> {{ v.license_number or "—" }}</div>
-                    <div><span class="text-muted">Submitted:</span> {{ submitted }}</div>
+                    <div>
+  <span class="text-muted">Submitted:</span>
+  {% if submitted != "—" %}
+    <span class="local-datetime" data-utc="{{ submitted }}">{{ submitted }}</span>
+  {% else %}
+    —
+  {% endif %}
+</div>
                   </div>
                 </div>
 
@@ -151,7 +158,7 @@
             {% set email = u.email %}
             {% set legal = v.legal_name or "" %}
             {% set license = v.license_number or "" %}
-            {% set reviewed_at = (v.reviewed_at.strftime("%Y-%m-%d %I:%M %p") if v.reviewed_at else "—") %}
+            {% set reviewed_at = (v.reviewed_at.isoformat() ~ "Z" if v.reviewed_at else "—") %}
 
             <div class="list-group-item px-3 py-3 ver-row"
                  data-section="reviewed"
@@ -178,7 +185,14 @@
                 <div class="col-12 col-lg-5">
                   <div class="text-muted small">
                     <div><span class="text-muted">Status:</span> {{ v.status.replace('_',' ') }}</div>
-                    <div><span class="text-muted">Reviewed:</span> {{ reviewed_at }}</div>
+                    <div>
+  <span class="text-muted">Reviewed:</span>
+  {% if reviewed_at != "—" %}
+    <span class="local-datetime" data-utc="{{ reviewed_at }}">{{ reviewed_at }}</span>
+  {% else %}
+    —
+  {% endif %}
+</div>
                     <div class="text-truncate"><span class="text-muted">Notes:</span> {{ v.admin_notes or "—" }}</div>
                   </div>
                 </div>
@@ -348,6 +362,24 @@
 
   const setText = (el, val) => { if (el) el.textContent = val; };
 
+  const formatLocalDateTime = (value) => {
+  if (!value || value === "—") return "—";
+  const d = new Date(value);
+  if (isNaN(d)) return value;
+
+  return d.toLocaleString([], {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+};
+
+document.querySelectorAll(".local-datetime").forEach(el => {
+  el.textContent = formatLocalDateTime(el.dataset.utc);
+});
+
   function setBadge(status) {
     if (!mStatus) return;
     mStatus.textContent = status;
@@ -413,8 +445,8 @@
       setBadge(status);
 
       const metaBits = [`${email}`];
-      if (mode === 'pending') metaBits.push(`Submitted: ${submittedAt || '—'}`);
-      if (mode === 'reviewed') metaBits.push(`Reviewed: ${reviewedAt || '—'}`);
+      if (mode === 'pending') metaBits.push(`Submitted: ${formatLocalDateTime(submittedAt || '—')}`);
+if (mode === 'reviewed') metaBits.push(`Reviewed: ${formatLocalDateTime(reviewedAt || '—')}`);
       metaBits.push(`#${id}`);
       setText(mProviderMeta, metaBits.join(' • '));
 
