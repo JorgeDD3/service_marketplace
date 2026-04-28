@@ -54,17 +54,13 @@ def moderation():
     disabled_users = User.query.filter(User.is_active.is_(False)).count()
 
     # Refund requests (SAFE: do not assume schema fields exist)
-    refund_requests = 0
-    if hasattr(Booking, "refund_requested"):
-        refund_requests = Booking.query.filter(Booking.refund_requested.is_(True)).count()
-    elif hasattr(Booking, "client_requested_refund"):
-        refund_requests = Booking.query.filter(
-            Booking.client_requested_refund.is_(True)
-        ).count()
-    elif hasattr(Booking, "status"):
-        refund_requests = Booking.query.filter(
-            Booking.status.in_(["refund_requested", "refund_request"])
-        ).count()
+    # Refund requests
+# Count bookings where a client requested a refund and the refund has not already been processed.
+    refund_requests = Booking.query.filter(
+        Booking.admin_note.ilike("%[REFUND_REQUEST]%"),
+        ~Booking.admin_note.ilike("%[REFUND_APPROVED]%"),
+        ~Booking.admin_note.ilike("%[REFUND_DENIED]%"),
+    ).count()
 
     notif = {
         "refund_requests": refund_requests,
