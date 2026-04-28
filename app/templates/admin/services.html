@@ -81,8 +81,8 @@
             {% set desc_short = desc[:140] ~ ("…" if desc|length > 140 else "") %}
 
             {# created_at may not exist on your Service model, so guard it #}
-            {% set created_str = (s.created_at.strftime("%Y-%m-%d %H:%M") if (s.created_at is defined and s.created_at) else "—") %}
-            {% set moderated_str = (s.moderated_at.strftime("%Y-%m-%d %H:%M") if s.moderated_at else "—") %}
+            {% set created_str = (s.created_at.isoformat() ~ "Z" if (s.created_at is defined and s.created_at) else "—") %}
+{% set moderated_str = (s.moderated_at.isoformat() ~ "Z" if s.moderated_at else "—") %}
 
             <div class="list-group-item px-3 py-3 svc-row"
                  data-title="{{ (s.title or '')|lower }}"
@@ -124,8 +124,22 @@
                     <div class="fw-semibold">{{ provider_email }}</div>
                   </div>
                   <div class="text-muted small mt-1">
-                    <div><span class="text-muted">Created:</span> {{ created_str }}</div>
-                    <div><span class="text-muted">Moderated:</span> {{ moderated_str }}</div>
+                    <div>
+  <span class="text-muted">Created:</span>
+  {% if created_str != "—" %}
+    <span class="local-datetime" data-utc="{{ created_str }}">{{ created_str }}</span>
+  {% else %}
+    —
+  {% endif %}
+</div>
+<div>
+  <span class="text-muted">Moderated:</span>
+  {% if moderated_str != "—" %}
+    <span class="local-datetime" data-utc="{{ moderated_str }}">{{ moderated_str }}</span>
+  {% else %}
+    —
+  {% endif %}
+</div>
                   </div>
                 </div>
 
@@ -284,6 +298,20 @@
 
   const setText = (el, val) => { if (el) el.textContent = val; };
 
+  const formatLocalDateTime = (value) => {
+  if (!value || value === "—") return "—";
+  const d = new Date(value);
+  if (isNaN(d)) return value;
+
+  return d.toLocaleString([], {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+};
+
   document.querySelectorAll('.svc-edit').forEach((btn) => {
     btn.addEventListener('click', () => {
       const row = btn.closest('.svc-row');
@@ -302,7 +330,7 @@
       if (form && actionUrl) form.action = actionUrl;
 
       setText(modalTitle, title);
-      setText(modalMeta, `Provider: ${providerEmail} • Created: ${createdAt} • Moderated: ${moderatedAt} • #${serviceId}`);
+      setText(modalMeta, `Provider: ${providerEmail} • Created: ${formatLocalDateTime(createdAt)} • Moderated: ${formatLocalDateTime(moderatedAt)} • #${serviceId}`);
       setText(modalDesc, desc.trim() ? desc : 'No description.');
       if (modalNote) modalNote.value = note;
 
@@ -333,6 +361,9 @@
       saveBtn.className = 'btn btn-primary';
     }
   });
+  document.querySelectorAll(".local-datetime").forEach(el => {
+  el.textContent = formatLocalDateTime(el.dataset.utc);
+});
 })();
 </script>
 {% endblock %}
