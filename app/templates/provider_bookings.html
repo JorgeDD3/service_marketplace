@@ -558,7 +558,13 @@
                   </div>
                   <div class="history-meta">
                     Decision:
-                    <strong>{{ b.decided_at.strftime("%b %d, %Y • %I:%M %p") if b.decided_at else "—" }}</strong>
+{% if b.decided_at %}
+  <strong class="local-datetime" data-utc="{{ b.decided_at.isoformat() }}Z">
+    {{ b.decided_at.strftime("%b %d, %Y • %I:%M %p") }}
+  </strong>
+{% else %}
+  <strong>—</strong>
+{% endif %}
                   </div>
                 </div>
 
@@ -595,4 +601,19 @@
 
   {% endif %}
 </div>
+<script>
+document.querySelectorAll(".local-datetime").forEach(el => {
+  const d = new Date(el.dataset.utc);
+  if (!isNaN(d)) {
+    el.textContent = d.toLocaleString([], {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    }).replace(",", " •");
+  }
+});
+</script>
+
 {% endblock %}
