@@ -97,7 +97,7 @@
             {% set role = (u.role_display or '') %}
             {% set role_lower = role|lower %}
             {% set status = 'active' if u.is_active else 'disabled' %}
-            {% set disabled_at = (u.disabled_at.strftime("%Y-%m-%d %H:%M") if u.disabled_at else "—") %}
+            {% set disabled_at = (u.disabled_at.isoformat() ~ "Z" if u.disabled_at else "—") %}
             {% set disabled_reason = (u.disabled_reason or '') %}
 
             <div class="list-group-item px-3 py-3 u-row"
@@ -131,7 +131,14 @@
 
                 <div class="col-12 col-lg-3">
                   <div class="small fw-semibold">{{ u.email }}</div>
-                  <div class="text-muted small">Disabled at: {{ disabled_at }}</div>
+                  <div class="text-muted small">
+  Disabled at:
+  {% if disabled_at != "—" %}
+    <span class="local-datetime" data-utc="{{ disabled_at }}">{{ disabled_at }}</span>
+  {% else %}
+    —
+  {% endif %}
+</div>
                 </div>
 
                 <div class="col-6 col-lg-2">
@@ -237,6 +244,24 @@
   const rows = Array.from(document.querySelectorAll('.u-row'));
   const showingEl = document.getElementById('cShowing');
 
+  function formatLocalDateTime(value) {
+  if (!value || value === "—") return "—";
+  const d = new Date(value);
+  if (isNaN(d)) return value;
+
+  return d.toLocaleString([], {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+document.querySelectorAll(".local-datetime").forEach((el) => {
+  el.textContent = formatLocalDateTime(el.dataset.utc);
+});
+
   function applyFilter() {
     const q = (search?.value || '').trim().toLowerCase();
     const role = (roleSel?.value || 'all').toLowerCase();
@@ -314,7 +339,7 @@
       if (form && actionUrl) form.action = actionUrl;
 
       setText(mName, name);
-      setText(mMeta, `Email: ${email} • Role: ${role} • #${id} • Disabled at: ${disabledAt}`);
+      setText(mMeta, `Email: ${email} • Role: ${role} • #${id} • Disabled at: ${formatLocalDateTime(disabledAt)}`);
       setBadge(isActive);
 
       if (mReason) mReason.value = disabledReason;
