@@ -445,7 +445,15 @@
                   </div>
                   <div class="compact-box">
                     <div class="compact-label">Requested</div>
-                    <div class="compact-value">{{ b.created_at.strftime("%b %d • %I:%M %p") if b.created_at else "—" }}</div>
+                    <div class="compact-value">
+  {% if b.created_at %}
+    <span class="local-datetime-short" data-utc="{{ b.created_at.isoformat() }}Z">
+      {{ b.created_at.strftime("%b %d • %I:%M %p") }}
+    </span>
+  {% else %}
+    —
+  {% endif %}
+</div>
                   </div>
                 </div>
 
@@ -614,6 +622,18 @@ document.querySelectorAll(".local-datetime").forEach(el => {
     }).replace(",", " •");
   }
 });
+document.querySelectorAll(".local-datetime-short").forEach(el => {
+  const d = new Date(el.dataset.utc);
+  if (!isNaN(d)) {
+    el.textContent = d.toLocaleString([], {
+      month: "short",
+      day: "2-digit",
+      hour: "numeric",
+      minute: "2-digit"
+    }).replace(",", " •");
+  }
+});
+
 </script>
 
 {% endblock %}
