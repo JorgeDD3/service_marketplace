@@ -450,17 +450,17 @@
           <div class="row g-2">
             <div class="col-md-6">
               <label class="form-label">Legal name</label>
-              <input class="form-control" name="legal_name" value="{{ verification.legal_name if verification else '' }}" required>
+              <input class="form-control" name="legal_name" value="{{ verification.legal_name or '' if verification else '' }}" required>
             </div>
 
             <div class="col-md-6">
               <label class="form-label">Credential # (optional)</label>
-              <input class="form-control" name="license_number" value="{{ verification.license_number if verification else '' }}">
+              <input class="form-control" name="license_number" value="{{ verification.license_number or '' if verification else '' }}">
             </div>
 
             <div class="col-12">
               <label class="form-label">Portfolio URL (optional)</label>
-              <input class="form-control" name="portfolio_url" value="{{ verification.portfolio_url if verification else '' }}">
+              <input class="form-control" name="portfolio_url" type="url" placeholder="https://example.com" value="{{ verification.portfolio_url or '' if verification else '' }}">
             </div>
 
             <div class="col-md-6">
