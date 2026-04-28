@@ -391,24 +391,29 @@ document.querySelectorAll(".local-datetime").forEach(el => {
   }
 
   function setDocs(row) {
-    const idDoc = row.dataset.idDoc || '';
-    const certDoc = row.dataset.certDoc || '';
-    const parts = [];
+  const idDoc = row.dataset.idDoc || '';
+  const certDoc = row.dataset.certDoc || '';
+  const verificationId = row.dataset.verificationId;
+  const parts = [];
 
-    if (idDoc) {
-      parts.push(`<a href="{{ url_for('admin.download_verification_doc', verification_id=0, kind='id') }}".replace('/0/', '/' + row.dataset.verificationId + '/')}">ID Doc</a>`);
-    } else {
-      parts.push(`<span class="text-muted">No ID</span>`);
-    }
+  const idUrl = `/admin/verifications/${verificationId}/download/id`;
+  const certUrl = `/admin/verifications/${verificationId}/download/cert`;
 
-    if (certDoc) {
-      parts.push(`<a class="ms-2" href="{{ url_for('admin.download_verification_doc', verification_id=0, kind='cert') }}".replace('/0/', '/' + row.dataset.verificationId + '/')}">Cert</a>`);
-    } else {
-      parts.push(`<span class="text-muted ms-2">No Cert</span>`);
-    }
-
-    mDocsWrap.innerHTML = parts.join(' ');
+  if (idDoc) {
+    parts.push(`<a href="${idUrl}" target="_blank" rel="noopener">ID Doc</a>`);
+  } else {
+    parts.push(`<span class="text-muted">No ID</span>`);
   }
+
+  if (certDoc) {
+    parts.push(`<a class="ms-2" href="${certUrl}" target="_blank" rel="noopener">Cert</a>`);
+  } else {
+    parts.push(`<span class="text-muted ms-2">No Cert</span>`);
+  }
+
+  mDocsWrap.innerHTML = parts.join(' ');
+}
+
 
   function setPortfolio(url) {
     if (!mPortfolioWrap) return;
