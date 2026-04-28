@@ -558,12 +558,12 @@
             <div class="form-grid">
               <div class="form-group full">
                 <label class="form-label" for="card_name">Name on card</label>
-                <input class="form-input" id="card_name" name="card_name" type="text" value="Demo User" autocomplete="cc-name">
+                <input class="form-input" id="card_name" name="card_name" type="text" placeholder="Name on card" autocomplete="cc-name">
               </div>
 
               <div class="form-group full">
                 <label class="form-label" for="card_number">Card number</label>
-                <input class="form-input" id="card_number" name="card_number" type="text" value="4242 4242 4242 4242" autocomplete="cc-number">
+                <input class="form-input" id="card_number" name="card_number" type="text" placeholder="1234 1234 1234 1234" autocomplete="cc-number">
                 <div class="input-help">Supported card formats are accepted.</div>
               </div>
 
@@ -574,7 +574,7 @@
 
               <div class="form-group">
                 <label class="form-label" for="card_cvc">Security code</label>
-                <input class="form-input" id="card_cvc" name="card_cvc" type="text" value="123" autocomplete="cc-csc">
+                <input class="form-input" id="card_cvc" name="card_cvc" type="text" placeholder="CVC" autocomplete="cc-csc">
               </div>
             </div>
           </div>
@@ -763,7 +763,30 @@
     return { backdrop, modal };
   }
 
+    function isValidFutureExp(value){
+    const match = value.trim().match(/^(\d{2})\/(\d{2})$/);
+    if (!match) return false;
+
+    const month = parseInt(match[1], 10);
+    const year = 2000 + parseInt(match[2], 10);
+
+    if (month < 1 || month > 12) return false;
+
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    return year > currentYear || (year === currentYear && month >= currentMonth);
+  }
+
   function openModal(){
+        const expInput = document.getElementById("card_exp");
+
+    if (expInput && !isValidFutureExp(expInput.value)) {
+      alert("Please enter a valid expiration date that is not in the past. Use MM/YY format.");
+      expInput.focus();
+      return;
+    }
     const { backdrop, modal } = ensureModal();
     const s = summaryData();
 
