@@ -469,7 +469,7 @@ if (mode === 'reviewed') metaBits.push(`Reviewed: ${formatLocalDateTime(reviewed
       approveForm.style.display = isPending ? '' : 'none';
       rejectForm.style.display = isPending ? '' : 'none';
 
-      unverifyForm.style.display = (!isPending && status === 'verified') ? '' : 'none';
+      unverifyForm.style.display = (!isPending && (status === 'verified' || status === 'rejected')) ? '' : 'none';
       if (unverifyBtn) unverifyBtn.disabled = false;
     });
   });
