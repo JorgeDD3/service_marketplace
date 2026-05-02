@@ -1,10 +1,24 @@
-# app/provider.py
+"""Provider blueprint routes for ServiceSphere.
+
+This module contains everything providers use after logging in:
+- dashboard stats
+- profile + settings
+- verification submission (uploads)
+- weekly availability rules
+- time-off blocks
+- calendar week view
+- read-only view of client service requests
+
+I keep provider logic here so routes and permission checks stay organized.
+"""
+
 from datetime import datetime, timedelta
 import os
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
+
 from app.models import (
     ProviderProfile,
     ProviderAvailability,
@@ -17,7 +31,9 @@ from app.decorators import role_required
 
 provider = Blueprint("provider", __name__, url_prefix="/provider")
 
+
 def _allowed_upload(filename: str) -> bool:
+    """Checks file extension against the allowlist in config."""
     if not filename or "." not in filename:
         return False
     ext = filename.rsplit(".", 1)[1].lower()
@@ -26,9 +42,10 @@ def _allowed_upload(filename: str) -> bool:
 
 
 def _save_verification_file(file_storage, provider_profile_id: int, kind: str) -> str | None:
-    """
-    Save an uploaded file to instance/uploads/verification/.
-    Returns stored filename (relative name only), or None if no file.
+    """Save an uploaded verification file and return the stored filename.
+
+    I only store the generated filename (not the user-supplied name) so downloads stay safe.
+    Returns None if the user did not upload a file for that field.
     """
     if not file_storage or not getattr(file_storage, "filename", ""):
         return None
@@ -40,49 +57,47 @@ def _save_verification_file(file_storage, provider_profile_id: int, kind: str) -
     safe = secure_filename(original)
     ext = safe.rsplit(".", 1)[1].lower()
 
-    # Create folder instance/uploads/verification
+    # I keep verification uploads under instance/uploads/verification.
     base_dir = current_app.config["UPLOAD_DIR"]
     target_dir = os.path.join(str(base_dir), "verification")
     os.makedirs(target_dir, exist_ok=True)
 
-    # Deterministic-ish unique name per submit
+    # Simple unique-ish filename for each submission.
     ts = datetime.utcnow().strftime("%Y%m%d%H%M%S")
     stored = f"provider_{provider_profile_id}_{kind}_{ts}.{ext}"
 
     file_storage.save(os.path.join(target_dir, stored))
     return stored
 
+
 @provider.route("/dashboard")
 @login_required
 @role_required("provider")
 def dashboard():
-    from datetime import datetime
+    """Provider home dashboard with counts and setup reminders."""
     from app.models import Booking, Service
 
     now = datetime.utcnow()
 
-    # 1) Pending paid bookings (paid but still pending decision)
+    # Count paid bookings that are still waiting for the provider decision.
     pending_paid_count = (
-        Booking.query
-        .filter(Booking.provider_id == current_user.id)
+        Booking.query.filter(Booking.provider_id == current_user.id)
         .filter(Booking.payment_status == "paid")
         .filter(Booking.status == Booking.STATUS_PENDING)
         .count()
     )
 
-    # 2) Upcoming accepted bookings (future)
+    # Count upcoming accepted bookings so the provider can quickly see what's coming up.
     upcoming_count = (
-        Booking.query
-        .filter(Booking.provider_id == current_user.id)
+        Booking.query.filter(Booking.provider_id == current_user.id)
         .filter(Booking.status == Booking.STATUS_ACCEPTED)
         .filter(Booking.booking_datetime >= now)
         .count()
     )
 
-    # 3) Active services visible to clients
     profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
 
-        # --- Setup completion check ---
+    # I show a setup notice if the provider hasn't finished profile + availability yet.
     needs_profile_setup = False
     needs_availability_setup = False
 
@@ -91,54 +106,47 @@ def dashboard():
 
     availability_count = 0
     if profile:
-        availability_count = ProviderAvailability.query.filter_by(
-            provider_profile_id=profile.id
-        ).count()
+        availability_count = ProviderAvailability.query.filter_by(provider_profile_id=profile.id).count()
 
     if availability_count == 0:
         needs_availability_setup = True
 
     show_setup_notice = needs_profile_setup or needs_availability_setup
 
-
-    
+    # Count active services visible to clients.
     services_count = 0
     if profile:
         services_count = (
-            Service.query
-            .filter(Service.provider_profile_id == profile.id)
+            Service.query.filter(Service.provider_profile_id == profile.id)
             .filter(Service.is_active.is_(True))
             .count()
         )
 
     return render_template(
-    "provider_dashboard.html",
-    pending_paid_count=pending_paid_count,
-    upcoming_count=upcoming_count,
-    services_count=services_count,
-    show_setup_notice=show_setup_notice,
-    needs_profile_setup=needs_profile_setup,
-    needs_availability_setup=needs_availability_setup,
-)
-
+        "provider_dashboard.html",
+        pending_paid_count=pending_paid_count,
+        upcoming_count=upcoming_count,
+        services_count=services_count,
+        show_setup_notice=show_setup_notice,
+        needs_profile_setup=needs_profile_setup,
+        needs_availability_setup=needs_availability_setup,
+    )
 
 
 @provider.route("/verification", methods=["GET", "POST"])
 @login_required
 @role_required("provider")
 def verification():
+    """Provider verification submission page (details + document uploads)."""
     profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
     if not profile:
         flash("Create your provider profile before requesting verification.", "warning")
         return redirect(url_for("provider.profile"))
 
-    verification = ProviderVerification.query.filter_by(provider_profile_id=profile.id).first()
-    if verification is None:
-        verification = ProviderVerification(
-            provider_profile_id=profile.id,
-            status="not_submitted"
-        )
-        db.session.add(verification)
+    verification_row = ProviderVerification.query.filter_by(provider_profile_id=profile.id).first()
+    if verification_row is None:
+        verification_row = ProviderVerification(provider_profile_id=profile.id, status="not_submitted")
+        db.session.add(verification_row)
         db.session.commit()
 
     if request.method == "POST":
@@ -156,23 +164,21 @@ def verification():
 
             saved_id = _save_verification_file(id_file, profile.id, "id")
             saved_cert = _save_verification_file(cert_file, profile.id, "cert")
-
         except ValueError as e:
             flash(str(e), "danger")
             return redirect(url_for("provider.verification"))
 
-        verification.legal_name = legal_name or None
-        verification.license_number = license_number or None
-        verification.portfolio_url = portfolio_url or None
+        verification_row.legal_name = legal_name or None
+        verification_row.license_number = license_number or None
+        verification_row.portfolio_url = portfolio_url or None
 
         if saved_id:
-            verification.id_document_filename = saved_id
-
+            verification_row.id_document_filename = saved_id
         if saved_cert:
-            verification.certification_filename = saved_cert
+            verification_row.certification_filename = saved_cert
 
-        verification.status = "pending_review"
-        verification.submitted_at = datetime.utcnow()
+        verification_row.status = "pending_review"
+        verification_row.submitted_at = datetime.utcnow()
 
         db.session.commit()
         flash("Verification submitted!", "success")
@@ -181,19 +187,21 @@ def verification():
     return render_template(
         "provider/provider_verification.html",
         profile=profile,
-        verification=verification,
+        verification=verification_row,
     )
+
 
 @provider.route("/profile", methods=["GET", "POST"])
 @login_required
 @role_required("provider")
 def profile():
-    profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
+    """Create/update the provider profile information clients will see."""
+    profile_row = ProviderProfile.query.filter_by(user_id=current_user.id).first()
 
     nav_verification_status = None
-    if profile:
-        verification = ProviderVerification.query.filter_by(provider_profile_id=profile.id).first()
-        nav_verification_status = verification.status if verification else None
+    if profile_row:
+        verification_row = ProviderVerification.query.filter_by(provider_profile_id=profile_row.id).first()
+        nav_verification_status = verification_row.status if verification_row else None
 
     if request.method == "POST":
         first_name = (request.form.get("first_name") or "").strip()
@@ -223,47 +231,49 @@ def profile():
             flash("Bio is required.", "danger")
             return redirect(url_for("provider.profile"))
 
-        if profile is None:
-            profile = ProviderProfile(
+        if profile_row is None:
+            profile_row = ProviderProfile(
                 user_id=current_user.id,
                 bio=bio,
                 hourly_rate=hourly_rate,
                 availability_notes=availability_notes or None,
             )
-            db.session.add(profile)
+            db.session.add(profile_row)
             flash("Provider profile created.", "success")
         else:
-            profile.bio = bio
-            profile.hourly_rate = hourly_rate
-            profile.availability_notes = availability_notes or None
+            profile_row.bio = bio
+            profile_row.hourly_rate = hourly_rate
+            profile_row.availability_notes = availability_notes or None
             flash("Provider profile updated.", "success")
 
         db.session.commit()
         return redirect(url_for("provider.profile"))
 
     return render_template(
-    "provider_profile.html",
-    profile=profile,
-    nav_verification_status=nav_verification_status,
-)
+        "provider_profile.html",
+        profile=profile_row,
+        nav_verification_status=nav_verification_status,
+    )
+
 
 @provider.route("/settings", methods=["GET", "POST"])
 @login_required
 @role_required("provider")
 def settings():
-    """
-    Provider settings (NO ERD changes):
-    - Account update: email only
-    - Password update: current/new/confirm password
+    """Provider settings page.
+
+    I keep this limited to ERD-backed fields:
+    - account update: email only
+    - password update: current/new/confirm password
     """
     from werkzeug.security import check_password_hash, generate_password_hash
     from app.models import User
 
-    profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
+    profile_row = ProviderProfile.query.filter_by(user_id=current_user.id).first()
 
     verification_status = None
-    if profile:
-        v = ProviderVerification.query.filter_by(provider_profile_id=profile.id).first()
+    if profile_row:
+        v = ProviderVerification.query.filter_by(provider_profile_id=profile_row.id).first()
         verification_status = v.status if v else None
 
     if request.method == "POST":
@@ -325,30 +335,32 @@ def settings():
     )
 
 
-
 @provider.route("/availability", methods=["GET", "POST"])
 @login_required
 @role_required("provider")
 def availability():
-    profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
-    if not profile:
+    """Manage weekly recurring availability windows used for slot generation."""
+    profile_row = ProviderProfile.query.filter_by(user_id=current_user.id).first()
+    if not profile_row:
         flash("Create your provider profile before setting availability.", "warning")
         return redirect(url_for("provider.profile"))
-    
-        # Auto-create default availability (Mon–Fri 9am–5pm) if provider has no rules yet
-    existing_count = ProviderAvailability.query.filter_by(provider_profile_id=profile.id).count()
+
+    # If there are no rules yet, I seed a basic Mon–Fri 9–5 schedule so new providers aren't stuck.
+    existing_count = ProviderAvailability.query.filter_by(provider_profile_id=profile_row.id).count()
     if existing_count == 0:
-        default_days = [0, 1, 2, 3, 4]  # Mon-Fri (matches your day_of_week convention)
+        default_days = [0, 1, 2, 3, 4]
         for dow in default_days:
-            db.session.add(ProviderAvailability(
-                provider_profile_id=profile.id,
-                day_of_week=dow,
-                start_time="09:00",
-                end_time="17:00",
-                slot_minutes=60,
-                is_active=True,
-                created_at=datetime.utcnow(),
-            ))
+            db.session.add(
+                ProviderAvailability(
+                    provider_profile_id=profile_row.id,
+                    day_of_week=dow,
+                    start_time="09:00",
+                    end_time="17:00",
+                    slot_minutes=60,
+                    is_active=True,
+                    created_at=datetime.utcnow(),
+                )
+            )
         db.session.commit()
         flash("Default availability created (Mon–Fri 9:00 AM–5:00 PM). You can edit it anytime.", "info")
 
@@ -375,7 +387,7 @@ def availability():
             flash("Start and end time are required.", "danger")
             return redirect(url_for("provider.availability"))
 
-        # Basic validation: HH:MM and start < end (lexicographic works for 24h HH:MM)
+        # Basic validation: HH:MM and start < end works fine for 24h strings.
         if len(start_time) != 5 or len(end_time) != 5 or start_time >= end_time:
             flash("Invalid time window. Use HH:MM and ensure start < end.", "danger")
             return redirect(url_for("provider.availability"))
@@ -385,7 +397,7 @@ def availability():
             return redirect(url_for("provider.availability"))
 
         rule = ProviderAvailability(
-            provider_profile_id=profile.id,
+            provider_profile_id=profile_row.id,
             day_of_week=day_of_week,
             start_time=start_time,
             end_time=end_time,
@@ -400,8 +412,7 @@ def availability():
         return redirect(url_for("provider.availability"))
 
     rules = (
-        ProviderAvailability.query
-        .filter_by(provider_profile_id=profile.id)
+        ProviderAvailability.query.filter_by(provider_profile_id=profile_row.id)
         .order_by(ProviderAvailability.day_of_week.asc(), ProviderAvailability.start_time.asc())
         .all()
     )
@@ -412,14 +423,14 @@ def availability():
 @login_required
 @role_required("provider")
 def delete_availability(rule_id: int):
-
-    profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
-    if not profile:
+    """Delete one availability rule owned by the current provider."""
+    profile_row = ProviderProfile.query.filter_by(user_id=current_user.id).first()
+    if not profile_row:
         flash("Create your provider profile first.", "warning")
         return redirect(url_for("provider.profile"))
 
     rule = ProviderAvailability.query.get_or_404(rule_id)
-    if rule.provider_profile_id != profile.id:
+    if rule.provider_profile_id != profile_row.id:
         flash("Not authorized to modify this availability.", "danger")
         return redirect(url_for("provider.availability"))
 
@@ -428,17 +439,19 @@ def delete_availability(rule_id: int):
     flash("Availability window removed.", "success")
     return redirect(url_for("provider.availability"))
 
+
 @provider.route("/availability/<int:rule_id>/toggle", methods=["POST"])
 @login_required
 @role_required("provider")
 def toggle_availability(rule_id: int):
-    profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
-    if not profile:
+    """Enable/disable an availability rule without deleting it."""
+    profile_row = ProviderProfile.query.filter_by(user_id=current_user.id).first()
+    if not profile_row:
         flash("Create your provider profile first.", "warning")
         return redirect(url_for("provider.profile"))
 
     rule = ProviderAvailability.query.get_or_404(rule_id)
-    if rule.provider_profile_id != profile.id:
+    if rule.provider_profile_id != profile_row.id:
         flash("Not authorized to modify this availability.", "danger")
         return redirect(url_for("provider.availability"))
 
@@ -453,13 +466,14 @@ def toggle_availability(rule_id: int):
 @login_required
 @role_required("provider")
 def update_availability(rule_id: int):
-    profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
-    if not profile:
+    """Update an availability rule (time window and slot size)."""
+    profile_row = ProviderProfile.query.filter_by(user_id=current_user.id).first()
+    if not profile_row:
         flash("Create your provider profile first.", "warning")
         return redirect(url_for("provider.profile"))
 
     rule = ProviderAvailability.query.get_or_404(rule_id)
-    if rule.provider_profile_id != profile.id:
+    if rule.provider_profile_id != profile_row.id:
         flash("Not authorized to modify this availability.", "danger")
         return redirect(url_for("provider.availability"))
 
@@ -487,52 +501,47 @@ def update_availability(rule_id: int):
     flash("Availability updated.", "success")
     return redirect(url_for("provider.availability"))
 
+
 @provider.route("/calendar")
 @login_required
 @role_required("provider")
 def calendar_view():
-    profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
-    if not profile:
+    """Provider week view showing availability, bookings, and time off."""
+    from app.models import Booking
+
+    profile_row = ProviderProfile.query.filter_by(user_id=current_user.id).first()
+    if not profile_row:
         flash("Create your provider profile before viewing calendar.", "warning")
         return redirect(url_for("provider.profile"))
 
-    # Use local "now" for UI shading expectations (per project notes)
+    # I use local time here so the shading/labels feel natural for the UI.
     now_local = datetime.now().replace(second=0, microsecond=0)
     today_local = now_local.date()
 
-    # --- Week selection (Sunday-start like Google week view) ---
     week_str = (request.args.get("week") or "").strip()
-
     try:
         selected = datetime.strptime(week_str, "%Y-%m-%d").date() if week_str else today_local
     except ValueError:
         selected = today_local
 
-    # Sunday-start week
-    # Python: Monday=0..Sunday=6. Convert to Sunday-start offset.
+    # Sunday-start week to match typical calendar expectations.
     sunday_offset = (selected.weekday() + 1) % 7
     week_start = selected - timedelta(days=sunday_offset)
-    week_end = week_start + timedelta(days=7)  # exclusive
+    week_end = week_start + timedelta(days=7)
 
     week_days = [week_start + timedelta(days=i) for i in range(7)]
 
-    # Pull availability rules (active only)
     rules = (
-        ProviderAvailability.query
-        .filter_by(provider_profile_id=profile.id, is_active=True)
+        ProviderAvailability.query.filter_by(provider_profile_id=profile_row.id, is_active=True)
         .order_by(ProviderAvailability.day_of_week.asc(), ProviderAvailability.start_time.asc())
         .all()
     )
-
-    # Bookings for this provider within the selected week (pending + accepted)
-    from app.models import Booking, ProviderTimeOff
 
     week_start_dt = datetime.combine(week_start, datetime.min.time())
     week_end_dt = datetime.combine(week_end, datetime.min.time())
 
     bookings = (
-        Booking.query
-        .filter(Booking.provider_id == current_user.id)
+        Booking.query.filter(Booking.provider_id == current_user.id)
         .filter(Booking.status.in_(["pending", "accepted"]))
         .filter(Booking.booking_datetime >= week_start_dt)
         .filter(Booking.booking_datetime < week_end_dt)
@@ -540,10 +549,8 @@ def calendar_view():
         .all()
     )
 
-    # Time off entries overlapping this week
     time_off_entries = (
-        ProviderTimeOff.query
-        .filter_by(provider_profile_id=profile.id)
+        ProviderTimeOff.query.filter_by(provider_profile_id=profile_row.id)
         .filter(ProviderTimeOff.end_datetime > week_start_dt)
         .filter(ProviderTimeOff.start_datetime < week_end_dt)
         .order_by(ProviderTimeOff.start_datetime.asc())
@@ -561,19 +568,19 @@ def calendar_view():
         now_local=now_local,
     )
 
+
 @provider.route("/time-off", methods=["GET", "POST"])
 @login_required
 @role_required("provider")
 def time_off():
-    profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
-    if not profile:
+    """Create and view time-off blocks that remove slots for specific dates."""
+    profile_row = ProviderProfile.query.filter_by(user_id=current_user.id).first()
+    if not profile_row:
         flash("Create your provider profile before managing time off.", "warning")
         return redirect(url_for("provider.profile"))
 
-    from app.models import ProviderTimeOff
-
     if request.method == "POST":
-        all_day = (request.form.get("all_day") == "on")
+        all_day = request.form.get("all_day") == "on"
         start_date = (request.form.get("start_date") or "").strip()
         end_date = (request.form.get("end_date") or "").strip()
         start_time = (request.form.get("start_time") or "09:00").strip()
@@ -597,6 +604,7 @@ def time_off():
 
         now = datetime.utcnow()
 
+        # I prevent blocking time in the past because it doesn't affect scheduling anyway.
         if end_dt <= now:
             flash("You cannot block time that has already passed.", "danger")
             return redirect(url_for("provider.time_off"))
@@ -606,7 +614,7 @@ def time_off():
             return redirect(url_for("provider.time_off"))
 
         entry = ProviderTimeOff(
-            provider_profile_id=profile.id,
+            provider_profile_id=profile_row.id,
             start_datetime=start_dt,
             end_datetime=end_dt,
             all_day=all_day,
@@ -619,47 +627,42 @@ def time_off():
         flash("Time off saved.", "success")
         return redirect(url_for("provider.time_off"))
 
-    # GET
     entries = (
-        ProviderTimeOff.query
-        .filter_by(provider_profile_id=profile.id)
+        ProviderTimeOff.query.filter_by(provider_profile_id=profile_row.id)
         .order_by(ProviderTimeOff.start_datetime.desc())
         .all()
     )
 
-    return render_template(
-        "provider_time_off.html",
-        entries=entries,
-    )
+    return render_template("provider_time_off.html", entries=entries)
 
 
 @provider.route("/availability/preset", methods=["POST"])
 @login_required
 @role_required("provider")
 def availability_preset():
-
-    profile = ProviderProfile.query.filter_by(user_id=current_user.id).first()
-    if not profile:
+    """Quick-add a preset weekly availability schedule."""
+    profile_row = ProviderProfile.query.filter_by(user_id=current_user.id).first()
+    if not profile_row:
         flash("Create your provider profile before setting availability.", "warning")
         return redirect(url_for("provider.profile"))
-
-    
 
     preset = (request.form.get("preset") or "").strip()
 
     def add_window(dow: int, start: str, end: str, slot: int = 30):
-        db.session.add(ProviderAvailability(
-            provider_profile_id=profile.id,
-            day_of_week=dow,
-            start_time=start,
-            end_time=end,
-            slot_minutes=slot,
-            is_active=True,
-            created_at=datetime.utcnow(),
-        ))
+        db.session.add(
+            ProviderAvailability(
+                provider_profile_id=profile_row.id,
+                day_of_week=dow,
+                start_time=start,
+                end_time=end,
+                slot_minutes=slot,
+                is_active=True,
+                created_at=datetime.utcnow(),
+            )
+        )
 
     if preset == "mon_fri_9_5":
-        for dow in range(0, 5):  # Mon..Fri
+        for dow in range(0, 5):
             add_window(dow, "09:00", "17:00", 30)
         db.session.commit()
         flash("Preset added: Mon–Fri 9:00–17:00 (30-min slots).", "success")
@@ -673,15 +676,13 @@ def availability_preset():
 @login_required
 @role_required("provider")
 def requests_board():
+    """Provider-facing view of open service requests.
+
+    This is read-only in the MVP. It helps providers see unmet demand and decide what to offer next.
     """
-    Provider-facing view of open service requests.
-    Read-only MVP: helps providers see unmet demand and decide what to offer next.
-    """
-    # Open requests only
     open_statuses = ["open", "active", "pending"]
     requests_q = (
-        ServiceRequest.query
-        .filter(ServiceRequest.status.in_(open_statuses))
+        ServiceRequest.query.filter(ServiceRequest.status.in_(open_statuses))
         .order_by(ServiceRequest.created_at.desc())
         .all()
     )

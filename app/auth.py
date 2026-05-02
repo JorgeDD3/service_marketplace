@@ -1,23 +1,34 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+"""
+Authentication routes for ServiceSphere.
+
+This file handles:
+- registering new users (client/provider only)
+- login/logout with Flask-Login
+- password reset (demo-friendly: generates a reset link on screen in non-prod)
+
+I keep these routes under /auth so the rest of the app can focus on marketplace logic.
+"""
+
+from flask import Blueprint, current_app, render_template, request, redirect, url_for, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import login_user, logout_user, login_required, current_user
 
 from app.extensions import db
-from app.models import User, Role
+from app.models import User, Role, PasswordResetToken, hash_token
 
 auth = Blueprint("auth", __name__, url_prefix="/auth")
 
 
 @auth.route("/register", methods=["GET", "POST"])
 def register():
-    # If already logged in, don't allow re-register
+    """Creates a new account (clients and providers only)."""
+    # If someone is already logged in, I don’t let them re-register on the same session.
     if current_user.is_authenticated:
         return redirect(url_for("main.home"))
 
     if request.method == "GET":
         return render_template("register.html")
 
-    # POST
     first_name = (request.form.get("first_name") or "").strip()
     last_name = (request.form.get("last_name") or "").strip()
     email = (request.form.get("email") or "").strip().lower()
@@ -33,12 +44,11 @@ def register():
         flash("Passwords do not match.", "danger")
         return redirect(url_for("auth.register"))
 
-    # Prevent public creation of admin accounts
+    # I block public creation of admin accounts. Admins should be seeded or created privately.
     if role_name not in {"client", "provider"}:
         flash("Invalid role selection.", "danger")
         return redirect(url_for("auth.register"))
 
-    # Duplicate check
     if User.query.filter_by(email=email).first():
         flash("An account with that email already exists.", "warning")
         return redirect(url_for("auth.register"))
@@ -54,7 +64,6 @@ def register():
         email=email,
         password_hash=generate_password_hash(password),
         role_id=role.id,
-        # is_active defaults True; leave explicit set out
     )
 
     db.session.add(user)
@@ -67,6 +76,7 @@ def register():
 
 @auth.route("/login", methods=["GET", "POST"])
 def login():
+    """Logs a user in and sends them to the correct dashboard based on role."""
     if current_user.is_authenticated:
         return redirect(url_for("main.home"))
 
@@ -79,11 +89,12 @@ def login():
 
     user = User.query.filter_by(email=email).first()
 
+    # I keep this message generic so it doesn't leak which emails exist.
     if not user or not check_password_hash(user.password_hash, password):
         flash("Invalid email or password.", "danger")
         return redirect(url_for("auth.login"))
 
-    # Block disabled accounts (admin moderation)
+    # If an admin disabled the account, I block login and show the reason if available.
     if user.is_active is False:
         reason = (user.disabled_reason or "").strip()
         msg = "Your account has been disabled."
@@ -95,38 +106,33 @@ def login():
     login_user(user)
     flash("Logged in successfully.", "success")
 
-    # Preserve redirect if user was sent here from protected page
+    # If Flask-Login sent them here from a protected page, I respect that redirect.
     if next_url and next_url.startswith("/"):
         return redirect(next_url)
 
-    # Role-based redirect
+    # Otherwise I send them to the right place based on role.
     if user.has_role("provider"):
         return redirect(url_for("provider.dashboard"))
 
     if user.has_role("admin"):
         return redirect(url_for("admin.dashboard"))
 
-    # Default for clients
     return redirect(url_for("main.services"))
+
 
 @auth.route("/logout")
 @login_required
 def logout():
+    """Ends the session and returns the user to the home page."""
     logout_user()
     flash("You have been logged out.", "info")
     return redirect(url_for("main.home"))
 
-# --- Password Reset (Option B) ---
-from flask import current_app, flash, redirect, render_template, request, url_for
-from flask_login import current_user
-
-from app.extensions import db
-from app.models import User, PasswordResetToken, hash_token
-
 
 @auth.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
-    # If logged in, no need to reset
+    """Generates a password reset token and shows a reset link in non-production builds."""
+    # If logged in already, a reset isn't needed.
     if current_user.is_authenticated:
         flash("You are already logged in.", "info")
         return redirect(url_for("main.services"))
@@ -136,12 +142,13 @@ def forgot_password():
     if request.method == "POST":
         email = (request.form.get("email") or "").strip().lower()
 
-        # Always neutral message (prevents email enumeration)
+        # I always show the same message so users can't probe which emails are registered.
         flash("If an account exists for that email, a reset link has been generated.", "info")
 
         if email:
             user = User.query.filter(db.func.lower(User.email) == email).first()
 
+            # I only generate a token for real, active accounts.
             if user and getattr(user, "is_active", True):
                 raw_token, _row = PasswordResetToken.create_for_user(
                     user,
@@ -150,7 +157,7 @@ def forgot_password():
                     user_agent=request.headers.get("User-Agent"),
                 )
 
-                # Dev-mode demo: show link on-screen instead of sending email
+                # For the class demo, I show the link on screen in non-prod instead of emailing it.
                 is_prod = (
                     current_app.config.get("APP_CONFIG") == "production"
                     or current_app.config.get("ENV") == "production"
@@ -165,6 +172,7 @@ def forgot_password():
 
 @auth.route("/reset-password/<token>", methods=["GET", "POST"])
 def reset_password(token: str):
+    """Validates a reset token and allows the user to set a new password."""
     if current_user.is_authenticated:
         flash("You are already logged in.", "info")
         return redirect(url_for("main.services"))
@@ -172,7 +180,7 @@ def reset_password(token: str):
     token_h = hash_token(token)
     row = PasswordResetToken.query.filter_by(token_hash=token_h).first()
 
-    # Validate token
+    # If the token isn't valid, I push the user back to request a new one.
     if not row or row.is_used or row.is_expired:
         flash("That reset link is invalid or has expired. Please request a new one.", "warning")
         return redirect(url_for("auth.forgot_password"))
@@ -194,6 +202,7 @@ def reset_password(token: str):
             flash("That reset link is invalid. Please request a new one.", "warning")
             return redirect(url_for("auth.forgot_password"))
 
+        # I route through the model helper so password hashing stays consistent in one place.
         if hasattr(user, "set_password"):
             user.set_password(password)
         else:
