@@ -1,4 +1,17 @@
-# app/models.py
+"""
+Database models for ServiceSphere (SQLAlchemy ORM).
+
+This file defines the core tables and relationships for the marketplace:
+- users + roles (RBAC)
+- provider profiles, availability rules, time off, verification
+- services and bookings (including booking state + payment state)
+- service requests (clients posting unmet needs)
+- messaging tables (conversations + messages + read tracking)
+- password reset tokens (stored hashed, with expiration)
+
+I keep everything here so the schema stays in one place and is easy to review.
+"""
+
 import hashlib
 import secrets
 from datetime import datetime, timedelta
@@ -6,11 +19,12 @@ from datetime import datetime, timedelta
 from flask_login import UserMixin
 from sqlalchemy import UniqueConstraint
 
-from .extensions import db  # IMPORTANT: import from extensions, not app
+from .extensions import db  # important: import from extensions so db is initialized through the app factory
 
 
-# Role Model
 class Role(db.Model):
+    """Simple roles table used for RBAC (client/provider/admin)."""
+
     __tablename__ = "roles"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -22,8 +36,15 @@ class Role(db.Model):
         return f"<Role {self.role_name}>"
 
 
-# User Model
 class User(db.Model, UserMixin):
+    """User accounts for ServiceSphere.
+
+    Notes:
+    - Flask-Login uses `is_active` to allow/deny authentication.
+    - Role is a FK to roles table (RBAC).
+    - Providers are users with the provider role and an attached ProviderProfile.
+    """
+
     __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -36,18 +57,19 @@ class User(db.Model, UserMixin):
 
     role_id = db.Column(db.Integer, db.ForeignKey("roles.id"), nullable=True)
 
-    # --- Account moderation (admin disable/enable) ---
-    # Flask-Login uses is_active to determine if the user can authenticate
+    # Account moderation fields used by admin enable/disable.
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     disabled_at = db.Column(db.DateTime, nullable=True)
     disabled_reason = db.Column(db.Text, nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # Relationships
     role = db.relationship("Role", back_populates="users")
+
     provider_profile = db.relationship(
-        "ProviderProfile", back_populates="user", uselist=False
+        "ProviderProfile",
+        back_populates="user",
+        uselist=False,
     )
 
     bookings_as_client = db.relationship(
@@ -62,19 +84,20 @@ class User(db.Model, UserMixin):
         back_populates="provider",
     )
 
-    # IMPORTANT: disambiguate client vs claimed_by_provider_id
+    # Service requests created by this user as a client.
     service_requests = db.relationship(
         "ServiceRequest",
         foreign_keys="ServiceRequest.client_id",
         back_populates="client",
     )
 
-    # --- RBAC helpers (clean + scalable) ---
     @property
     def role_display(self) -> str | None:
+        """Returns the role name string (or None)."""
         return self.role.role_name if self.role else None
 
     def has_role(self, *roles: str) -> bool:
+        """Convenience helper for RBAC checks."""
         if not self.role:
             return False
         return self.role.role_name in roles
@@ -84,18 +107,20 @@ class User(db.Model, UserMixin):
 
 
 def hash_token(raw_token: str) -> str:
-    """Hash a raw reset token so we never store it in plaintext."""
+    """Hashes a raw reset token so we never store it in plaintext."""
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
 
 class PasswordResetToken(db.Model):
+    """Stores password reset tokens (hashed) with expiration and optional audit fields."""
+
     __tablename__ = "password_reset_tokens"
 
     id = db.Column(db.Integer, primary_key=True)
 
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
 
-    # Store only a hash of the token (never the token itself)
+    # I only store a hash of the token, never the token itself.
     token_hash = db.Column(db.String(64), nullable=False, unique=True, index=True)
 
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
@@ -103,7 +128,6 @@ class PasswordResetToken(db.Model):
 
     used_at = db.Column(db.DateTime, nullable=True)
 
-    # Optional audit fields (handy for admin/security logs)
     request_ip = db.Column(db.String(45), nullable=True)
     user_agent = db.Column(db.String(255), nullable=True)
 
@@ -129,11 +153,12 @@ class PasswordResetToken(db.Model):
         request_ip: str | None = None,
         user_agent: str | None = None,
     ):
+        """Creates a reset token row and returns (raw_token, token_row).
+
+        `raw_token` is what you show/email to the user.
+        The database stores only the SHA-256 hash.
         """
-        Creates a reset token row and returns (raw_token, token_row).
-        raw_token is what you show to the user (or email later).
-        """
-        raw = secrets.token_urlsafe(32)  # ~43 chars, URL-safe
+        raw = secrets.token_urlsafe(32)
         row = cls(
             user_id=user.id,
             token_hash=hash_token(raw),
@@ -147,6 +172,12 @@ class PasswordResetToken(db.Model):
 
 
 class ProviderProfile(db.Model):
+    """Provider public profile (bio, rate, notes).
+
+    This is how a provider "becomes bookable" in the marketplace.
+    Services belong to provider profiles, not directly to users.
+    """
+
     __tablename__ = "provider_profiles"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -161,7 +192,6 @@ class ProviderProfile(db.Model):
     user = db.relationship("User", back_populates="provider_profile")
     services = db.relationship("Service", back_populates="provider_profile")
 
-    # Provider verification (1:1)
     verification = db.relationship(
         "ProviderVerification",
         back_populates="provider_profile",
@@ -170,10 +200,7 @@ class ProviderProfile(db.Model):
     )
 
     def get_or_create_verification(self):
-        """
-        Ensures a ProviderVerification row exists for this provider.
-        Returns the ProviderVerification instance.
-        """
+        """Ensures a ProviderVerification row exists for this provider."""
         if self.verification:
             return self.verification
 
@@ -186,25 +213,22 @@ class ProviderProfile(db.Model):
         return f"<ProviderProfile {self.id}>"
 
 
-# Provider Availability (weekly recurring windows)
 class ProviderAvailability(db.Model):
+    """Weekly recurring availability windows used to generate bookable slots."""
+
     __tablename__ = "provider_availability"
 
     id = db.Column(db.Integer, primary_key=True)
-    provider_profile_id = db.Column(
-        db.Integer, db.ForeignKey("provider_profiles.id"), nullable=False
-    )
+    provider_profile_id = db.Column(db.Integer, db.ForeignKey("provider_profiles.id"), nullable=False)
 
     # 0=Mon ... 6=Sun
     day_of_week = db.Column(db.Integer, nullable=False)
 
-    # Store as "HH:MM" strings (simple + SQLite friendly)
+    # Stored as "HH:MM" strings to keep it simple and DB-friendly.
     start_time = db.Column(db.String(5), nullable=False)
     end_time = db.Column(db.String(5), nullable=False)
 
-    # Slot size in minutes (default 30)
     slot_minutes = db.Column(db.Integer, default=30, nullable=False)
-
     is_active = db.Column(db.Boolean, default=True, nullable=False)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -218,16 +242,13 @@ class ProviderAvailability(db.Model):
         )
 
 
-# Provider Timeoff
 class ProviderTimeOff(db.Model):
+    """One-time time off blocks (vacation, appointments, exceptions to weekly rules)."""
+
     __tablename__ = "provider_time_off"
 
     id = db.Column(db.Integer, primary_key=True)
-    provider_profile_id = db.Column(
-        db.Integer,
-        db.ForeignKey("provider_profiles.id"),
-        nullable=False,
-    )
+    provider_profile_id = db.Column(db.Integer, db.ForeignKey("provider_profiles.id"), nullable=False)
 
     start_datetime = db.Column(db.DateTime, nullable=False)
     end_datetime = db.Column(db.DateTime, nullable=False)
@@ -240,13 +261,13 @@ class ProviderTimeOff(db.Model):
     provider_profile = db.relationship("ProviderProfile", backref="time_off_entries")
 
 
-# Provider Verification
 class ProviderVerification(db.Model):
+    """Provider verification workflow (admin-reviewed trust badge)."""
+
     __tablename__ = "provider_verifications"
 
     id = db.Column(db.Integer, primary_key=True)
 
-    # One verification application per provider profile
     provider_profile_id = db.Column(
         db.Integer,
         db.ForeignKey("provider_profiles.id", ondelete="CASCADE"),
@@ -258,16 +279,13 @@ class ProviderVerification(db.Model):
     # Workflow: unverified -> pending_review -> verified / rejected
     status = db.Column(db.String(32), nullable=False, default="unverified", index=True)
 
-    # "KYC-lite" fields
     legal_name = db.Column(db.String(120), nullable=True)
     license_number = db.Column(db.String(80), nullable=True)
     portfolio_url = db.Column(db.String(255), nullable=True)
 
-    # Upload fields: store filenames/relative paths only
     id_document_filename = db.Column(db.String(255), nullable=True)
     certification_filename = db.Column(db.String(255), nullable=True)
 
-    # Audit trail
     submitted_at = db.Column(db.DateTime, nullable=True)
     reviewed_at = db.Column(db.DateTime, nullable=True)
 
@@ -280,11 +298,8 @@ class ProviderVerification(db.Model):
     admin_notes = db.Column(db.Text, nullable=True)
 
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = db.Column(
-        db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationships
     provider_profile = db.relationship(
         "ProviderProfile",
         back_populates="verification",
@@ -296,20 +311,16 @@ class ProviderVerification(db.Model):
         return self.status == "verified"
 
     def __repr__(self) -> str:
-        return (
-            f"<ProviderVerification provider_profile_id={self.provider_profile_id} "
-            f"status={self.status}>"
-        )
+        return f"<ProviderVerification provider_profile_id={self.provider_profile_id} status={self.status}>"
 
 
-# Services
 class Service(db.Model):
+    """Services offered by providers and visible in the marketplace (unless moderated/hidden)."""
+
     __tablename__ = "services"
 
     id = db.Column(db.Integer, primary_key=True)
-    provider_profile_id = db.Column(
-        db.Integer, db.ForeignKey("provider_profiles.id"), nullable=False
-    )
+    provider_profile_id = db.Column(db.Integer, db.ForeignKey("provider_profiles.id"), nullable=False)
 
     title = db.Column(db.String(150), nullable=False)
     category = db.Column(db.String(100), nullable=True)
@@ -317,7 +328,6 @@ class Service(db.Model):
     price = db.Column(db.Float)
     duration_minutes = db.Column(db.Integer, default=60, nullable=False)
 
-    # --- Admin moderation fields (soft hide/unhide) ---
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     moderation_note = db.Column(db.Text, nullable=True)
     moderated_at = db.Column(db.DateTime, nullable=True)
@@ -331,8 +341,17 @@ class Service(db.Model):
         return f"<Service {self.title}>"
 
 
-# Bookings
 class Booking(db.Model):
+    """Bookings connect a client to a provider/service at a scheduled datetime.
+
+    This model also acts as the "single source of truth" for:
+    - booking status (pending/accepted/declined/cancelled)
+    - payment status (unpaid/paid)
+    - basic admin/provider notes and audit timestamps
+
+    Some helper methods here are used to enforce conflict rules and keep state changes controlled.
+    """
+
     __tablename__ = "bookings"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -346,23 +365,16 @@ class Booking(db.Model):
 
     status = db.Column(db.String(50), default="pending")
 
-    # --- Booking status rules (single source of truth) ---
     STATUS_PENDING = "pending"
     STATUS_ACCEPTED = "accepted"
     STATUS_DECLINED = "declined"
     STATUS_CANCELLED = "cancelled"
 
-    VALID_STATUSES = {
-        STATUS_PENDING,
-        STATUS_ACCEPTED,
-        STATUS_DECLINED,
-        STATUS_CANCELLED,
-    }
+    VALID_STATUSES = {STATUS_PENDING, STATUS_ACCEPTED, STATUS_DECLINED, STATUS_CANCELLED}
 
-    # Minimal state machine for core flows
     ALLOWED_TRANSITIONS = {
         STATUS_PENDING: {STATUS_ACCEPTED, STATUS_DECLINED, STATUS_CANCELLED},
-        STATUS_ACCEPTED: set(),  # keep strict for now (admin actions can override elsewhere)
+        STATUS_ACCEPTED: set(),
         STATUS_DECLINED: set(),
         STATUS_CANCELLED: set(),
     }
@@ -376,51 +388,27 @@ class Booking(db.Model):
         current = (self.status or "").strip().lower()
         return new_status in self.ALLOWED_TRANSITIONS.get(current, set())
 
-    # --- Dummy checkout / payment tracking (demo) ---
-    payment_status = db.Column(
-        db.String(32),
-        nullable=False,
-        default="unpaid",
-        index=True,
-    )
+    payment_status = db.Column(db.String(32), nullable=False, default="unpaid", index=True)
     paid_at = db.Column(db.DateTime, nullable=True)
     payment_reference = db.Column(db.String(64), nullable=True)
 
     decided_at = db.Column(db.DateTime, nullable=True)
     provider_note = db.Column(db.Text, nullable=True)
 
-    # --- Admin moderation fields ---
     admin_note = db.Column(db.Text, nullable=True)
     admin_action_at = db.Column(db.DateTime, nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    provider = db.relationship(
-        "User",
-        foreign_keys=[provider_id],
-        back_populates="bookings_as_provider",
-    )
-
-    client = db.relationship(
-        "User",
-        foreign_keys=[client_id],
-        back_populates="bookings_as_client",
-    )
-
+    provider = db.relationship("User", foreign_keys=[provider_id], back_populates="bookings_as_provider")
+    client = db.relationship("User", foreign_keys=[client_id], back_populates="bookings_as_client")
     service = db.relationship("Service", back_populates="bookings")
 
     @classmethod
     def find_open_inquiry(cls, *, client_id: int, provider_id: int, service_id: int):
-        """
-        Inquiry bookings are pseudo-bookings that store an inquiry marker in provider_note.
-        We reuse/convert these into a real booking to avoid creating a second conversation/thread.
-        """
+        """Find an existing inquiry pseudo-booking so we can reuse the same thread."""
         return (
-            cls.query.filter_by(
-                client_id=client_id,
-                provider_id=provider_id,
-                service_id=service_id,
-            )
+            cls.query.filter_by(client_id=client_id, provider_id=provider_id, service_id=service_id)
             .filter(cls.provider_note.isnot(None))
             .filter(cls.provider_note.like("[INQUIRY]%"))
             .order_by(cls.created_at.desc())
@@ -429,19 +417,17 @@ class Booking(db.Model):
 
     @classmethod
     def auto_cancel_unpaid_within_hours(cls, *, hours: int = 24) -> int:
-        """
-        Auto-cancel unpaid pending bookings that are now within `hours` of the session start.
-        Called from request-handling routes (no background job required).
-        Returns the number of bookings cancelled.
+        """Auto-cancel unpaid pending bookings that are too close to start time.
+
+        This is called from request-handling code so we don't need a background job.
+        Returns how many bookings were cancelled.
         """
         now = datetime.utcnow()
         cutoff = now + timedelta(hours=hours)
 
         candidates = (
-            cls.query
-            .filter(cls.status == cls.STATUS_PENDING)
+            cls.query.filter(cls.status == cls.STATUS_PENDING)
             .filter(cls.payment_status != "paid")
-            # ✅ Don't touch inquiry pseudo-bookings
             .filter((cls.provider_note.is_(None)) | (~cls.provider_note.like("[INQUIRY]%")))
             .filter(cls.booking_datetime <= cutoff)
             .all()
@@ -470,18 +456,11 @@ class Booking(db.Model):
         duration_minutes: int,
         exclude_booking_id: int | None = None,
     ) -> bool:
-        """
-        Returns True if the provider already has an overlapping booking during the requested window.
-
-        Blocks on: pending + accepted
-        Ignores: inquiry pseudo-bookings ([INQUIRY] in provider_note)
-        Works on SQLite and Postgres (no DB-specific interval math).
-        """
+        """True if provider has an overlapping pending/accepted booking in the requested window."""
         requested_end = start_dt + timedelta(minutes=duration_minutes)
 
         q = (
-            cls.query
-            .filter(cls.provider_id == provider_id)
+            cls.query.filter(cls.provider_id == provider_id)
             .filter(cls.status.in_([cls.STATUS_PENDING, cls.STATUS_ACCEPTED]))
             .filter((cls.provider_note.is_(None)) | (~cls.provider_note.like("[INQUIRY]%")))
         )
@@ -489,19 +468,13 @@ class Booking(db.Model):
         if exclude_booking_id is not None:
             q = q.filter(cls.id != exclude_booking_id)
 
-        # Pull only likely candidates (same-day range) to keep it efficient
         day_start = datetime(start_dt.year, start_dt.month, start_dt.day)
         day_end = day_start + timedelta(days=1)
 
-        candidates = (
-            q.filter(cls.booking_datetime >= day_start)
-             .filter(cls.booking_datetime < day_end)
-             .all()
-        )
+        candidates = q.filter(cls.booking_datetime >= day_start).filter(cls.booking_datetime < day_end).all()
 
         for b in candidates:
             b_end = b.booking_datetime + timedelta(minutes=b.duration_minutes)
-            # overlap rule: start < existing_end AND end > existing_start
             if start_dt < b_end and requested_end > b.booking_datetime:
                 return True
 
@@ -516,19 +489,11 @@ class Booking(db.Model):
         duration_minutes: int,
         exclude_booking_id: int | None = None,
     ) -> bool:
-        """
-        Returns True if the client already has an overlapping booking during the requested window,
-        even with a different provider/service.
-
-        Blocks on: pending + accepted
-        Ignores: inquiry pseudo-bookings ([INQUIRY] in provider_note)
-        Works on SQLite and Postgres.
-        """
+        """True if client has an overlapping pending/accepted booking in the requested window."""
         requested_end = start_dt + timedelta(minutes=duration_minutes)
 
         q = (
-            cls.query
-            .filter(cls.client_id == client_id)
+            cls.query.filter(cls.client_id == client_id)
             .filter(cls.status.in_([cls.STATUS_PENDING, cls.STATUS_ACCEPTED]))
             .filter((cls.provider_note.is_(None)) | (~cls.provider_note.like("[INQUIRY]%")))
         )
@@ -539,11 +504,7 @@ class Booking(db.Model):
         day_start = datetime(start_dt.year, start_dt.month, start_dt.day)
         day_end = day_start + timedelta(days=1)
 
-        candidates = (
-            q.filter(cls.booking_datetime >= day_start)
-             .filter(cls.booking_datetime < day_end)
-             .all()
-        )
+        candidates = q.filter(cls.booking_datetime >= day_start).filter(cls.booking_datetime < day_end).all()
 
         for b in candidates:
             b_end = b.booking_datetime + timedelta(minutes=b.duration_minutes)
@@ -553,19 +514,12 @@ class Booking(db.Model):
         return False
 
     def get_or_create_conversation(self):
-        """
-        Lazy-create the 1:1 conversation for this booking.
-        Returns the Conversation instance.
-        """
+        """Lazy-create the 1:1 conversation for this booking."""
         convo = Conversation.query.filter_by(booking_id=self.id).first()
         if convo:
             return convo
 
-        convo = Conversation(
-            booking_id=self.id,
-            client_id=self.client_id,
-            provider_id=self.provider_id,
-        )
+        convo = Conversation(booking_id=self.id, client_id=self.client_id, provider_id=self.provider_id)
         db.session.add(convo)
         db.session.commit()
         return convo
@@ -574,8 +528,9 @@ class Booking(db.Model):
         return f"<Booking {self.id}>"
 
 
-# Service Requests
 class ServiceRequest(db.Model):
+    """Client-submitted request when a service is not currently listed."""
+
     __tablename__ = "service_requests"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -587,57 +542,34 @@ class ServiceRequest(db.Model):
 
     status = db.Column(db.String(50), default="open", nullable=False)
 
-    # Provider can "claim" a request
-    claimed_by_provider_id = db.Column(
-        db.Integer, db.ForeignKey("users.id"), nullable=True
-    )
+    claimed_by_provider_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     closed_at = db.Column(db.DateTime, nullable=True)
 
-    # IMPORTANT: disambiguate which FK is used for "client"
-    client = db.relationship(
-        "User",
-        foreign_keys=[client_id],
-        back_populates="service_requests",
-    )
-
-    # optional relationship (useful later for UI)
-    claimed_by_provider = db.relationship(
-        "User",
-        foreign_keys=[claimed_by_provider_id],
-    )
+    client = db.relationship("User", foreign_keys=[client_id], back_populates="service_requests")
+    claimed_by_provider = db.relationship("User", foreign_keys=[claimed_by_provider_id])
 
     def __repr__(self):
         return f"<ServiceRequest {self.subject}>"
 
 
 class Conversation(db.Model):
+    """One conversation per booking (client <-> provider)."""
+
     __tablename__ = "conversations"
 
     id = db.Column(db.Integer, primary_key=True)
 
-    # 1:1 with booking
-    booking_id = db.Column(
-        db.Integer, db.ForeignKey("bookings.id"), nullable=False, unique=True
-    )
+    booking_id = db.Column(db.Integer, db.ForeignKey("bookings.id"), nullable=False, unique=True)
 
-    # Participants (redundant to booking, but intentional for fast access checks)
-    client_id = db.Column(
-        db.Integer, db.ForeignKey("users.id"), nullable=False, index=True
-    )
-    provider_id = db.Column(
-        db.Integer, db.ForeignKey("users.id"), nullable=False, index=True
-    )
+    client_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    provider_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
 
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
-    # Relationships
-    booking = db.relationship(
-        "Booking",
-        backref=db.backref("conversation", uselist=False),
-    )
+    booking = db.relationship("Booking", backref=db.backref("conversation", uselist=False))
     client = db.relationship("User", foreign_keys=[client_id])
     provider = db.relationship("User", foreign_keys=[provider_id])
 
@@ -662,23 +594,19 @@ class Conversation(db.Model):
 
 
 class Message(db.Model):
+    """Message inside a conversation (sent by either participant)."""
+
     __tablename__ = "messages"
 
     id = db.Column(db.Integer, primary_key=True)
 
-    conversation_id = db.Column(
-        db.Integer, db.ForeignKey("conversations.id"), nullable=False, index=True
-    )
-
-    sender_id = db.Column(
-        db.Integer, db.ForeignKey("users.id"), nullable=False, index=True
-    )
+    conversation_id = db.Column(db.Integer, db.ForeignKey("conversations.id"), nullable=False, index=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
 
     body = db.Column(db.Text, nullable=False)
 
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
-    # Relationships
     conversation = db.relationship("Conversation", back_populates="messages")
     sender = db.relationship("User", foreign_keys=[sender_id])
 
@@ -687,6 +615,8 @@ class Message(db.Model):
 
 
 class ConversationRead(db.Model):
+    """Tracks the last-read timestamp per user per conversation."""
+
     __tablename__ = "conversation_reads"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -705,13 +635,10 @@ class ConversationRead(db.Model):
         index=True,
     )
 
-    # "Read up to" timestamp for this user in this conversation.
     last_read_at = db.Column(db.DateTime, nullable=True)
 
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = db.Column(
-        db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     __table_args__ = (
         UniqueConstraint(
@@ -725,7 +652,4 @@ class ConversationRead(db.Model):
     user = db.relationship("User", foreign_keys=[user_id])
 
     def __repr__(self) -> str:
-        return (
-            f"<ConversationRead convo={self.conversation_id} "
-            f"user={self.user_id} last_read_at={self.last_read_at}>"
-        )
+        return f"<ConversationRead convo={self.conversation_id} user={self.user_id} last_read_at={self.last_read_at}>"
