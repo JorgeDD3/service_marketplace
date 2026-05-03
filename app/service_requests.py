@@ -54,14 +54,8 @@ def request_service():
 @login_required
 @role_required("client")
 def my_requests():
-    """Client: view your submitted service requests."""
-    reqs = (
-        ServiceRequest.query.filter_by(client_id=current_user.id)
-        .order_by(ServiceRequest.created_at.desc())
-        .all()
-    )
-    return render_template("my_requests.html", requests=reqs)
-
+    """Client request history is intentionally disabled for the final submission."""
+    abort(404)
 
 @service_requests_bp.route("/my/requests/<int:request_id>/close", methods=["POST"])
 @login_required
