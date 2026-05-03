@@ -159,7 +159,7 @@ def fulfill_request(request_id):
 @role_required("admin")
 def admin_requests():
     reqs = ServiceRequest.query.order_by(ServiceRequest.created_at.desc()).all()
-    return render_template("admin_requests.html", requests=reqs)
+    return render_template("admin/admin_requests.html", requests=reqs)
 
 
 @service_requests_bp.route("/admin/requests/<int:request_id>/close", methods=["POST"])
