@@ -558,7 +558,7 @@ def calendar_view():
     )
 
     return render_template(
-        "provider_calendar.html",
+        "provider/calendar.html",
         rules=rules,
         bookings=bookings,
         time_off_entries=time_off_entries,
