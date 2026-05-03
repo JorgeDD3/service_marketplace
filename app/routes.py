@@ -815,7 +815,7 @@ def provider_bookings():
         .order_by(Booking.created_at.desc())
         .all()
     )
-    return render_template("provider_bookings.html", bookings=bookings)
+    return render_template("provider/bookings.html", bookings=bookings)
 
 # ---- Provider can update booking status ----
 @main.route("/provider/bookings/<int:booking_id>/status", methods=["POST"])
