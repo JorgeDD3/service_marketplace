@@ -123,7 +123,7 @@ def dashboard():
         )
 
     return render_template(
-        "provider_dashboard.html",
+        "provider/dashboard.html",
         pending_paid_count=pending_paid_count,
         upcoming_count=upcoming_count,
         services_count=services_count,
