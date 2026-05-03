@@ -10,14 +10,11 @@ from .models import ServiceRequest
 service_requests_bp = Blueprint("service_requests", __name__)
 
 
-# -----------------------
-# Client routes
-# -----------------------
-
 @service_requests_bp.route("/requests/new", methods=["GET", "POST"])
 @login_required
 @role_required("client")
 def request_service():
+    """Client: submit a new service request (something not currently listed)."""
     if request.method == "POST":
         subject = request.form.get("subject", "").strip()
         description = request.form.get("description", "").strip()
@@ -26,11 +23,11 @@ def request_service():
             flash("Subject and description are required.", "warning")
             return redirect(url_for("service_requests.request_service"))
 
-        # Optional (recommended): prevent duplicate active requests by same client
+        # Prevent duplicate active requests with the same subject from the same client.
         existing = ServiceRequest.query.filter(
             ServiceRequest.client_id == current_user.id,
             ServiceRequest.subject.ilike(subject),
-            ServiceRequest.status.in_(["open", "claimed"])
+            ServiceRequest.status.in_(["open", "claimed"]),
         ).first()
         if existing:
             flash("You already have an active request with this subject.", "warning")
@@ -57,9 +54,9 @@ def request_service():
 @login_required
 @role_required("client")
 def my_requests():
+    """Client: view your submitted service requests."""
     reqs = (
-        ServiceRequest.query
-        .filter_by(client_id=current_user.id)
+        ServiceRequest.query.filter_by(client_id=current_user.id)
         .order_by(ServiceRequest.created_at.desc())
         .all()
     )
@@ -70,6 +67,7 @@ def my_requests():
 @login_required
 @role_required("client")
 def close_request(request_id):
+    """Client: close one of your service requests."""
     sr = ServiceRequest.query.get_or_404(request_id)
 
     if sr.client_id != current_user.id:
@@ -88,84 +86,58 @@ def close_request(request_id):
     return redirect(url_for("service_requests.my_requests"))
 
 
-# -----------------------
-# Provider routes
-# -----------------------
-
-@service_requests_bp.route("/provider/requests")
+@service_requests_bp.route("/provider/requests-legacy")
 @login_required
 @role_required("provider")
 def provider_requests():
-    open_reqs = (
-        ServiceRequest.query
-        .filter_by(status="open")
-        .order_by(ServiceRequest.created_at.desc())
-        .all()
-    )
+    """Legacy provider requests route.
 
-    my_claimed = (
-        ServiceRequest.query
-        .filter_by(status="claimed", claimed_by_provider_id=current_user.id)
-        .order_by(ServiceRequest.created_at.desc())
-        .all()
-    )
-
-    return render_template(
-        "provider/requests.html",
-        open_requests=open_reqs,
-        my_claimed=my_claimed
-    )
+    Kept temporarily so older links don't break. The provider blueprint owns the
+    canonical requests page at /provider/requests.
+    """
+    return redirect(url_for("provider.requests_board"))
 
 
 @service_requests_bp.route("/provider/requests/<int:request_id>/claim", methods=["POST"])
 @login_required
 @role_required("provider")
 def claim_request(request_id):
-    sr = ServiceRequest.query.get_or_404(request_id)
+    """Provider action disabled.
 
-    if sr.status != "open":
-        flash("That request is no longer open.", "warning")
-        return redirect(url_for("service_requests.provider_requests"))
-
-    sr.status = "claimed"
-    sr.claimed_by_provider_id = current_user.id
-    sr.updated_at = datetime.utcnow()
-    db.session.commit()
-
-    flash("Request claimed.", "success")
-    return redirect(url_for("service_requests.provider_requests"))
+    Providers can view requests, but request lifecycle is admin-managed.
+    """
+    _sr = ServiceRequest.query.get_or_404(request_id)
+    flash("Providers can view requests, but only admins can close them.", "info")
+    return redirect(url_for("provider.requests_board"))
 
 
 @service_requests_bp.route("/provider/requests/<int:request_id>/fulfill", methods=["POST"])
 @login_required
 @role_required("provider")
 def fulfill_request(request_id):
-    sr = ServiceRequest.query.get_or_404(request_id)
+    """Provider action disabled.
 
-    if sr.status != "claimed" or sr.claimed_by_provider_id != current_user.id:
-        abort(403)
+    Providers can view requests, but request lifecycle is admin-managed.
+    """
+    _sr = ServiceRequest.query.get_or_404(request_id)
+    flash("Providers can view requests, but only admins can close them.", "info")
+    return redirect(url_for("provider.requests_board"))
 
-    sr.status = "fulfilled"
-    sr.updated_at = datetime.utcnow()
-    db.session.commit()
-
-    flash("Request marked fulfilled.", "success")
-    return redirect(url_for("service_requests.provider_requests"))
-
-#Admin Routes
 
 @service_requests_bp.route("/admin/requests")
 @login_required
 @role_required("admin")
 def admin_requests():
+    """Admin: review all client service requests."""
     reqs = ServiceRequest.query.order_by(ServiceRequest.created_at.desc()).all()
-    return render_template("admin/admin_requests.html", requests=reqs)
+    return render_template("admin/requests.html", requests=reqs)
 
 
 @service_requests_bp.route("/admin/requests/<int:request_id>/close", methods=["POST"])
 @login_required
 @role_required("admin")
 def admin_close_request(request_id):
+    """Admin: close a request (used when resolved or no longer relevant)."""
     sr = ServiceRequest.query.get_or_404(request_id)
 
     if sr.status in ["closed", "fulfilled"]:
