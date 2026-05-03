@@ -591,7 +591,7 @@ def checkout(booking_id: int):
             url_for("messages.booking_thread", booking_id=booking.id, _anchor="compose")
         )
 
-    return render_template("checkout.html", booking=booking)
+    return render_template("bookings/checkout.html", booking=booking)
 
 # ---- Client service requests (MVP) ----
 @main.route("/requests/new", methods=["GET", "POST"])
