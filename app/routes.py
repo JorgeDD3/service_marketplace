@@ -292,7 +292,7 @@ def service_detail(service_id: int):
     available_slots = generate_available_slots(service, days_ahead=21)
 
     return render_template(
-        "service_detail.html",
+        "services/service_detail.html",
         service=service,
         has_active_booking=has_active_booking,
         active_status=active_status,
