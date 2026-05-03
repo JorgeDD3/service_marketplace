@@ -676,6 +676,45 @@ def availability_preset():
 @login_required
 @role_required("provider")
 def requests_board():
+    """Provider-facing view of open service requests (read-only).
+
+    Providers can browse unmet demand and decide what to offer next.
+    Requests stay visible until an admin closes them.
+    """
+    open_statuses = ["open", "active", "pending"]
+    open_reqs = (
+        ServiceRequest.query.filter(ServiceRequest.status.in_(open_statuses))
+        .order_by(ServiceRequest.created_at.desc())
+        .all()
+    )
+
+    return render_template(
+        "provider/requests.html",
+        open_requests=open_reqs,
+        my_claimed=[],
+    )
+    """Provider-facing view of service requests.
+
+    Providers can claim open requests and mark claimed requests as fulfilled.
+    The actual state transitions happen in app/service_requests.py.
+    """
+    open_reqs = (
+        ServiceRequest.query.filter_by(status="open")
+        .order_by(ServiceRequest.created_at.desc())
+        .all()
+    )
+
+    my_claimed = (
+        ServiceRequest.query.filter_by(status="claimed", claimed_by_provider_id=current_user.id)
+        .order_by(ServiceRequest.updated_at.desc().nullslast(), ServiceRequest.created_at.desc())
+        .all()
+    )
+
+    return render_template(
+        "provider/requests.html",
+        open_requests=open_reqs,
+        my_claimed=my_claimed,
+    )
     """Provider-facing view of open service requests.
 
     This is read-only in the MVP. It helps providers see unmet demand and decide what to offer next.
