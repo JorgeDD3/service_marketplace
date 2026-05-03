@@ -1,10 +1,16 @@
+{#
+  Admin services moderation.
+
+  Goal: let admins quickly find a service, hide/unhide it, and leave a moderation note.
+  Notes matter because they prevent providers from re-enabling a service that was admin-moderated.
+#}
 {% extends "base.html" %}
 {% block title %}Admin: Services Moderation{% endblock %}
 
 {% block content %}
 <div class="container-dashboard" style="max-width: 1400px;">
 
-  <!-- Header -->
+  {# Page header: set context and provide a quick return to the moderation hub. #}
   <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
     <div class="card-body py-3">
       <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
@@ -25,17 +31,19 @@
     </div>
   </div>
 
-  <!-- Search + summary -->
+  {# Search is client-side so moderation stays fast even with larger lists. #}
   <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
     <div class="card-body py-3">
       <div class="row g-2 align-items-center">
         <div class="col-12 col-lg-7">
           <label class="form-label small text-muted mb-1" for="svcSearch">Search</label>
-          <input id="svcSearch"
-                 type="text"
-                 class="form-control"
-                 placeholder="Search by service title or provider email…"
-                 autocomplete="off">
+          <input
+            id="svcSearch"
+            type="text"
+            class="form-control"
+            placeholder="Search by service title or provider email…"
+            autocomplete="off"
+          >
           <div class="form-text small">
             Tip: type part of a title (e.g. "tutoring") or provider email.
           </div>
@@ -59,11 +67,10 @@
   </div>
 
   {% if services %}
-    <!-- List -->
+    {# List view: compact rows + a single reusable modal to reduce template duplication. #}
     <div class="card shadow-sm border-0" style="border-radius: 18px;">
       <div class="card-body p-0">
 
-        <!-- Table header -->
         <div class="d-none d-lg-block px-3 py-2 border-bottom"
              style="background:#f8f9fa; border-top-left-radius:18px; border-top-right-radius:18px;">
           <div class="row align-items-center small text-muted">
@@ -80,9 +87,9 @@
             {% set desc = (s.description or "") %}
             {% set desc_short = desc[:140] ~ ("…" if desc|length > 140 else "") %}
 
-            {# created_at may not exist on your Service model, so guard it #}
+            {# created_at may not exist on the Service model in some builds, so guard it. #}
             {% set created_str = (s.created_at.isoformat() ~ "Z" if (s.created_at is defined and s.created_at) else "—") %}
-{% set moderated_str = (s.moderated_at.isoformat() ~ "Z" if s.moderated_at else "—") %}
+            {% set moderated_str = (s.moderated_at.isoformat() ~ "Z" if s.moderated_at else "—") %}
 
             <div class="list-group-item px-3 py-3 svc-row"
                  data-title="{{ (s.title or '')|lower }}"
@@ -98,7 +105,6 @@
                  data-action-url="{{ url_for('admin.toggle_service', service_id=s.id) }}">
 
               <div class="row align-items-start g-2">
-                <!-- Service -->
                 <div class="col-12 col-lg-5">
                   <div class="d-flex align-items-center gap-2 flex-wrap">
                     <div class="fw-semibold">{{ s.title }}</div>
@@ -117,33 +123,33 @@
                   {% endif %}
                 </div>
 
-                <!-- Provider -->
                 <div class="col-12 col-lg-4">
                   <div class="small">
                     <div class="text-muted">Provider</div>
                     <div class="fw-semibold">{{ provider_email }}</div>
                   </div>
+
                   <div class="text-muted small mt-1">
                     <div>
-  <span class="text-muted">Created:</span>
-  {% if created_str != "—" %}
-    <span class="local-datetime" data-utc="{{ created_str }}">{{ created_str }}</span>
-  {% else %}
-    —
-  {% endif %}
-</div>
-<div>
-  <span class="text-muted">Moderated:</span>
-  {% if moderated_str != "—" %}
-    <span class="local-datetime" data-utc="{{ moderated_str }}">{{ moderated_str }}</span>
-  {% else %}
-    —
-  {% endif %}
-</div>
+                      <span class="text-muted">Created:</span>
+                      {% if created_str != "—" %}
+                        <span class="local-datetime" data-utc="{{ created_str }}">{{ created_str }}</span>
+                      {% else %}
+                        —
+                      {% endif %}
+                    </div>
+
+                    <div>
+                      <span class="text-muted">Moderated:</span>
+                      {% if moderated_str != "—" %}
+                        <span class="local-datetime" data-utc="{{ moderated_str }}">{{ moderated_str }}</span>
+                      {% else %}
+                        —
+                      {% endif %}
+                    </div>
                   </div>
                 </div>
 
-                <!-- Status -->
                 <div class="col-8 col-lg-2">
                   {% if s.is_active %}
                     <span class="badge bg-success-subtle text-success border">Active</span>
@@ -152,15 +158,16 @@
                   {% endif %}
                 </div>
 
-                <!-- Edit (no box) -->
                 <div class="col-4 col-lg-1 text-end">
-                  <button type="button"
-                          class="svc-edit border-0 bg-transparent p-0 text-secondary"
-                          title="Edit moderation"
-                          aria-label="Edit moderation"
-                          data-bs-toggle="modal"
-                          data-bs-target="#svcEditModal"
-                          style="font-size: 1.05rem; line-height: 1;">
+                  <button
+                    type="button"
+                    class="svc-edit border-0 bg-transparent p-0 text-secondary"
+                    title="Edit moderation"
+                    aria-label="Edit moderation"
+                    data-bs-toggle="modal"
+                    data-bs-target="#svcEditModal"
+                    style="font-size: 1.05rem; line-height: 1;"
+                  >
                     ✏️
                   </button>
                 </div>
@@ -183,7 +190,7 @@
 
 </div>
 
-<!-- Single reusable modal -->
+{# Single reusable modal: populated from row data-* attributes. #}
 <div class="modal fade" id="svcEditModal" tabindex="-1" aria-labelledby="svcEditModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content" style="border-radius: 18px;">
@@ -219,11 +226,13 @@
 
             <div class="col-12">
               <label class="form-label small text-muted mb-1" for="svcModalNote">Moderation note (optional)</label>
-              <input id="svcModalNote"
-                     type="text"
-                     name="moderation_note"
-                     class="form-control"
-                     placeholder="e.g., spam, misleading, duplicate">
+              <input
+                id="svcModalNote"
+                type="text"
+                name="moderation_note"
+                class="form-control"
+                placeholder="e.g., spam, misleading, duplicate"
+              >
               <div class="form-text small">
                 Tip: hiding prevents providers from un-hiding if a moderation note exists.
               </div>
@@ -260,6 +269,24 @@
   const showingEl = document.getElementById('svcShowing');
 
   if (totalEl) totalEl.textContent = String(rows.length);
+
+  const formatLocalDateTime = (value) => {
+    if (!value || value === "—") return "—";
+    const d = new Date(value);
+    if (isNaN(d)) return value;
+
+    return d.toLocaleString([], {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  };
+
+  document.querySelectorAll(".local-datetime").forEach((el) => {
+    el.textContent = formatLocalDateTime(el.dataset.utc);
+  });
 
   const applyFilter = () => {
     const q = (search?.value || '').trim().toLowerCase();
@@ -298,20 +325,6 @@
 
   const setText = (el, val) => { if (el) el.textContent = val; };
 
-  const formatLocalDateTime = (value) => {
-  if (!value || value === "—") return "—";
-  const d = new Date(value);
-  if (isNaN(d)) return value;
-
-  return d.toLocaleString([], {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
-  });
-};
-
   document.querySelectorAll('.svc-edit').forEach((btn) => {
     btn.addEventListener('click', () => {
       const row = btn.closest('.svc-row');
@@ -330,7 +343,10 @@
       if (form && actionUrl) form.action = actionUrl;
 
       setText(modalTitle, title);
-      setText(modalMeta, `Provider: ${providerEmail} • Created: ${formatLocalDateTime(createdAt)} • Moderated: ${formatLocalDateTime(moderatedAt)} • #${serviceId}`);
+      setText(
+        modalMeta,
+        `Provider: ${providerEmail} • Created: ${formatLocalDateTime(createdAt)} • Moderated: ${formatLocalDateTime(moderatedAt)} • #${serviceId}`
+      );
       setText(modalDesc, desc.trim() ? desc : 'No description.');
       if (modalNote) modalNote.value = note;
 
@@ -361,9 +377,7 @@
       saveBtn.className = 'btn btn-primary';
     }
   });
-  document.querySelectorAll(".local-datetime").forEach(el => {
-  el.textContent = formatLocalDateTime(el.dataset.utc);
-});
+
 })();
 </script>
 {% endblock %}
