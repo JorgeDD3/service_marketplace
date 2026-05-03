@@ -185,7 +185,7 @@ def verification():
         return redirect(url_for("provider.verification"))
 
     return render_template(
-        "provider/provider_verification.html",
+        "provider/verification.html",
         profile=profile,
         verification=verification_row,
     )
