@@ -633,7 +633,7 @@ def time_off():
         .all()
     )
 
-    return render_template("provider_time_off.html", entries=entries)
+    return render_template("provider/time_off.html", entries=entries)
 
 
 @provider.route("/availability/preset", methods=["POST"])
