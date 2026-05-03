@@ -1,10 +1,18 @@
+{#
+  Admin provider verification review.
+
+  This page is the workflow hub for trust & safety:
+  - pending queue for new submissions
+  - reviewed history for reference and follow-ups
+  - a single modal for reviewing docs and taking actions
+#}
 {% extends "base.html" %}
 {% block title %}Provider Verifications{% endblock %}
 
 {% block content %}
 <div class="container-dashboard" style="max-width: 1400px;">
 
-  <!-- Header -->
+  {# Page header: orient the admin and provide a fast return to the moderation hub. #}
   <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
     <div class="card-body py-3">
       <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
@@ -25,15 +33,19 @@
     </div>
   </div>
 
-  <!-- Search + counts -->
+  {# Search runs across both sections so admins can find a provider quickly. #}
   <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
     <div class="card-body py-3">
       <div class="row g-2 align-items-center">
         <div class="col-12 col-lg-7">
           <label class="form-label small text-muted mb-1" for="verSearch">Search</label>
-          <input id="verSearch" type="text" class="form-control"
-                 placeholder="Search by provider name, email, legal name, or license #…"
-                 autocomplete="off">
+          <input
+            id="verSearch"
+            type="text"
+            class="form-control"
+            placeholder="Search by provider name, email, legal name, or license #…"
+            autocomplete="off"
+          >
           <div class="form-text small">Tip: Search works across all sections below.</div>
         </div>
 
@@ -55,10 +67,11 @@
     </div>
   </div>
 
-  <!-- Pending Review -->
+  {# Pending queue: new submissions that need action. #}
   <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
     <div class="card-body p-0">
-      <div class="px-3 py-3 border-bottom" style="background:#f8f9fa; border-top-left-radius:18px; border-top-right-radius:18px;">
+      <div class="px-3 py-3 border-bottom"
+           style="background:#f8f9fa; border-top-left-radius:18px; border-top-right-radius:18px;">
         <div class="d-flex align-items-center justify-content-between">
           <div class="fw-semibold">Pending review</div>
           <span class="badge bg-warning-subtle text-warning border">Queue</span>
@@ -104,13 +117,13 @@
                     <div><span class="text-muted">Legal:</span> {{ v.legal_name or "—" }}</div>
                     <div><span class="text-muted">License #:</span> {{ v.license_number or "—" }}</div>
                     <div>
-  <span class="text-muted">Submitted:</span>
-  {% if submitted != "—" %}
-    <span class="local-datetime" data-utc="{{ submitted }}">{{ submitted }}</span>
-  {% else %}
-    —
-  {% endif %}
-</div>
+                      <span class="text-muted">Submitted:</span>
+                      {% if submitted != "—" %}
+                        <span class="local-datetime" data-utc="{{ submitted }}">{{ submitted }}</span>
+                      {% else %}
+                        —
+                      {% endif %}
+                    </div>
                   </div>
                 </div>
 
@@ -119,13 +132,15 @@
                 </div>
 
                 <div class="col-4 col-lg-1 text-end">
-                  <button type="button"
-                          class="ver-edit border-0 bg-transparent p-0 text-secondary"
-                          title="Review"
-                          aria-label="Review"
-                          data-bs-toggle="modal"
-                          data-bs-target="#verModal"
-                          style="font-size: 1.05rem; line-height: 1;">
+                  <button
+                    type="button"
+                    class="ver-edit border-0 bg-transparent p-0 text-secondary"
+                    title="Review"
+                    aria-label="Review"
+                    data-bs-toggle="modal"
+                    data-bs-target="#verModal"
+                    style="font-size: 1.05rem; line-height: 1;"
+                  >
                     ✏️
                   </button>
                 </div>
@@ -138,10 +153,11 @@
     </div>
   </div>
 
-  <!-- Reviewed (Verified + Rejected) -->
+  {# Reviewed history: decisions for reference and follow-ups (verified + rejected). #}
   <div class="card shadow-sm border-0" style="border-radius: 18px;">
     <div class="card-body p-0">
-      <div class="px-3 py-3 border-bottom" style="background:#f8f9fa; border-top-left-radius:18px; border-top-right-radius:18px;">
+      <div class="px-3 py-3 border-bottom"
+           style="background:#f8f9fa; border-top-left-radius:18px; border-top-right-radius:18px;">
         <div class="d-flex align-items-center justify-content-between">
           <div class="fw-semibold">Reviewed</div>
           <span class="badge bg-light text-dark border">History</span>
@@ -186,14 +202,16 @@
                   <div class="text-muted small">
                     <div><span class="text-muted">Status:</span> {{ v.status.replace('_',' ') }}</div>
                     <div>
-  <span class="text-muted">Reviewed:</span>
-  {% if reviewed_at != "—" %}
-    <span class="local-datetime" data-utc="{{ reviewed_at }}">{{ reviewed_at }}</span>
-  {% else %}
-    —
-  {% endif %}
-</div>
-                    <div class="text-truncate"><span class="text-muted">Notes:</span> {{ v.admin_notes or "—" }}</div>
+                      <span class="text-muted">Reviewed:</span>
+                      {% if reviewed_at != "—" %}
+                        <span class="local-datetime" data-utc="{{ reviewed_at }}">{{ reviewed_at }}</span>
+                      {% else %}
+                        —
+                      {% endif %}
+                    </div>
+                    <div class="text-truncate">
+                      <span class="text-muted">Notes:</span> {{ v.admin_notes or "—" }}
+                    </div>
                   </div>
                 </div>
 
@@ -208,13 +226,15 @@
                 </div>
 
                 <div class="col-4 col-lg-1 text-end">
-                  <button type="button"
-                          class="ver-edit border-0 bg-transparent p-0 text-secondary"
-                          title="View / Edit"
-                          aria-label="View / Edit"
-                          data-bs-toggle="modal"
-                          data-bs-target="#verModal"
-                          style="font-size: 1.05rem; line-height: 1;">
+                  <button
+                    type="button"
+                    class="ver-edit border-0 bg-transparent p-0 text-secondary"
+                    title="View / Edit"
+                    aria-label="View / Edit"
+                    data-bs-toggle="modal"
+                    data-bs-target="#verModal"
+                    style="font-size: 1.05rem; line-height: 1;"
+                  >
                     ✏️
                   </button>
                 </div>
@@ -229,7 +249,7 @@
 
 </div>
 
-<!-- Single reusable modal -->
+{# Single reusable modal: used for both pending actions and reviewed history. #}
 <div class="modal fade" id="verModal" tabindex="-1" aria-labelledby="verModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content" style="border-radius: 18px;">
@@ -286,7 +306,6 @@
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
 
         <div class="d-flex gap-2">
-          <!-- Pending actions -->
           <form method="POST" id="mApproveForm" action="" class="m-0">
             <input type="hidden" name="admin_notes" id="mApproveNotes">
             <button type="submit" class="btn btn-success" id="mApproveBtn">Approve</button>
@@ -297,13 +316,12 @@
             <button type="submit" class="btn btn-danger" id="mRejectBtn">Reject</button>
           </form>
 
-          <!-- Reviewed action placeholder (we'll wire backend next step) -->
           <form method="POST" id="mUnverifyForm" class="m-0">
-  <input type="hidden" name="admin_notes" id="mUnverifyNotes">
-  <button type="submit" class="btn btn-secondary" id="mUnverifyBtn">
-    Reset to pending
-  </button>
-</form>
+            <input type="hidden" name="admin_notes" id="mUnverifyNotes">
+            <button type="submit" class="btn btn-secondary" id="mUnverifyBtn">
+              Reset to pending
+            </button>
+          </form>
         </div>
       </div>
 
@@ -318,15 +336,35 @@
   const rows = Array.from(document.querySelectorAll('.ver-row'));
   const showingEl = document.getElementById('cntShowing');
 
+  const formatLocalDateTime = (value) => {
+    if (!value || value === "—") return "—";
+    const d = new Date(value);
+    if (isNaN(d)) return value;
+
+    return d.toLocaleString([], {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  };
+
+  document.querySelectorAll(".local-datetime").forEach((el) => {
+    el.textContent = formatLocalDateTime(el.dataset.utc);
+  });
+
   const applyFilter = () => {
     const q = (search?.value || '').trim().toLowerCase();
     let shown = 0;
+
     rows.forEach((row) => {
       const hay = row.dataset.search || '';
       const match = !q || hay.includes(q);
       row.style.display = match ? '' : 'none';
       if (match) shown += 1;
     });
+
     if (showingEl) showingEl.textContent = String(shown);
   };
 
@@ -356,64 +394,39 @@
   const rejectNotes = document.getElementById('mRejectNotes');
   const unverifyNotes = document.getElementById('mUnverifyNotes');
 
-  const approveBtn = document.getElementById('mApproveBtn');
-  const rejectBtn = document.getElementById('mRejectBtn');
   const unverifyBtn = document.getElementById('mUnverifyBtn');
 
   const setText = (el, val) => { if (el) el.textContent = val; };
 
-  const formatLocalDateTime = (value) => {
-  if (!value || value === "—") return "—";
-  const d = new Date(value);
-  if (isNaN(d)) return value;
-
-  return d.toLocaleString([], {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
-  });
-};
-
-document.querySelectorAll(".local-datetime").forEach(el => {
-  el.textContent = formatLocalDateTime(el.dataset.utc);
-});
-
   function setBadge(status) {
     if (!mStatus) return;
     mStatus.textContent = status;
+
     let cls = 'badge border bg-light text-dark';
     if (status === 'pending') cls = 'badge border bg-warning-subtle text-warning';
     if (status === 'verified') cls = 'badge border bg-success-subtle text-success';
     if (status === 'rejected') cls = 'badge border bg-danger-subtle text-danger';
+
     mStatus.className = cls;
   }
 
   function setDocs(row) {
-  const idDoc = row.dataset.idDoc || '';
-  const certDoc = row.dataset.certDoc || '';
-  const verificationId = row.dataset.verificationId;
-  const parts = [];
+    const idDoc = row.dataset.idDoc || '';
+    const certDoc = row.dataset.certDoc || '';
+    const verificationId = row.dataset.verificationId;
 
-  const idUrl = `/admin/verifications/${verificationId}/download/id`;
-  const certUrl = `/admin/verifications/${verificationId}/download/cert`;
+    const idUrl = `/admin/verifications/${verificationId}/download/id`;
+    const certUrl = `/admin/verifications/${verificationId}/download/cert`;
 
-  if (idDoc) {
-    parts.push(`<a href="${idUrl}" target="_blank" rel="noopener">ID Doc</a>`);
-  } else {
-    parts.push(`<span class="text-muted">No ID</span>`);
+    const parts = [];
+    if (idDoc) parts.push(`<a href="${idUrl}" target="_blank" rel="noopener">ID Doc</a>`);
+    else parts.push(`<span class="text-muted">No ID</span>`);
+
+    if (certDoc) parts.push(`<a class="ms-2" href="${certUrl}" target="_blank" rel="noopener">Cert</a>`);
+    else parts.push(`<span class="text-muted ms-2">No Cert</span>`);
+
+    mDocsWrap.innerHTML = parts.join(' ');
   }
-
-  if (certDoc) {
-    parts.push(`<a class="ms-2" href="${certUrl}" target="_blank" rel="noopener">Cert</a>`);
-  } else {
-    parts.push(`<span class="text-muted ms-2">No Cert</span>`);
-  }
-
-  mDocsWrap.innerHTML = parts.join(' ');
-}
-
 
   function setPortfolio(url) {
     if (!mPortfolioWrap) return;
@@ -451,35 +464,31 @@ document.querySelectorAll(".local-datetime").forEach(el => {
 
       const metaBits = [`${email}`];
       if (mode === 'pending') metaBits.push(`Submitted: ${formatLocalDateTime(submittedAt || '—')}`);
-if (mode === 'reviewed') metaBits.push(`Reviewed: ${formatLocalDateTime(reviewedAt || '—')}`);
+      if (mode === 'reviewed') metaBits.push(`Reviewed: ${formatLocalDateTime(reviewedAt || '—')}`);
       metaBits.push(`#${id}`);
       setText(mProviderMeta, metaBits.join(' • '));
 
-      // Notes field seeded
       if (mAdminNotes) mAdminNotes.value = row.dataset.adminNotes || '';
 
-      // Wire existing endpoints for pending actions
+      // Existing endpoints for pending actions.
       if (approveForm) approveForm.action = "{{ url_for('admin.approve_verification', verification_id=0) }}".replace('/0', '/' + id);
       if (rejectForm) rejectForm.action = "{{ url_for('admin.reject_verification', verification_id=0) }}".replace('/0', '/' + id);
 
-      // Placeholder endpoint for unverify (we add backend next micro-step)
-      // Keep it disabled for now so it doesn't 404.
-      if (unverifyForm)
-  unverifyForm.action =
-    "{{ url_for('admin.reset_verification', verification_id=0) }}"
-      .replace('/0', '/' + id);
+      // Reset-to-pending endpoint (already present in your route list).
+      if (unverifyForm) {
+        unverifyForm.action = "{{ url_for('admin.reset_verification', verification_id=0) }}".replace('/0', '/' + id);
+      }
 
-      // Toggle which buttons are visible
       const isPending = (mode === 'pending');
-      approveForm.style.display = isPending ? '' : 'none';
-      rejectForm.style.display = isPending ? '' : 'none';
+      if (approveForm) approveForm.style.display = isPending ? '' : 'none';
+      if (rejectForm) rejectForm.style.display = isPending ? '' : 'none';
 
-      unverifyForm.style.display = (!isPending && (status === 'verified' || status === 'rejected')) ? '' : 'none';
+      const showReset = (!isPending && (status === 'verified' || status === 'rejected'));
+      if (unverifyForm) unverifyForm.style.display = showReset ? '' : 'none';
       if (unverifyBtn) unverifyBtn.disabled = false;
     });
   });
 
-  // Copy notes into hidden fields on submit
   approveForm?.addEventListener('submit', () => { if (approveNotes) approveNotes.value = mAdminNotes.value || ''; });
   rejectForm?.addEventListener('submit', () => { if (rejectNotes) rejectNotes.value = mAdminNotes.value || ''; });
   unverifyForm?.addEventListener('submit', () => { if (unverifyNotes) unverifyNotes.value = mAdminNotes.value || ''; });
