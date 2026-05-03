@@ -19,7 +19,7 @@ def new_service():
         return redirect(url_for("provider.profile"))
 
     if request.method == "GET":
-        return render_template("service_new.html")
+        return render_template("services/service_new.html")
 
     title = (request.form.get("title") or "").strip()
     description = (request.form.get("description") or "").strip()
