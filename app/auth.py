@@ -27,7 +27,7 @@ def register():
         return redirect(url_for("main.home"))
 
     if request.method == "GET":
-        return render_template("register.html")
+        return render_template("auth/register.html")
 
     first_name = (request.form.get("first_name") or "").strip()
     last_name = (request.form.get("last_name") or "").strip()
