@@ -649,7 +649,7 @@ def my_bookings():
         .order_by(Booking.created_at.desc())
         .all()
     )
-    return render_template("my_bookings.html", bookings=bookings)
+    return render_template("client/my_bookings.html", bookings=bookings)
 
 
 # ---- Client cancel / refund request ----
