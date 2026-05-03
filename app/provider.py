@@ -416,7 +416,7 @@ def availability():
         .order_by(ProviderAvailability.day_of_week.asc(), ProviderAvailability.start_time.asc())
         .all()
     )
-    return render_template("provider_availability.html", rules=rules)
+    return render_template("provider/availability.html", rules=rules)
 
 
 @provider.route("/availability/<int:rule_id>/delete", methods=["POST"])
