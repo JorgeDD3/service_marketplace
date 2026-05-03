@@ -81,7 +81,7 @@ def login():
         return redirect(url_for("main.home"))
 
     if request.method == "GET":
-        return render_template("login.html")
+        return render_template("auth/login.html")
 
     email = (request.form.get("email") or "").strip().lower()
     password = request.form.get("password") or ""
