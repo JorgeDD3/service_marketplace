@@ -1,8 +1,11 @@
+{# 404: route not found (or intentionally hidden resource). #}
 {% extends "base.html" %}
+
 {% block content %}
-<div class="container py-4">
-  <h1 class="mb-3">404 — Not Found</h1>
-  <p>The page you’re looking for doesn’t exist.</p>
-<a class="btn btn-primary" href="{{ url_for('main.favicon') | replace('favicon.ico','') }}">Go home</a>
+<div class="container py-4" style="max-width: 720px;">
+  <h1 class="mb-2">404 — Not Found</h1>
+  <p class="text-muted mb-4">The page you’re looking for doesn’t exist.</p>
+
+  <a class="btn btn-primary" href="{{ url_for('main.home') }}">Go home</a>
 </div>
 {% endblock %}
