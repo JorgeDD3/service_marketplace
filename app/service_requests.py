@@ -31,7 +31,7 @@ def request_service():
         ).first()
         if existing:
             flash("You already have an active request with this subject.", "warning")
-            return redirect(url_for("service_requests.my_requests"))
+            return redirect(url_for("main.services"))
 
         sr = ServiceRequest(
             client_id=current_user.id,
@@ -45,7 +45,7 @@ def request_service():
         db.session.commit()
 
         flash("Service request submitted.", "success")
-        return redirect(url_for("service_requests.my_requests"))
+        return redirect(url_for("main.services"))
 
     return render_template("requests_new.html")
 
