@@ -1,10 +1,16 @@
+{#
+  Admin moderation hub.
+
+  This is the admin “home” screen. It summarizes the queues that usually need attention
+  (refunds, verifications, service requests) and links into the deeper moderation pages.
+#}
 {% extends "base.html" %}
 {% block title %}Moderation{% endblock %}
 
 {% block content %}
 <div class="container-dashboard" style="max-width: 1200px;">
 
-  <!-- Header -->
+  {# Header: keep it short and directional so admins know where they are. #}
   <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
     <div class="card-body py-3">
       <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
@@ -25,6 +31,7 @@
     </div>
   </div>
 
+  {# Normalize notif values so missing keys don't break the page. #}
   {% set refunds = (notif.refund_requests|default(0))|int %}
   {% set verifs = (notif.pending_verifications|default(0))|int %}
   {% set reqs = (notif.open_service_requests|default(0))|int %}
@@ -32,7 +39,7 @@
   {% set disabled = (notif.disabled_users|default(0))|int %}
   {% set total_attention = refunds + verifs + reqs %}
 
-  <!-- Needs attention -->
+  {# Needs attention: the “what should I do first?” box. #}
   <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
     <div class="card-body py-3">
       <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
@@ -62,57 +69,52 @@
         </div>
       {% else %}
         <div class="row g-2">
-
           {% if refunds > 0 %}
-          <div class="col-12 col-md-6 col-lg-4">
-            <div class="d-flex align-items-center justify-content-between border rounded-3 px-3 py-2"
-                 style="background:#fff;">
-              <div class="d-flex align-items-center gap-2">
-                <span class="badge bg-danger-subtle text-danger border">Urgent</span>
-                <div class="small fw-semibold">Refund requests</div>
+            <div class="col-12 col-md-6 col-lg-4">
+              <div class="d-flex align-items-center justify-content-between border rounded-3 px-3 py-2"
+                   style="background:#fff;">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge bg-danger-subtle text-danger border">Urgent</span>
+                  <div class="small fw-semibold">Refund requests</div>
+                </div>
+                <span class="badge bg-danger">{{ refunds }}</span>
               </div>
-              <span class="badge bg-danger">{{ refunds }}</span>
             </div>
-          </div>
           {% endif %}
 
           {% if verifs > 0 %}
-          <div class="col-12 col-md-6 col-lg-4">
-            <div class="d-flex align-items-center justify-content-between border rounded-3 px-3 py-2"
-                 style="background:#fff;">
-              <div class="d-flex align-items-center gap-2">
-                <span class="badge bg-warning-subtle text-warning border">Review</span>
-                <div class="small fw-semibold">Pending verifications</div>
+            <div class="col-12 col-md-6 col-lg-4">
+              <div class="d-flex align-items-center justify-content-between border rounded-3 px-3 py-2"
+                   style="background:#fff;">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge bg-warning-subtle text-warning border">Review</span>
+                  <div class="small fw-semibold">Pending verifications</div>
+                </div>
+                <span class="badge bg-warning text-dark">{{ verifs }}</span>
               </div>
-              <span class="badge bg-warning text-dark">{{ verifs }}</span>
             </div>
-          </div>
           {% endif %}
 
           {% if reqs > 0 %}
-          <div class="col-12 col-md-6 col-lg-4">
-            <div class="d-flex align-items-center justify-content-between border rounded-3 px-3 py-2"
-                 style="background:#fff;">
-              <div class="d-flex align-items-center gap-2">
-                <span class="badge bg-primary-subtle text-primary border">Queue</span>
-                <div class="small fw-semibold">Service requests</div>
+            <div class="col-12 col-md-6 col-lg-4">
+              <div class="d-flex align-items-center justify-content-between border rounded-3 px-3 py-2"
+                   style="background:#fff;">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge bg-primary-subtle text-primary border">Queue</span>
+                  <div class="small fw-semibold">Service requests</div>
+                </div>
+                <span class="badge bg-primary">{{ reqs }}</span>
               </div>
-              <span class="badge bg-primary">{{ reqs }}</span>
             </div>
-          </div>
           {% endif %}
-
         </div>
-
-        
       {% endif %}
     </div>
   </div>
 
-  <!-- Primary queues -->
+  {# Primary queues: the main navigation targets for day-to-day moderation. #}
   <div class="row g-3">
 
-    <!-- Services -->
     <div class="col-12 col-md-6">
       <div class="card shadow-sm border-0 h-100" style="border-radius: 18px;">
         <div class="card-body p-3 d-flex flex-column">
@@ -134,7 +136,6 @@
       </div>
     </div>
 
-    <!-- Provider Verifications -->
     <div class="col-12 col-md-6">
       <div class="card shadow-sm border-0 h-100" style="border-radius: 18px;">
         <div class="card-body p-3 d-flex flex-column">
@@ -156,7 +157,6 @@
       </div>
     </div>
 
-    <!-- Service Requests -->
     <div class="col-12 col-md-6">
       <div class="card shadow-sm border-0 h-100" style="border-radius: 18px;">
         <div class="card-body p-3 d-flex flex-column">
@@ -178,7 +178,6 @@
       </div>
     </div>
 
-    <!-- Bookings -->
     <div class="col-12 col-md-6">
       <div class="card shadow-sm border-0 h-100" style="border-radius: 18px;">
         <div class="card-body p-3 d-flex flex-column">
@@ -200,7 +199,6 @@
       </div>
     </div>
 
-    <!-- Users -->
     <div class="col-12 col-md-6">
       <div class="card shadow-sm border-0 h-100" style="border-radius: 18px;">
         <div class="card-body p-3 d-flex flex-column">
@@ -222,7 +220,6 @@
       </div>
     </div>
 
-    <!-- Refund Requests -->
     <div class="col-12 col-md-6">
       <div class="card shadow-sm border-0 h-100" style="border-radius: 18px;">
         <div class="card-body p-3 d-flex flex-column">
