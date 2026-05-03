@@ -230,7 +230,7 @@ def services():
     categories = [c[0] for c in categories]
 
     return render_template(
-        "services_public.html",
+        "services/services_public.html",
         services=services,
         categories=categories,
         selected_category=category,
