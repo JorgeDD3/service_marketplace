@@ -1,10 +1,17 @@
+{#
+  Admin bookings review.
+
+  This page is meant for quick scanning + intervention:
+  - search/filter bookings without server round-trips
+  - open a modal to review notes and force-cancel when needed
+#}
 {% extends "base.html" %}
 {% block title %}Admin: Bookings{% endblock %}
 
 {% block content %}
 <div class="container-dashboard" style="max-width: 1400px;">
 
-  <!-- Header -->
+  {# Page header: orient the admin and provide a fast way back to moderation hub. #}
   <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
     <div class="card-body py-3">
       <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
@@ -26,7 +33,7 @@
   </div>
 
   {% if bookings %}
-    {# Precompute counts (template only) #}
+    {# Template-side counts power the quick badges and update instantly with filtering. #}
     {% set pending_count = 0 %}
     {% set accepted_count = 0 %}
     {% set other_count = 0 %}
@@ -38,7 +45,7 @@
       {% if b.admin_note and '[REFUND_REQUEST]' in b.admin_note %}{% set refund_count = refund_count + 1 %}{% endif %}
     {% endfor %}
 
-    <!-- Search + Filters -->
+    {# Search + filters: client-side so admins can triage quickly. #}
     <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
       <div class="card-body py-3">
         <div class="row g-2 align-items-end">
@@ -64,10 +71,18 @@
 
           <div class="col-12 col-md-6 col-lg-3">
             <div class="d-flex gap-2 justify-content-lg-end flex-wrap">
-              <span class="badge bg-light text-dark border align-self-center">Pending: <span id="cPending">{{ pending_count }}</span></span>
-              <span class="badge bg-light text-dark border align-self-center">Accepted: <span id="cAccepted">{{ accepted_count }}</span></span>
-              <span class="badge bg-light text-dark border align-self-center">Refunds: <span id="cRefund">{{ refund_count }}</span></span>
-              <span class="badge bg-light text-dark border align-self-center">Showing: <span id="bkShowing">0</span></span>
+              <span class="badge bg-light text-dark border align-self-center">
+                Pending: <span id="cPending">{{ pending_count }}</span>
+              </span>
+              <span class="badge bg-light text-dark border align-self-center">
+                Accepted: <span id="cAccepted">{{ accepted_count }}</span>
+              </span>
+              <span class="badge bg-light text-dark border align-self-center">
+                Refunds: <span id="cRefund">{{ refund_count }}</span>
+              </span>
+              <span class="badge bg-light text-dark border align-self-center">
+                Showing: <span id="bkShowing">0</span>
+              </span>
               <button type="button" class="btn btn-sm btn-outline-secondary" id="bkClear">Clear</button>
             </div>
           </div>
@@ -84,7 +99,7 @@
       </div>
     </div>
 
-    <!-- Compact list -->
+    {# List view: compact rows with a single reusable modal for details/actions. #}
     <div class="card shadow-sm border-0" style="border-radius: 18px;">
       <div class="card-body p-0">
 
@@ -131,13 +146,14 @@
                       <span class="badge bg-warning-subtle text-warning border">Refund request</span>
                     {% endif %}
                   </div>
+
                   <div class="text-muted small mt-1">
                     <span class="text-muted">Created:</span>
-{% if created_str != "—" %}
-  <span class="local-datetime" data-utc="{{ created_str }}">{{ created_str }}</span>
-{% else %}
-  —
-{% endif %}
+                    {% if created_str != "—" %}
+                      <span class="local-datetime" data-utc="{{ created_str }}">{{ created_str }}</span>
+                    {% else %}
+                      —
+                    {% endif %}
                   </div>
                 </div>
 
@@ -183,7 +199,7 @@
 
 </div>
 
-<!-- Single reusable modal -->
+{# Single reusable modal: one dialog, populated from row data attributes. #}
 <div class="modal fade" id="bkModal" tabindex="-1" aria-labelledby="bkModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content" style="border-radius: 18px;">
@@ -243,7 +259,6 @@
 
       <div class="modal-footer d-flex justify-content-between">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
-      
       </div>
     </div>
   </div>
@@ -259,22 +274,22 @@
   const showingEl = document.getElementById('bkShowing');
 
   function formatLocalDateTime(value) {
-  if (!value || value === "—") return "—";
-  const d = new Date(value);
-  if (isNaN(d)) return value;
+    if (!value || value === "—") return "—";
+    const d = new Date(value);
+    if (isNaN(d)) return value;
 
-  return d.toLocaleString([], {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
+    return d.toLocaleString([], {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  }
+
+  document.querySelectorAll(".local-datetime").forEach((el) => {
+    el.textContent = formatLocalDateTime(el.dataset.utc);
   });
-}
-
-document.querySelectorAll(".local-datetime").forEach((el) => {
-  el.textContent = formatLocalDateTime(el.dataset.utc);
-});
 
   function applyFilter() {
     const q = (search?.value || '').trim().toLowerCase();
@@ -313,7 +328,6 @@ document.querySelectorAll(".local-datetime").forEach((el) => {
     applyFilter();
   });
 
-  // Modal wiring
   const mServiceTitle = document.getElementById('mServiceTitle');
   const mMeta = document.getElementById('mMeta');
   const mStatus = document.getElementById('mStatus');
@@ -330,12 +344,14 @@ document.querySelectorAll(".local-datetime").forEach((el) => {
   function setStatusBadge(status) {
     if (!mStatus) return;
     mStatus.textContent = status || '—';
+
     let cls = 'badge border bg-light text-dark';
     if (status === 'pending') cls = 'badge border bg-warning-subtle text-warning';
     if (status === 'accepted') cls = 'badge border bg-success-subtle text-success';
     if (status === 'cancelled') cls = 'badge border bg-secondary-subtle text-secondary';
     if (status === 'declined') cls = 'badge border bg-danger-subtle text-danger';
     if (status === 'completed') cls = 'badge border bg-success-subtle text-success';
+
     mStatus.className = cls;
   }
 
@@ -356,7 +372,10 @@ document.querySelectorAll(".local-datetime").forEach((el) => {
       const messagesUrl = row.dataset.messagesUrl || '#';
 
       setText(mServiceTitle, title);
-      setText(mMeta, `Client: ${client} • Provider: ${provider} • Created: ${formatLocalDateTime(created)} • #${id}`);
+      setText(
+        mMeta,
+        `Client: ${client} • Provider: ${provider} • Created: ${formatLocalDateTime(created)} • #${id}`
+      );
       setStatusBadge(status);
 
       setText(mProviderNote, providerNote.trim() ? providerNote : '—');
@@ -364,7 +383,7 @@ document.querySelectorAll(".local-datetime").forEach((el) => {
 
       if (mMessagesBtn) mMessagesBtn.href = messagesUrl;
 
-      // Only allow cancel for pending/accepted (matches backend guard)
+      // Only allow cancel for pending/accepted (matches backend guard).
       const canCancel = (status === 'pending' || status === 'accepted');
       if (mCancelWrap) mCancelWrap.style.display = canCancel ? '' : 'none';
 
