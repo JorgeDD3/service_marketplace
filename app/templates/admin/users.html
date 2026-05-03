@@ -1,10 +1,18 @@
+{#
+  Admin user management.
+
+  This view is intentionally simple:
+  - find users quickly (client-side filtering)
+  - enable/disable accounts with an optional audit reason
+  - protect self-disable and “last active admin” in the backend (UI mirrors that)
+#}
 {% extends "base.html" %}
 {% block title %}Admin: Users{% endblock %}
 
 {% block content %}
 <div class="container-dashboard" style="max-width: 1400px;">
 
-  <!-- Header -->
+  {# Page header: describe what admins can do here and provide a quick way back. #}
   <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
     <div class="card-body py-3">
       <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
@@ -26,23 +34,31 @@
   </div>
 
   {% if users %}
-    {# counts #}
+    {# Template-side counts power the quick badges and match client-side filtering. #}
     {% set active_count = 0 %}
     {% set disabled_count = 0 %}
     {% for u in users %}
-      {% if u.is_active %}{% set active_count = active_count + 1 %}{% else %}{% set disabled_count = disabled_count + 1 %}{% endif %}
+      {% if u.is_active %}
+        {% set active_count = active_count + 1 %}
+      {% else %}
+        {% set disabled_count = disabled_count + 1 %}
+      {% endif %}
     {% endfor %}
 
-    <!-- Search + Filters -->
+    {# Filters are client-side so admins can triage quickly without extra queries. #}
     <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
       <div class="card-body py-3">
         <div class="row g-2 align-items-end">
           <div class="col-12 col-lg-6">
             <label class="form-label small text-muted mb-1" for="uSearch">Search</label>
-            <input id="uSearch" type="text" class="form-control"
-                   placeholder="Search by name or email…"
-                   autocomplete="off">
-            <div class="form-text small">Tip: search works instantly; click ✏️ to manage a user.</div>
+            <input
+              id="uSearch"
+              type="text"
+              class="form-control"
+              placeholder="Search by name or email…"
+              autocomplete="off"
+            >
+            <div class="form-text small">Tip: search updates instantly; click ✏️ to manage a user.</div>
           </div>
 
           <div class="col-12 col-md-6 col-lg-3">
@@ -76,7 +92,7 @@
       </div>
     </div>
 
-    <!-- List -->
+    {# List view: compact rows + a single modal to manage the selected user. #}
     <div class="card shadow-sm border-0" style="border-radius: 18px;">
       <div class="card-body p-0">
 
@@ -132,13 +148,13 @@
                 <div class="col-12 col-lg-3">
                   <div class="small fw-semibold">{{ u.email }}</div>
                   <div class="text-muted small">
-  Disabled at:
-  {% if disabled_at != "—" %}
-    <span class="local-datetime" data-utc="{{ disabled_at }}">{{ disabled_at }}</span>
-  {% else %}
-    —
-  {% endif %}
-</div>
+                    Disabled at:
+                    {% if disabled_at != "—" %}
+                      <span class="local-datetime" data-utc="{{ disabled_at }}">{{ disabled_at }}</span>
+                    {% else %}
+                      —
+                    {% endif %}
+                  </div>
                 </div>
 
                 <div class="col-6 col-lg-2">
@@ -154,13 +170,15 @@
                 </div>
 
                 <div class="col-12 col-lg-1 text-lg-end">
-                  <button type="button"
-                          class="u-edit border-0 bg-transparent p-0 text-secondary"
-                          title="Manage user"
-                          aria-label="Manage user"
-                          data-bs-toggle="modal"
-                          data-bs-target="#uModal"
-                          style="font-size: 1.05rem; line-height: 1;">
+                  <button
+                    type="button"
+                    class="u-edit border-0 bg-transparent p-0 text-secondary"
+                    title="Manage user"
+                    aria-label="Manage user"
+                    data-bs-toggle="modal"
+                    data-bs-target="#uModal"
+                    style="font-size: 1.05rem; line-height: 1;"
+                  >
                     ✏️
                   </button>
                 </div>
@@ -184,7 +202,7 @@
 
 </div>
 
-<!-- Single reusable modal -->
+{# Single reusable modal: populated from row data-* attributes. #}
 <div class="modal fade" id="uModal" tabindex="-1" aria-labelledby="uModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content" style="border-radius: 18px;">
@@ -215,8 +233,13 @@
           <div class="row g-3">
             <div class="col-12">
               <label class="form-label small text-muted mb-1" for="mReason">Disable reason (optional)</label>
-              <input id="mReason" type="text" name="disabled_reason" class="form-control"
-                     placeholder="e.g., spam, abuse, policy violation">
+              <input
+                id="mReason"
+                type="text"
+                name="disabled_reason"
+                class="form-control"
+                placeholder="e.g., spam, abuse, policy violation"
+              >
               <div class="form-text small">
                 Reason is stored when disabling. Enabling clears disabled reason/time.
               </div>
@@ -245,22 +268,22 @@
   const showingEl = document.getElementById('cShowing');
 
   function formatLocalDateTime(value) {
-  if (!value || value === "—") return "—";
-  const d = new Date(value);
-  if (isNaN(d)) return value;
+    if (!value || value === "—") return "—";
+    const d = new Date(value);
+    if (isNaN(d)) return value;
 
-  return d.toLocaleString([], {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
+    return d.toLocaleString([], {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  }
+
+  document.querySelectorAll(".local-datetime").forEach((el) => {
+    el.textContent = formatLocalDateTime(el.dataset.utc);
   });
-}
-
-document.querySelectorAll(".local-datetime").forEach((el) => {
-  el.textContent = formatLocalDateTime(el.dataset.utc);
-});
 
   function applyFilter() {
     const q = (search?.value || '').trim().toLowerCase();
@@ -339,12 +362,15 @@ document.querySelectorAll(".local-datetime").forEach((el) => {
       if (form && actionUrl) form.action = actionUrl;
 
       setText(mName, name);
-      setText(mMeta, `Email: ${email} • Role: ${role} • #${id} • Disabled at: ${formatLocalDateTime(disabledAt)}`);
+      setText(
+        mMeta,
+        `Email: ${email} • Role: ${role} • #${id} • Disabled at: ${formatLocalDateTime(disabledAt)}`
+      );
       setBadge(isActive);
 
       if (mReason) mReason.value = disabledReason;
 
-      // Self-protect UI (backend already protects)
+      // UI guard (backend also protects self-disable).
       if (selfWarn) selfWarn.classList.toggle('d-none', !isSelf);
       if (toggleBtn) {
         toggleBtn.disabled = isSelf;
