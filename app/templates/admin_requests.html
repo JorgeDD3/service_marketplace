@@ -1,10 +1,18 @@
+{#
+  Admin service request moderation.
+
+  Clients can request services that don't exist yet. This page lets admins:
+  - review active requests (actionable)
+  - close requests once addressed (moves them into history)
+  - search across both sections without adding backend complexity
+#}
 {% extends "base.html" %}
 {% block title %}Admin: Service Requests{% endblock %}
 
 {% block content %}
 <div class="container-dashboard" style="max-width: 1400px;">
 
-  {# Split into Active vs History locally (no backend changes) #}
+  {# Split into Active vs History locally (no backend changes). #}
   {% set active_requests = [] %}
   {% set closed_requests = [] %}
   {% for r in (requests or []) %}
@@ -15,7 +23,7 @@
     {% endif %}
   {% endfor %}
 
-  <!-- Header -->
+  {# Page header: describe intent and provide a quick way back to moderation hub. #}
   <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
     <div class="card-body py-3">
       <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
@@ -36,17 +44,19 @@
     </div>
   </div>
 
-  <!-- Search + counts -->
+  {# Search applies to both Active + History so admins can find anything quickly. #}
   <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
     <div class="card-body py-3">
       <div class="row g-2 align-items-center">
         <div class="col-12 col-lg-7">
           <label class="form-label small text-muted mb-1" for="reqSearch">Search</label>
-          <input id="reqSearch"
-                 type="text"
-                 class="form-control"
-                 placeholder="Search by subject/title, description, or requester email…"
-                 autocomplete="off">
+          <input
+            id="reqSearch"
+            type="text"
+            class="form-control"
+            placeholder="Search by subject/title, description, or requester email…"
+            autocomplete="off"
+          >
           <div class="form-text small">Tip: search works across both Active and History.</div>
         </div>
 
@@ -68,32 +78,37 @@
     </div>
   </div>
 
-  <!-- Section toggles -->
+  {# Tab UI keeps the page scannable while still allowing a single search box. #}
   <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
     <div class="card-body py-2">
       <ul class="nav nav-pills gap-2" id="reqTabs" role="tablist">
         <li class="nav-item" role="presentation">
-          <button class="nav-link active btn-sm"
-                  id="tab-active"
-                  data-bs-toggle="pill"
-                  data-bs-target="#pane-active"
-                  type="button"
-                  role="tab"
-                  aria-controls="pane-active"
-                  aria-selected="true">
+          <button
+            class="nav-link active btn-sm"
+            id="tab-active"
+            data-bs-toggle="pill"
+            data-bs-target="#pane-active"
+            type="button"
+            role="tab"
+            aria-controls="pane-active"
+            aria-selected="true"
+          >
             Active
             <span class="badge bg-light text-dark border ms-2">{{ active_requests|length }}</span>
           </button>
         </li>
+
         <li class="nav-item" role="presentation">
-          <button class="nav-link btn-sm"
-                  id="tab-history"
-                  data-bs-toggle="pill"
-                  data-bs-target="#pane-history"
-                  type="button"
-                  role="tab"
-                  aria-controls="pane-history"
-                  aria-selected="false">
+          <button
+            class="nav-link btn-sm"
+            id="tab-history"
+            data-bs-toggle="pill"
+            data-bs-target="#pane-history"
+            type="button"
+            role="tab"
+            aria-controls="pane-history"
+            aria-selected="false"
+          >
             History
             <span class="badge bg-light text-dark border ms-2">{{ closed_requests|length }}</span>
           </button>
@@ -104,7 +119,6 @@
 
   <div class="tab-content" id="reqTabContent">
 
-    <!-- ACTIVE -->
     <div class="tab-pane fade show active" id="pane-active" role="tabpanel" aria-labelledby="tab-active" tabindex="0">
       {% if not active_requests %}
         <div class="card border-0 shadow-sm" style="border-radius: 18px;">
@@ -125,54 +139,53 @@
       {% else %}
         <div class="d-flex flex-column gap-2" id="activeList">
           {% for r in active_requests %}
-            {# IMPORTANT: use safe fallback so we show what user submitted (subject) #}
+            {# Safe fallback: show what the user actually submitted. #}
             {% set req_title = (r.subject or r.title or 'Untitled request') %}
             {% set requester_email = (r.client.email if r.client and r.client.email else "—") %}
-{% set requester_name = (
-  (r.client.first_name ~ ' ' ~ r.client.last_name)|trim
-  if r.client and (r.client.first_name or r.client.last_name)
-  else ""
-) %}
+            {% set requester_name = (
+              (r.client.first_name ~ ' ' ~ r.client.last_name)|trim
+              if r.client and (r.client.first_name or r.client.last_name)
+              else ""
+            ) %}
             {% set created_str = (r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "—") %}
             {% set desc = (r.description or "") %}
             {% set is_long = desc|length > 220 %}
 
-            <div class="card shadow-sm border-0 req-row"
-                 style="border-radius: 18px;"
-                 data-search="{{ (req_title ~ ' ' ~ desc ~ ' ' ~ requester_name ~ ' ' ~ requester_email)|lower }}"
-                 data-section="active">
-
+            <div
+              class="card shadow-sm border-0 req-row"
+              style="border-radius: 18px;"
+              data-search="{{ (req_title ~ ' ' ~ desc ~ ' ' ~ requester_name ~ ' ' ~ requester_email)|lower }}"
+              data-section="active"
+            >
               <div class="card-body py-3">
                 <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
 
-                  <!-- Left: request info -->
                   <div class="flex-grow-1">
                     <div class="d-flex flex-wrap align-items-center gap-2">
                       <div class="fw-semibold">{{ req_title }}</div>
-
                       <span class="badge bg-warning-subtle text-warning border">Active</span>
-
                       <span class="text-muted small">#{{ r.id }}</span>
                     </div>
 
                     <div class="text-muted small mt-1">
                       <span class="me-3">
                         <span class="text-muted">Requested by:</span>
-<span class="fw-semibold">
-  {% if requester_name %}
-    {{ requester_name }} <span class="text-muted">({{ requester_email }})</span>
-  {% else %}
-    {{ requester_email }}
-  {% endif %}
-</span>
+                        <span class="fw-semibold">
+                          {% if requester_name %}
+                            {{ requester_name }} <span class="text-muted">({{ requester_email }})</span>
+                          {% else %}
+                            {{ requester_email }}
+                          {% endif %}
+                        </span>
                       </span>
+
                       <span class="me-3">
                         <span class="text-muted">Created:</span>
-{% if created_str != "—" %}
-  <span class="local-datetime" data-utc="{{ created_str }}">{{ created_str }}</span>
-{% else %}
-  —
-{% endif %}
+                        {% if created_str != "—" %}
+                          <span class="local-datetime" data-utc="{{ created_str }}">{{ created_str }}</span>
+                        {% else %}
+                          —
+                        {% endif %}
                       </span>
                     </div>
 
@@ -180,16 +193,18 @@
                       <div class="text-muted small mt-2">
                         {{ desc[:220] }}{% if is_long %}…{% endif %}
                         {% if is_long %}
-                          <button class="btn btn-sm btn-link p-0 ms-1 align-baseline"
-        type="button"
-        data-bs-toggle="collapse"
-        data-bs-target="#activeDesc{{ r.id }}"
-        aria-expanded="false"
-        aria-controls="activeDesc{{ r.id }}"
-        data-toggle-text
-        data-target-id="activeDesc{{ r.id }}">
-  Show more
-</button>
+                          <button
+                            class="btn btn-sm btn-link p-0 ms-1 align-baseline"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#activeDesc{{ r.id }}"
+                            aria-expanded="false"
+                            aria-controls="activeDesc{{ r.id }}"
+                            data-toggle-text
+                            data-target-id="activeDesc{{ r.id }}"
+                          >
+                            Show more
+                          </button>
                         {% endif %}
                       </div>
 
@@ -205,16 +220,17 @@
                     {% endif %}
                   </div>
 
-                  <!-- Right: actions -->
                   <div class="flex-shrink-0" style="min-width: 260px;">
                     <div class="card border-0" style="background:#f8f9fa; border-radius: 14px;">
                       <div class="card-body py-2">
                         <div class="text-muted small mb-2">Actions</div>
 
-                        <form method="POST"
-                              action="{{ url_for('service_requests.admin_close_request', request_id=r.id) }}"
-                              class="m-0"
-                              onsubmit="return confirm('Close this request?');">
+                        <form
+                          method="POST"
+                          action="{{ url_for('service_requests.admin_close_request', request_id=r.id) }}"
+                          class="m-0"
+                          onsubmit="return confirm('Close this request?');"
+                        >
                           <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
                             Close request
                           </button>
@@ -229,14 +245,12 @@
 
                 </div>
               </div>
-
             </div>
           {% endfor %}
         </div>
       {% endif %}
     </div>
 
-    <!-- HISTORY -->
     <div class="tab-pane fade" id="pane-history" role="tabpanel" aria-labelledby="tab-history" tabindex="0">
       {% if not closed_requests %}
         <div class="card border-0 shadow-sm" style="border-radius: 18px;">
@@ -252,52 +266,52 @@
           {% for r in closed_requests %}
             {% set req_title = (r.subject or r.title or 'Untitled request') %}
             {% set requester_email = (r.client.email if r.client and r.client.email else "—") %}
-{% set requester_name = (
-  (r.client.first_name ~ ' ' ~ r.client.last_name)|trim
-  if r.client and (r.client.first_name or r.client.last_name)
-  else ""
-) %}
+            {% set requester_name = (
+              (r.client.first_name ~ ' ' ~ r.client.last_name)|trim
+              if r.client and (r.client.first_name or r.client.last_name)
+              else ""
+            ) %}
             {% set created_str = (r.created_at.isoformat() ~ "Z" if r.created_at else "—") %}
             {% set desc = (r.description or "") %}
             {% set is_long = desc|length > 220 %}
 
-            <div class="card shadow-sm border-0 req-row"
-                 style="border-radius: 18px;"
-                 data-search="{{ (req_title ~ ' ' ~ desc ~ ' ' ~ requester_name ~ ' ' ~ requester_email ~ ' ' ~ (r.status or ''))|lower }}"
-                 data-section="history">
-
+            <div
+              class="card shadow-sm border-0 req-row"
+              style="border-radius: 18px;"
+              data-search="{{ (req_title ~ ' ' ~ desc ~ ' ' ~ requester_name ~ ' ' ~ requester_email ~ ' ' ~ (r.status or ''))|lower }}"
+              data-section="history"
+            >
               <div class="card-body py-3">
                 <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
 
                   <div class="flex-grow-1">
                     <div class="d-flex flex-wrap align-items-center gap-2">
                       <div class="fw-semibold">{{ req_title }}</div>
-
                       <span class="badge bg-secondary-subtle text-secondary border">
                         {{ r.status or 'closed' }}
                       </span>
-
                       <span class="text-muted small">#{{ r.id }}</span>
                     </div>
 
                     <div class="text-muted small mt-1">
                       <span class="me-3">
                         <span class="text-muted">Requested by:</span>
-<span class="fw-semibold">
-  {% if requester_name %}
-    {{ requester_name }} <span class="text-muted">({{ requester_email }})</span>
-  {% else %}
-    {{ requester_email }}
-  {% endif %}
-</span>
+                        <span class="fw-semibold">
+                          {% if requester_name %}
+                            {{ requester_name }} <span class="text-muted">({{ requester_email }})</span>
+                          {% else %}
+                            {{ requester_email }}
+                          {% endif %}
+                        </span>
                       </span>
+
                       <span class="me-3">
                         <span class="text-muted">Created:</span>
-{% if created_str != "—" %}
-  <span class="local-datetime" data-utc="{{ created_str }}">{{ created_str }}</span>
-{% else %}
-  —
-{% endif %}
+                        {% if created_str != "—" %}
+                          <span class="local-datetime" data-utc="{{ created_str }}">{{ created_str }}</span>
+                        {% else %}
+                          —
+                        {% endif %}
                       </span>
                     </div>
 
@@ -305,16 +319,18 @@
                       <div class="text-muted small mt-2">
                         {{ desc[:220] }}{% if is_long %}…{% endif %}
                         {% if is_long %}
-                          <button class="btn btn-sm btn-link p-0 ms-1 align-baseline"
-        type="button"
-        data-bs-toggle="collapse"
-        data-bs-target="#histDesc{{ r.id }}"
-        aria-expanded="false"
-        aria-controls="histDesc{{ r.id }}"
-        data-toggle-text
-        data-target-id="histDesc{{ r.id }}">
-  Show more
-</button>
+                          <button
+                            class="btn btn-sm btn-link p-0 ms-1 align-baseline"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#histDesc{{ r.id }}"
+                            aria-expanded="false"
+                            aria-controls="histDesc{{ r.id }}"
+                            data-toggle-text
+                            data-target-id="histDesc{{ r.id }}"
+                          >
+                            Show more
+                          </button>
                         {% endif %}
                       </div>
 
@@ -343,7 +359,6 @@
 
                 </div>
               </div>
-
             </div>
           {% endfor %}
         </div>
@@ -361,24 +376,24 @@
   const showingEl = document.getElementById('cntShowing');
 
   function formatLocalDateTime(value) {
-  if (!value || value === "—") return "—";
-  const d = new Date(value);
-  if (isNaN(d)) return value;
+    if (!value || value === "—") return "—";
+    const d = new Date(value);
+    if (isNaN(d)) return value;
 
-  return d.toLocaleString([], {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
+    return d.toLocaleString([], {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  }
+
+  document.querySelectorAll(".local-datetime").forEach((el) => {
+    el.textContent = formatLocalDateTime(el.dataset.utc);
   });
-}
 
-document.querySelectorAll(".local-datetime").forEach((el) => {
-  el.textContent = formatLocalDateTime(el.dataset.utc);
-});
-
-  // Toggle "Show more/less" text (no inline JS, avoids const redeclare warnings)
+  // Toggle "Show more/less" labels based on collapse state.
   document.querySelectorAll('[data-toggle-text]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const targetId = btn.getAttribute('data-target-id');
@@ -387,7 +402,7 @@ document.querySelectorAll(".local-datetime").forEach((el) => {
       const targetEl = document.getElementById(targetId);
       if (!targetEl) return;
 
-      // Wait a tick for Bootstrap to toggle the collapse "show" class
+      // Give Bootstrap a moment to apply/remove the "show" class.
       setTimeout(() => {
         btn.textContent = targetEl.classList.contains('show') ? 'Show less' : 'Show more';
       }, 20);
