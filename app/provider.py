@@ -250,7 +250,7 @@ def profile():
         return redirect(url_for("provider.profile"))
 
     return render_template(
-        "provider_profile.html",
+        "provider/profile.html",
         profile=profile_row,
         nav_verification_status=nav_verification_status,
     )
