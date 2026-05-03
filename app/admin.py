@@ -75,7 +75,7 @@ def moderation():
         "disabled_users": disabled_users,
     }
 
-    return render_template("admin/admin_moderation.html", notif=notif)
+    return render_template("admin/moderation.html", notif=notif)
 
 
 @admin_bp.route("/users")
