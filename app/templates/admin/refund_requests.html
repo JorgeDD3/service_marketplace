@@ -1,10 +1,18 @@
+{#
+  Admin refund requests queue.
+
+  This page is intentionally opinionated:
+  - show only bookings that have a recorded refund request
+  - let admins approve/deny with a required audit note
+  - lock decisions after processing to avoid “double actions”
+#}
 {% extends "base.html" %}
 {% block title %}Admin: Refund Requests{% endblock %}
 
 {% block content %}
 <div class="container-dashboard" style="max-width: 1500px; width: 100%;">
 
-  <!-- Header -->
+  {# Page header: orient the admin and provide a quick way back to moderation hub. #}
   <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
     <div class="card-body py-3">
       <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
@@ -25,7 +33,7 @@
     </div>
   </div>
 
-  <!-- Search + Summary -->
+  {# Search keeps the queue manageable without adding more filters/routes. #}
   <div class="card shadow-sm border-0 mb-3" style="border-radius: 18px;">
     <div class="card-body py-3">
       <div class="row g-2 align-items-end">
@@ -40,7 +48,6 @@
             oninput="window._refundQ=this.value"
             onkeydown="if(event.key==='Enter'){applyRefundSearch();}"
           />
-          
         </div>
 
         <div class="col-12 col-lg-4 d-flex justify-content-lg-end gap-2 flex-wrap">
@@ -52,10 +59,9 @@
     </div>
   </div>
 
-  <!-- Main content: Table + Sidebar -->
+  {# Main layout: queue table + a small “how to use this” sidebar. #}
   <div class="row g-3">
 
-    <!-- Table -->
     <div class="col-12 col-xl-9">
       <div class="card shadow-sm border-0" style="border-radius: 18px; overflow: hidden;">
         <div class="card-body p-0">
@@ -86,7 +92,7 @@
                     {% set provider_label = (b.provider.email if b.provider else b.provider_id) %}
                     {% set admin_note_full = (b.admin_note or "") %}
 
-                    {# Refund state (UI-only; no ERD changes) #}
+                    {# UI-only refund state derived from existing fields/tags. #}
                     {% set refund_state = "requested" %}
                     {% if b.payment_status is defined and b.payment_status == "refunded" %}
                       {% set refund_state = "refunded" %}
@@ -97,7 +103,6 @@
                     {% endif %}
 
                     <tr>
-                      <!-- Booking -->
                       <td class="ps-3">
                         <div class="d-flex align-items-start justify-content-between gap-2">
                           <div style="min-width: 0;">
@@ -109,12 +114,10 @@
                             <div class="small text-muted mt-1 d-flex align-items-center gap-2 flex-wrap">
                               <span class="badge bg-warning text-dark">Refund request</span>
 
-                              {# Booking lifecycle status #}
                               {% if b.status %}
                                 <span class="badge bg-light text-dark border">Status: {{ b.status }}</span>
                               {% endif %}
 
-                              {# Refund decision status #}
                               {% if refund_state == "refunded" %}
                                 <span class="badge bg-success">Refund: refunded</span>
                               {% elif refund_state == "approved" %}
@@ -128,10 +131,10 @@
                               {% if admin_note_full %}
                                 <span class="text-muted" title="{{ admin_note_full }}">
                                   {{ admin_note_full.split('[REFUND_APPROVED]')[0]
-   .split('[REFUND_DENIED]')[0]
-   |replace('[REFUND_REQUEST]', 'Refund requested:')
-   |truncate(95)
-}}
+                                    .split('[REFUND_DENIED]')[0]
+                                    |replace('[REFUND_REQUEST]', 'Refund requested:')
+                                    |truncate(95)
+                                  }}
                                 </span>
                               {% else %}
                                 <span class="text-muted">—</span>
@@ -141,7 +144,6 @@
                         </div>
                       </td>
 
-                      <!-- Client / Provider -->
                       <td>
                         <div class="small">
                           <div class="text-truncate" style="max-width: 260px;">
@@ -155,25 +157,22 @@
                         </div>
                       </td>
 
-                      <!-- Requested -->
                       <td class="small">
                         {% if b.admin_action_at %}
-  <span class="local-datetime-two-line" data-utc="{{ b.admin_action_at.isoformat() }}Z"></span>
-{% else %}
-  <span class="text-muted">—</span>
-{% endif %}
+                          <span class="local-datetime-two-line" data-utc="{{ b.admin_action_at.isoformat() }}Z"></span>
+                        {% else %}
+                          <span class="text-muted">—</span>
+                        {% endif %}
                       </td>
 
-                      <!-- Created -->
                       <td class="small">
                         {% if b.created_at %}
-  <span class="local-datetime-two-line" data-utc="{{ b.created_at.isoformat() }}Z"></span>
-{% else %}
-  <span class="text-muted">—</span>
-{% endif %}
+                          <span class="local-datetime-two-line" data-utc="{{ b.created_at.isoformat() }}Z"></span>
+                        {% else %}
+                          <span class="text-muted">—</span>
+                        {% endif %}
                       </td>
 
-                      <!-- Action -->
                       <td class="text-end pe-3">
                         <div class="d-flex justify-content-end gap-2 flex-wrap">
                           <button
@@ -188,8 +187,8 @@
                             data-status="{{ (b.status or '')|e }}"
                             data-refund-state="{{ refund_state|e }}"
                             data-booking-datetime="{{ (b.booking_datetime.isoformat() ~ 'Z' if b.booking_datetime else '')|e }}"
-data-created="{{ (b.created_at.isoformat() ~ 'Z' if b.created_at else '')|e }}"
-data-requested="{{ (b.admin_action_at.isoformat() ~ 'Z' if b.admin_action_at else '')|e }}"
+                            data-created="{{ (b.created_at.isoformat() ~ 'Z' if b.created_at else '')|e }}"
+                            data-requested="{{ (b.admin_action_at.isoformat() ~ 'Z' if b.admin_action_at else '')|e }}"
                             data-admin-note="{{ admin_note_full|e }}"
                           >
                             Review
@@ -230,10 +229,7 @@ data-requested="{{ (b.admin_action_at.isoformat() ~ 'Z' if b.admin_action_at els
       </div>
     </div>
 
-    <!-- Sidebar -->
     <div class="col-12 col-xl-3">
-      
-
       <div class="card shadow-sm border-0" style="border-radius: 18px;">
         <div class="card-body py-3">
           <div class="fw-semibold mb-2">Recommended workflow</div>
@@ -260,7 +256,7 @@ data-requested="{{ (b.admin_action_at.isoformat() ~ 'Z' if b.admin_action_at els
 
 </div>
 
-<!-- Refund Review Modal -->
+{# Refund review modal: reads row data-* attributes and posts to the decision endpoint. #}
 <div class="modal fade" id="refundModal" tabindex="-1" aria-labelledby="refundModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content" style="border-radius: 18px;">
@@ -370,7 +366,7 @@ data-requested="{{ (b.admin_action_at.isoformat() ~ 'Z' if b.admin_action_at els
     window.location.href = url.toString();
   }
 
-    function formatLocalDateTime(value) {
+  function formatLocalDateTime(value) {
     if (!value || value === "—") return "—";
     const d = new Date(value);
     if (isNaN(d)) return value;
@@ -415,6 +411,7 @@ data-requested="{{ (b.admin_action_at.isoformat() ~ 'Z' if b.admin_action_at els
       alert("Please enter an admin decision note (required).");
       return false;
     }
+
     if (which === "approve") {
       document.getElementById("m_approveReason").value = reason;
     } else {
@@ -425,7 +422,8 @@ data-requested="{{ (b.admin_action_at.isoformat() ~ 'Z' if b.admin_action_at els
 
   function setRefundPill(state) {
     const pill = document.getElementById("m_refundPill");
-    pill.className = "badge"; // reset
+    pill.className = "badge";
+
     if (state === "refunded") {
       pill.classList.add("bg-success");
       pill.textContent = "Refund: refunded";
@@ -440,20 +438,22 @@ data-requested="{{ (b.admin_action_at.isoformat() ~ 'Z' if b.admin_action_at els
       pill.textContent = "Refund: pending";
     }
   }
-  function cleanRefundNote(note) {
-  if (!note || note === "—") return "—";
 
-  return note
-    .split("[REFUND_APPROVED]")[0]
-    .split("[REFUND_DENIED]")[0]
-    .replace("[REFUND_REQUEST]", "Refund requested:")
-    .trim() || "—";
-}
+  function cleanRefundNote(note) {
+    if (!note || note === "—") return "—";
+
+    return note
+      .split("[REFUND_APPROVED]")[0]
+      .split("[REFUND_DENIED]")[0]
+      .replace("[REFUND_REQUEST]", "Refund requested:")
+      .trim() || "—";
+  }
 
   document.addEventListener("DOMContentLoaded", function () {
-        document.querySelectorAll(".local-datetime-two-line").forEach((el) => {
+    document.querySelectorAll(".local-datetime-two-line").forEach((el) => {
       el.innerHTML = formatLocalDateTimeTwoLine(el.dataset.utc);
     });
+
     const modal = document.getElementById("refundModal");
     if (!modal) return;
 
@@ -486,20 +486,20 @@ data-requested="{{ (b.admin_action_at.isoformat() ~ 'Z' if b.admin_action_at els
 
       setRefundPill(refundState);
 
-      // Reset reason box each open
+      // Reset reason box each open.
       const reasonBox = document.getElementById("m_adminReason");
       reasonBox.value = "";
 
-      // Wire forms to the decision endpoint
+      // Wire forms to the decision endpoint.
       const decisionUrl = "{{ url_for('admin.decide_refund_request', booking_id=0) }}".replace("/0/", "/" + bookingId + "/");
       document.getElementById("m_approveForm").action = decisionUrl;
       document.getElementById("m_denyForm").action = decisionUrl;
 
-      // Wire bookings console link
+      // Wire bookings console link.
       const bookingLink = "{{ url_for('admin.bookings') }}?q=" + encodeURIComponent(bookingId);
       document.getElementById("m_viewBookingLink").href = bookingLink;
 
-      // Lock buttons if already processed
+      // Lock buttons if already processed.
       const approveBtn = document.getElementById("m_approveBtn");
       const denyBtn = document.getElementById("m_denyBtn");
       const lockedHint = document.getElementById("m_lockedHint");
