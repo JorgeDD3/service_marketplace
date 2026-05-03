@@ -249,7 +249,7 @@ def provider_public_profile(provider_id: int):
     profile = getattr(provider, "provider_profile", None)
 
     return render_template(
-        "provider_public_profile.html",
+        "provider/public_profile.html",
         provider=provider,
         profile=profile,
     )
