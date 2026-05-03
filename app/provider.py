@@ -688,6 +688,6 @@ def requests_board():
     )
 
     return render_template(
-        "provider/provider_requests.html",
+        "provider/requests.html",
         requests=requests_q,
     )
