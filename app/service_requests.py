@@ -111,7 +111,7 @@ def provider_requests():
     )
 
     return render_template(
-        "provider_requests.html",
+        "provider/requests.html",
         open_requests=open_reqs,
         my_claimed=my_claimed
     )
