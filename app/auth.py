@@ -10,8 +10,8 @@ I keep these routes under /auth so the rest of the app can focus on marketplace 
 """
 
 from flask import Blueprint, current_app, render_template, request, redirect, url_for, flash
-from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
 
 from app.extensions import db
 from app.models import User, Role, PasswordResetToken, hash_token
@@ -202,11 +202,8 @@ def reset_password(token: str):
             flash("That reset link is invalid. Please request a new one.", "warning")
             return redirect(url_for("auth.forgot_password"))
 
-        # I route through the model helper so password hashing stays consistent in one place.
-        if hasattr(user, "set_password"):
-            user.set_password(password)
-        else:
-            raise RuntimeError("User model missing set_password(password)")
+        # This project stores hashes directly on User.password_hash.
+        user.password_hash = generate_password_hash(password)
 
         row.used_at = db.func.now()
         db.session.commit()
