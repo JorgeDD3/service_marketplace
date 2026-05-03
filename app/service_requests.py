@@ -47,7 +47,7 @@ def request_service():
         flash("Service request submitted.", "success")
         return redirect(url_for("main.services"))
 
-    return render_template("requests_new.html")
+    return render_template("client/requests_new.html")
 
 
 @service_requests_bp.route("/my/requests")

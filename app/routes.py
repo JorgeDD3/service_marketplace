@@ -604,11 +604,11 @@ def request_service():
 
         if not subject or not description:
             flash_warning("Subject and description are required.")
-            return render_template("requests_new.html")
+            return render_template("client/requests_new.html")
 
         if len(subject) > 150:
             flash_warning("Subject is too long (max 150 characters).")
-            return render_template("requests_new.html")
+            return render_template("client/requests_new.html")
 
         sr = ServiceRequest(
             client_id=current_user.id,
@@ -625,7 +625,7 @@ def request_service():
         flash_success("Service request submitted. An admin will review it.")
         return redirect(url_for("main.services"))
 
-    return render_template("requests_new.html")
+    return render_template("client/requests_new.html")
 
 # ---- Client bookings ----
 @main.route("/my/bookings")
