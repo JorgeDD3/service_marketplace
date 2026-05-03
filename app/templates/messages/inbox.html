@@ -1,3 +1,11 @@
+{#
+  Messages inbox.
+
+  This is a lightweight “conversation list” view:
+  - shows the 5 most recent by default (client-side toggle for older threads)
+  - client-side search to avoid extra server routes/filters
+  - visual flags for inquiry threads and unread state
+#}
 {% extends "base.html" %}
 {% block container_class %}container-wide{% endblock %}
 {% block title %}Messages{% endblock %}
@@ -220,11 +228,13 @@
   {% else %}
 
     <div class="msg-card msg-tools">
-      <input id="threadSearch"
-             class="msg-search"
-             type="text"
-             placeholder="Search by client, booking number, or service..."
-             aria-label="Search conversations">
+      <input
+        id="threadSearch"
+        class="msg-search"
+        type="text"
+        placeholder="Search by client, booking number, or service..."
+        aria-label="Search conversations"
+      >
 
       <button id="toggleThreads" class="btn btn-outline-primary" type="button">
         Show all
@@ -247,10 +257,11 @@
 
         {% set initials = (other.first_name[:1] ~ (other.last_name[:1] if other.last_name else ""))|upper %}
 
-        <a class="thread {% if idx >= 5 %}is-old-thread{% endif %}"
-           data-search="{{ other.first_name }} {{ other.last_name }} Booking #{{ c.booking_id }} {% if c.booking and c.booking.service %}{{ c.booking.service.title }}{% endif %}"
-           href="{{ url_for('messages.thread', conversation_id=c.id) }}">
-
+        <a
+          class="thread {% if idx >= 5 %}is-old-thread{% endif %}"
+          data-search="{{ other.first_name }} {{ other.last_name }} Booking #{{ c.booking_id }} {% if c.booking and c.booking.service %}{{ c.booking.service.title }}{% endif %}"
+          href="{{ url_for('messages.thread', conversation_id=c.id) }}"
+        >
           <div class="avatar">{{ initials }}</div>
 
           <div class="thread-main">
@@ -280,16 +291,14 @@
           <div class="thread-right">
             <div>
               {% if last and last.created_at %}
-  <span class="local-datetime"
-        data-utc="{{ last.created_at.isoformat() }}Z">
-    {{ last.created_at.strftime("%b %d, %I:%M %p") }}
-  </span>
-{% elif c.created_at %}
-  <span class="local-date"
-        data-utc="{{ c.created_at.isoformat() }}Z">
-    {{ c.created_at.strftime("%b %d, %Y") }}
-  </span>
-{% endif %}
+                <span class="local-datetime" data-utc="{{ last.created_at.isoformat() }}Z">
+                  {{ last.created_at.strftime("%b %d, %I:%M %p") }}
+                </span>
+              {% elif c.created_at %}
+                <span class="local-date" data-utc="{{ c.created_at.isoformat() }}Z">
+                  {{ c.created_at.strftime("%b %d, %Y") }}
+                </span>
+              {% endif %}
             </div>
 
             {% if is_unread %}
@@ -304,8 +313,8 @@
 </div>
 
 <script>
-(function(){
-    document.querySelectorAll(".local-datetime").forEach(el => {
+(function () {
+  document.querySelectorAll(".local-datetime").forEach((el) => {
     const d = new Date(el.dataset.utc);
     if (!isNaN(d)) {
       el.textContent = d.toLocaleString([], {
@@ -317,7 +326,7 @@
     }
   });
 
-  document.querySelectorAll(".local-date").forEach(el => {
+  document.querySelectorAll(".local-date").forEach((el) => {
     const d = new Date(el.dataset.utc);
     if (!isNaN(d)) {
       el.textContent = d.toLocaleDateString([], {
@@ -327,16 +336,17 @@
       });
     }
   });
+
   const btn = document.getElementById("toggleThreads");
   const search = document.getElementById("threadSearch");
   const allThreads = Array.from(document.querySelectorAll(".thread"));
 
   let showingAll = false;
 
-  function applyVisibility(){
+  function applyVisibility() {
     const q = (search?.value || "").trim().toLowerCase();
 
-    allThreads.forEach(el => {
+    allThreads.forEach((el) => {
       const text = (el.dataset.search || "").toLowerCase();
       const matches = !q || text.includes(q);
 
@@ -353,15 +363,15 @@
     });
   }
 
-  if (btn){
-    btn.addEventListener("click", function(){
+  if (btn) {
+    btn.addEventListener("click", function () {
       showingAll = !showingAll;
       btn.textContent = showingAll ? "Show recent only" : "Show all";
       applyVisibility();
     });
   }
 
-  if (search){
+  if (search) {
     search.addEventListener("input", applyVisibility);
   }
 
