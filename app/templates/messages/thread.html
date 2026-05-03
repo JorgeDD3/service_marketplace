@@ -1,3 +1,12 @@
+{#
+  Messages thread view.
+
+  This is the chat UI for a single conversation tied to a booking (or an inquiry booking).
+  It keeps the experience lightweight:
+  - scrolls to the latest message on load
+  - provides suggested prompts for quicker client/provider replies
+  - relies on server-side auth/ownership checks; this template is just presentation
+#}
 {% extends "base.html" %}
 {% block container_class %}container-wide{% endblock %}
 {% block title %}Messages{% endblock %}
@@ -286,11 +295,8 @@
             {% if not is_inquiry %}
               <span>•</span>
               <span>
-                <span>
-  <strong>When:</strong>
-  {{ convo.booking.booking_datetime.strftime("%b %d, %Y • %I:%M %p") if convo.booking.booking_datetime else "—" }}
-</span>
-                
+                <strong>When:</strong>
+                {{ convo.booking.booking_datetime.strftime("%b %d, %Y • %I:%M %p") if convo.booking.booking_datetime else "—" }}
               </span>
             {% endif %}
           </div>
