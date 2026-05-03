@@ -62,4 +62,4 @@ def my_services():
         return redirect(url_for("provider.profile"))
 
     services = Service.query.filter_by(provider_profile_id=profile.id).order_by(Service.created_at.desc()).all()
-    return render_template("services_my.html", services=services)
+    return render_template("services/services_my.html", services=services)
