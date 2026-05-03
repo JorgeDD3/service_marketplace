@@ -328,7 +328,7 @@ def settings():
         return redirect(url_for("provider.settings"))
 
     return render_template(
-        "provider/provider_settings.html",
+        "provider/settings.html",
         email=current_user.email,
         verification_status=verification_status,
         username=str(current_user.id),
