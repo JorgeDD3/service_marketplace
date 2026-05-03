@@ -5,13 +5,30 @@ from flask_login import current_user
 
 from app.extensions import db
 from app.models import User, PasswordResetToken, hash_token
-
 from app.auth import auth
+
+
+def _is_production() -> bool:
+    """Best-effort production check.
+
+    I keep this lightweight because the app may run under different configs
+    (local dev, Turing deployment). In production, we should not show reset
+    links in the UI.
+    """
+    return (
+        current_app.config.get("APP_CONFIG") == "production"
+        or current_app.config.get("ENV") == "production"
+    )
 
 
 @auth.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
-    # If logged in, no need to reset
+    """Start the password reset flow.
+
+    Security note: the response stays neutral whether an email exists or not,
+    which prevents email enumeration.
+    """
+    # If logged in, a reset doesn't make sense.
     if current_user.is_authenticated:
         flash("You are already logged in.", "info")
         return redirect(url_for("main.services"))
@@ -21,7 +38,7 @@ def forgot_password():
     if request.method == "POST":
         email = (request.form.get("email") or "").strip().lower()
 
-        # Always neutral message (prevents email enumeration)
+        # Always neutral message (prevents email enumeration).
         flash("If an account exists for that email, a reset link has been generated.", "info")
 
         if email:
@@ -35,12 +52,8 @@ def forgot_password():
                     user_agent=request.headers.get("User-Agent"),
                 )
 
-                # Dev-mode demo: show link on-screen instead of sending email
-                is_prod = (
-                    current_app.config.get("APP_CONFIG") == "production"
-                    or current_app.config.get("ENV") == "production"
-                )
-                if not is_prod:
+                # Dev/demo mode: show link on-screen instead of sending email.
+                if not _is_production():
                     reset_link = url_for("auth.reset_password", token=raw_token, _external=True)
 
         return render_template("auth/forgot_password.html", reset_link=reset_link)
@@ -50,6 +63,7 @@ def forgot_password():
 
 @auth.route("/reset-password/<token>", methods=["GET", "POST"])
 def reset_password(token: str):
+    """Complete a password reset using a single-use token."""
     if current_user.is_authenticated:
         flash("You are already logged in.", "info")
         return redirect(url_for("main.services"))
@@ -57,7 +71,7 @@ def reset_password(token: str):
     token_h = hash_token(token)
     row = PasswordResetToken.query.filter_by(token_hash=token_h).first()
 
-    # Validate token
+    # Validate token (missing, already used, or expired).
     if not row or row.is_used or row.is_expired:
         flash("That reset link is invalid or has expired. Please request a new one.", "warning")
         return redirect(url_for("auth.forgot_password"))
