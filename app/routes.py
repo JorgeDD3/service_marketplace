@@ -1,7 +1,19 @@
-# app/routes.py
+"""
+Main/public routes for ServiceSphere.
+
+This blueprint handles the marketplace side of the app:
+- home page + service browsing
+- service detail + slot generation
+- client booking + inquiry flows
+- client session dashboard and checkout
+- a few provider helper routes that live on the main blueprint
+
+I keep most of the public workflow here so the role-specific blueprints
+(provider/admin/messages) can stay focused.
+"""
+
 from datetime import datetime, timedelta, time
 import secrets
-from app.utils.flash import flash_success, flash_warning, flash_danger
 
 from flask import (
     Blueprint,
@@ -14,55 +26,68 @@ from flask import (
     send_from_directory,
     current_app,
 )
-
 from flask_login import login_required, current_user
 
+from app.utils.flash import flash_success, flash_warning, flash_danger
 from app.decorators import role_required
 from app.extensions import db
-from app.models import User, Service, Booking, Message, ProviderProfile, ProviderAvailability, ProviderTimeOff, ServiceRequest
+from app.models import (
+    User,
+    Service,
+    Booking,
+    Message,
+    ProviderProfile,
+    ProviderAvailability,
+    ProviderTimeOff,
+    ServiceRequest,
+)
 
 main = Blueprint("main", __name__)
 
 
-def _run_booking_housekeeping():
-    """
-    MVP housekeeping:
-    - Auto-cancel unpaid pending bookings within 24h of start.
-    Called from high-traffic routes so we don't need a background job.
+def _run_booking_housekeeping() -> None:
+    """Runs lightweight booking cleanup that keeps the UI accurate.
+
+    I call this from normal page routes instead of using a background job.
+    The main thing it does is auto-cancel unpaid bookings that are too close
+    to the session start time, so providers don't see stale pending sessions.
     """
     try:
         Booking.auto_cancel_unpaid_within_hours(hours=24)
     except Exception:
-        # MVP safety: never break page loads due to housekeeping.
-        # If you want logging later, we can add current_app.logger.exception(...)
+        # If this ever fails, I don't want it to take down normal page loads.
+        # If I wanted extra visibility later, I could log current_app.logger.exception(...).
         pass
 
 
 @main.route("/favicon.ico")
 def favicon():
+    """Serve favicon from the static folder."""
     return send_from_directory(current_app.static_folder, "favicon.ico")
 
 
 def _hhmm_to_time(hhmm: str) -> time:
-    # hhmm like "15:00"
+    """Convert a simple 'HH:MM' string into a datetime.time object."""
     h, m = hhmm.split(":")
     return time(hour=int(h), minute=int(m))
 
 
 def generate_available_slots(service: Service, days_ahead: int = 7) -> list[datetime]:
-    """
-    Returns UTC-naive datetimes (consistent with your current utcnow usage).
-    Slots are generated from provider availability windows and filtered by existing bookings.
+    """Generate bookable slots for a service based on provider scheduling rules.
 
-    Blocking rules:
-      - accepted always blocks
-      - pending always blocks (prevents double-booking)
-      - overlap-aware (uses booking duration_minutes)
-      - provider time off blocks (vacation/partial blocks)
-      - inquiry pseudo-bookings do NOT block
+    What this returns:
+    - UTC-naive datetimes (this matches how the rest of the project uses datetime.utcnow()).
 
-    Lead time rule:
-      - clients cannot book sooner than 24 hours from now
+    What this considers:
+    - Provider weekly availability windows (ProviderAvailability)
+    - Provider time off blocks (ProviderTimeOff)
+    - Existing bookings that block time (pending + accepted)
+    - Inquiry pseudo-bookings do not block time
+
+    Key rules I enforce here:
+    - Lead time: clients cannot book within the next 24 hours
+    - Slots only show start times where the full service duration fits
+    - Overlap detection uses the booking duration so it blocks correctly
     """
     provider_profile = service.provider_profile
     if not provider_profile:
@@ -77,14 +102,13 @@ def generate_available_slots(service: Service, days_ahead: int = 7) -> list[date
         return []
 
     now = datetime.utcnow().replace(second=0, microsecond=0)
-    min_start = now + timedelta(hours=24)  # <-- lead time enforcement
+    min_start = now + timedelta(hours=24)
 
     provider_user_id = provider_profile.user_id
-
-    # Use the actual service duration for slot sizing/fit checks
     service_duration = int(getattr(service, "duration_minutes", 60) or 60)
 
-    # Bookings that block time: pending + accepted (ignore inquiry pseudo-bookings)
+    # I treat pending + accepted bookings as "busy" so we never double-book.
+    # I ignore inquiry pseudo-bookings because they aren’t real scheduled sessions.
     busy = (
         Booking.query
         .filter_by(provider_id=provider_user_id)
@@ -93,16 +117,14 @@ def generate_available_slots(service: Service, days_ahead: int = 7) -> list[date
         .all()
     )
 
-    # Build busy intervals: [start, end)
     busy_intervals: list[tuple[datetime, datetime]] = []
-
     for b in busy:
         start = b.booking_datetime.replace(second=0, microsecond=0)
         dur = int(getattr(b, "duration_minutes", 60) or 60)
         end = start + timedelta(minutes=dur)
         busy_intervals.append((start, end))
 
-    # Provider time off blocks
+    # Time off acts like another kind of "busy interval".
     window_start = now
     window_end = now + timedelta(days=days_ahead + 1)
 
@@ -126,7 +148,7 @@ def generate_available_slots(service: Service, days_ahead: int = 7) -> list[date
 
     for day_offset in range(days_ahead + 1):
         day = (now + timedelta(days=day_offset)).date()
-        dow = day.weekday()  # 0=Mon..6=Sun
+        dow = day.weekday()
 
         day_rules = [r for r in rules if r.day_of_week == dow]
         if not day_rules:
@@ -142,12 +164,12 @@ def generate_available_slots(service: Service, days_ahead: int = 7) -> list[date
 
             cursor = start_dt
 
-            # Only offer start times where the FULL service duration fits inside availability
+            # I only offer start times where the full service fits inside the availability window.
             while cursor + timedelta(minutes=service_duration) <= end_dt:
                 candidate = cursor.replace(second=0, microsecond=0)
                 candidate_end = candidate + timedelta(minutes=service_duration)
 
-                # Enforce: no slots within the next 24 hours
+                # Lead-time rule: no same-day / last-minute booking.
                 if candidate >= min_start:
                     blocked = any(overlaps(candidate, candidate_end, bs, be) for (bs, be) in busy_intervals)
                     if not blocked:
@@ -158,16 +180,17 @@ def generate_available_slots(service: Service, days_ahead: int = 7) -> list[date
     slots.sort()
     return slots[:500]
 
+
 @main.route("/")
 def home():
+    """Landing page."""
     return render_template("home.html")
 
 
 @main.route("/services")
 def services():
-    # Support both param names:
-    # - new UI uses q
-    # - older links may still use search
+    """Public marketplace list view with search/filter/sort."""
+    # I support both param names so older links don't break.
     search = (request.args.get("q") or request.args.get("search") or "").strip()
     category = (request.args.get("category") or "").strip()
     sort = (request.args.get("sort") or "").strip()
@@ -696,7 +719,7 @@ def provider_time_off():
     )
 
     return render_template(
-        "provider_time_off.html",
+        "provider/time_off.html",
         entries=time_off_entries
     )
 
