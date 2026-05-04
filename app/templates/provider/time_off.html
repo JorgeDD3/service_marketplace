@@ -1,3 +1,10 @@
+{#
+  Provider time off (blocked time).
+
+  Weekly availability defines the normal schedule. This page handles exceptions:
+  vacation, class, appointments, etc. Blocks show in purple on the calendar and
+  remove slots from the client booking UI.
+#}
 {% extends "base.html" %}
 {% block title %}Time Off{% endblock %}
 
@@ -43,9 +50,7 @@
     font-weight:900;
   }
 
-  .main-panel{
-    padding:18px;
-  }
+  .main-panel{ padding:18px; }
 
   .panel-title{
     margin:0;
@@ -191,9 +196,7 @@
     border:1px solid rgba(15,23,42,.10);
   }
 
-  .modal-title{
-    font-weight:950;
-  }
+  .modal-title{ font-weight:950; }
 
   .modal-sub{
     color:#64748b;
@@ -306,40 +309,43 @@
               </div>
 
               <div class="d-flex gap-2 flex-wrap align-items-center">
-  <span class="pill timeoff">Time off</span>
+                <span class="pill timeoff">Time off</span>
 
-  {% if e.all_day %}
-    <span class="pill allday">All day</span>
-  {% endif %}
+                {% if e.all_day %}
+                  <span class="pill allday">All day</span>
+                {% endif %}
 
-  <div style="display:inline-flex; gap:6px;">
+                <div style="display:inline-flex; gap:6px;">
+                  <button
+                    type="button"
+                    class="btn btn-outline-primary btn-sm edit-btn"
+                    data-id="{{ e.id }}"
+                    data-start-date="{{ e.start_datetime.strftime('%Y-%m-%d') }}"
+                    data-end-date="{{ e.end_datetime.strftime('%Y-%m-%d') }}"
+                    data-start-time="{{ e.start_datetime.strftime('%H:%M') }}"
+                    data-end-time="{{ e.end_datetime.strftime('%H:%M') }}"
+                    data-all-day="{{ 'true' if e.all_day else 'false' }}"
+                    data-reason="{{ e.reason|default('')|escape }}"
+                  >
+                    Edit
+                  </button>
 
-  <!-- EDIT BUTTON -->
-  <button type="button"
-          class="btn btn-outline-primary btn-sm edit-btn"
-          data-id="{{ e.id }}"
-          data-start-date="{{ e.start_datetime.strftime('%Y-%m-%d') }}"
-          data-end-date="{{ e.end_datetime.strftime('%Y-%m-%d') }}"
-          data-start-time="{{ e.start_datetime.strftime('%H:%M') }}"
-          data-end-time="{{ e.end_datetime.strftime('%H:%M') }}"
-          data-all-day="{{ 'true' if e.all_day else 'false' }}"
-          data-reason="{{ e.reason|default('')|escape }}">
-    Edit
-  </button>
+                  <form
+                    method="POST"
+                    action="{{ url_for('main.delete_time_off', time_off_id=e.id) }}"
+                    style="display:inline;"
+                  >
+                    <button
+                      type="submit"
+                      class="btn btn-outline-danger btn-sm"
+                      onclick="return confirm('Delete this time off block?');"
+                    >
+                      Delete
+                    </button>
+                  </form>
+                </div>
+              </div>
 
-  <!-- DELETE BUTTON -->
-  <form method="POST"
-        action="{{ url_for('main.delete_time_off', time_off_id=e.id) }}"
-        style="display:inline;">
-    <button type="submit"
-            class="btn btn-outline-danger btn-sm"
-            onclick="return confirm('Delete this time off block?');">
-      Delete
-    </button>
-  </form>
-
-</div>
-</div>
             </div>
           </div>
         {% endfor %}
@@ -372,8 +378,13 @@
           </div>
 
           <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" id="all_day" name="all_day"
-                   {% if p.all_day %}checked{% endif %}>
+            <input
+              class="form-check-input"
+              type="checkbox"
+              id="all_day"
+              name="all_day"
+              {% if p.all_day %}checked{% endif %}
+            >
             <label class="form-check-label fw-bold" for="all_day">All day</label>
             <div class="text-muted small">Use for full-day unavailability.</div>
           </div>
@@ -408,9 +419,13 @@
 
           <div>
             <label class="form-label">Reason</label>
-            <input class="form-control" type="text" name="reason"
-                   placeholder="Vacation / Appointment / Exam / Not available"
-                   value="{{ p.reason }}">
+            <input
+              class="form-control"
+              type="text"
+              name="reason"
+              placeholder="Vacation / Appointment / Exam / Not available"
+              value="{{ p.reason }}"
+            >
           </div>
         </div>
 
@@ -425,88 +440,91 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-  const allDay = document.getElementById("all_day");
+  const allDayCheckbox = document.getElementById("all_day");
   const timeFields = document.getElementById("timeFields");
 
-  document.querySelectorAll(".edit-btn").forEach(button => {
-  button.addEventListener("click", function () {
-
-    const id = this.dataset.id;
-    const startDate = this.dataset.startDate;
-    const endDate = this.dataset.endDate;
-    const startTime = this.dataset.startTime;
-    const endTime = this.dataset.endTime;
-    const allDay = this.dataset.allDay === "true";
-    const reason = this.dataset.reason;
-
-    openEditModal(id, startDate, endDate, startTime, endTime, allDay, reason);
-  });
-});
-
   function syncTimeFields() {
-    if (!allDay || !timeFields) return;
-    timeFields.style.opacity = allDay.checked ? "0.45" : "1";
+    if (!allDayCheckbox || !timeFields) return;
+    timeFields.style.opacity = allDayCheckbox.checked ? "0.45" : "1";
   }
 
-  if (allDay) {
-    allDay.addEventListener("change", syncTimeFields);
+  if (allDayCheckbox) {
+    allDayCheckbox.addEventListener("change", syncTimeFields);
     syncTimeFields();
   }
 
-    const shouldOpenModal = "{{ 'true' if p.start_date or p.end_date else 'false' }}";
-
+  // If the server prefilled dates (e.g., coming from the calendar), auto-open the modal.
+  const shouldOpenModal = "{{ 'true' if p.start_date or p.end_date else 'false' }}";
   if (shouldOpenModal === "true") {
     const modalEl = document.getElementById("addTimeOffModal");
     if (modalEl && window.bootstrap) {
       new bootstrap.Modal(modalEl).show();
     }
   }
+
   function openEditModal(id, startDate, endDate, startTime, endTime, allDay, reason) {
-
-  const form = document.querySelector("#addTimeOffModal form");
-
-  // Change form action to edit route
-  form.action = `/provider/time-off/${id}/edit`;
-
-  // Fill fields
-  form.querySelector("[name='start_date']").value = startDate;
-  form.querySelector("[name='end_date']").value = endDate;
-  form.querySelector("[name='start_time']").value = startTime;
-  form.querySelector("[name='end_time']").value = endTime;
-  form.querySelector("[name='all_day']").checked = allDay;
-  form.querySelector("[name='reason']").value = reason;
-
-  // Visually update time fields opacity
-  const timeFields = document.getElementById("timeFields");
-  if (timeFields) {
-    timeFields.style.opacity = allDay ? "0.45" : "1";
-  }
-
-  // Change modal title
-  document.getElementById("addTimeOffModalLabel").innerText = "Edit blocked time";
-
-  // Change button text
-  form.querySelector("button[type='submit']").innerText = "Update blocked time";
-
-  // Open modal
-  const modalEl = document.getElementById("addTimeOffModal");
-  if (window.bootstrap) {
-    new bootstrap.Modal(modalEl).show();
-  }
-}
-const addBtn = document.querySelector("[data-bs-target='#addTimeOffModal']");
-if (addBtn) {
-  addBtn.addEventListener("click", function () {
     const form = document.querySelector("#addTimeOffModal form");
+    if (!form) return;
 
-    form.action = ""; // back to default add route
-    form.reset();
+    // Swap the add form into edit mode (reuse the same modal).
+    form.action = `/provider/time-off/${id}/edit`;
 
-    document.getElementById("addTimeOffModalLabel").innerText = "Add blocked time";
-    form.querySelector("button[type='submit']").innerText = "Save blocked time";
+    form.querySelector("[name='start_date']").value = startDate;
+    form.querySelector("[name='end_date']").value = endDate;
+    form.querySelector("[name='start_time']").value = startTime;
+    form.querySelector("[name='end_time']").value = endTime;
+    form.querySelector("[name='all_day']").checked = allDay;
+    form.querySelector("[name='reason']").value = reason || "";
+
+    if (timeFields) {
+      timeFields.style.opacity = allDay ? "0.45" : "1";
+    }
+
+    const titleEl = document.getElementById("addTimeOffModalLabel");
+    if (titleEl) titleEl.innerText = "Edit blocked time";
+
+    const submitBtn = form.querySelector("button[type='submit']");
+    if (submitBtn) submitBtn.innerText = "Update blocked time";
+
+    const modalEl = document.getElementById("addTimeOffModal");
+    if (modalEl && window.bootstrap) {
+      new bootstrap.Modal(modalEl).show();
+    }
+  }
+
+  document.querySelectorAll(".edit-btn").forEach((button) => {
+    button.addEventListener("click", function () {
+      openEditModal(
+        this.dataset.id,
+        this.dataset.startDate,
+        this.dataset.endDate,
+        this.dataset.startTime,
+        this.dataset.endTime,
+        this.dataset.allDay === "true",
+        this.dataset.reason
+      );
+    });
   });
-}
 
+  // Reset the modal back to "add" mode when the Add button is used.
+  const addBtn = document.querySelector("[data-bs-target='#addTimeOffModal']");
+  if (addBtn) {
+    addBtn.addEventListener("click", function () {
+      const form = document.querySelector("#addTimeOffModal form");
+      if (!form) return;
+
+      form.action = "";
+      form.reset();
+
+      const titleEl = document.getElementById("addTimeOffModalLabel");
+      if (titleEl) titleEl.innerText = "Add blocked time";
+
+      const submitBtn = form.querySelector("button[type='submit']");
+      if (submitBtn) submitBtn.innerText = "Save blocked time";
+
+      syncTimeFields();
+    });
+  }
 });
 </script>
 {% endblock %}
