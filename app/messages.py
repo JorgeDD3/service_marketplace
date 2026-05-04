@@ -1,19 +1,34 @@
-# app/messages.py
+"""
+Messaging blueprint for ServiceSphere.
+
+This module handles the booking-centered inbox + conversation threads.
+
+Key rules (intentional constraints):
+- Only booking participants can view a thread.
+- Demo checkout gate applies only to *clients* and only for unpaid *real* bookings.
+- Inquiry pseudo-bookings are never pay-gated (they're just a pre-book thread).
+- Read/unread tracking is stored in ConversationRead (DB-backed).
+"""
+
+from __future__ import annotations
+
 from datetime import datetime
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
-from flask_login import login_required, current_user
+from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask_login import current_user, login_required
 
 from .extensions import db
-from .models import Conversation, Message, Booking, ConversationRead
+from .models import Booking, Conversation, ConversationRead, Message
 
 messages_bp = Blueprint("messages", __name__, url_prefix="/messages")
 
 
 def _is_inquiry_booking(booking: Booking | None) -> bool:
-    """
-    Inquiry pseudo-bookings are tagged by provider_note prefix.
-    These should NEVER be pay-gated.
+    """Return True if a booking is an inquiry pseudo-booking.
+
+    Inquiry threads are anchored to a Booking row, but they are not real sessions:
+    - tagged by provider_note prefix
+    - must never be blocked by checkout gating
     """
     if not booking:
         return False
@@ -22,8 +37,9 @@ def _is_inquiry_booking(booking: Booking | None) -> bool:
 
 
 def _should_gate_client_for_booking(booking: Booking | None) -> bool:
-    """
-    Gate ONLY clients for unpaid REAL bookings.
+    """Return True if a client should be blocked from messaging until checkout.
+
+    Gate ONLY clients for unpaid REAL bookings:
     - Providers are never gated
     - Inquiry pseudo-bookings are never gated
     """
@@ -37,7 +53,11 @@ def _should_gate_client_for_booking(booking: Booking | None) -> bool:
 @messages_bp.get("/")
 @login_required
 def inbox():
-    # Conversations where the current user is a participant
+    """Inbox list view.
+
+    We show all conversations where the current user is either the client or provider.
+    Conversation ordering is by last activity (newest message wins).
+    """
     conversations = (
         Conversation.query.filter(
             (Conversation.client_id == current_user.id)
@@ -47,12 +67,11 @@ def inbox():
         .all()
     )
 
-    # Build last-message lookup (so template can show previews)
     convo_ids = [c.id for c in conversations]
     last_by_convo: dict[int, Message] = {}
 
     if convo_ids:
-        # Pull messages newest-first, then keep the first per conversation_id
+        # Pull messages newest-first, keep the first per conversation_id.
         msgs = (
             Message.query.filter(Message.conversation_id.in_(convo_ids))
             .order_by(Message.created_at.desc())
@@ -62,14 +81,14 @@ def inbox():
             if m.conversation_id not in last_by_convo:
                 last_by_convo[m.conversation_id] = m
 
-        # Sort conversations by last activity: last message time or created_at
+        # Sort conversations by last activity: last message time or created_at.
         def last_time(c: Conversation):
             m = last_by_convo.get(c.id)
             return m.created_at if m else c.created_at
 
         conversations.sort(key=last_time, reverse=True)
 
-    # DB-backed read tracking rows for this user
+    # Read tracking rows for this user (per conversation).
     read_rows = (
         ConversationRead.query.filter(
             ConversationRead.user_id == current_user.id,
@@ -78,13 +97,13 @@ def inbox():
         if convo_ids
         else []
     )
-
     last_read_by_convo: dict[int, datetime | None] = {
         r.conversation_id: r.last_read_at for r in read_rows
     }
 
-    # Unread logic: unread only if the *other participant* has a newer message
+    # Unread = latest message is from the other participant and is newer than last_read_at.
     unread_ids: set[int] = set()
+
     for c in conversations:
         last = last_by_convo.get(c.id)
         if not last:
@@ -92,18 +111,14 @@ def inbox():
 
         other_user_id = c.provider_id if current_user.id == c.client_id else c.client_id
 
-        # Only treat unread if the newest message is from the other user
+        # Only treat unread if the newest message is from the other user.
         if last.sender_id != other_user_id:
             continue
 
         last_read_at = last_read_by_convo.get(c.id)
 
-        # Never read => any other-user message counts as unread
-        if last_read_at is None:
-            unread_ids.add(c.id)
-            continue
-
-        if last.created_at > last_read_at:
+        # Never read => any other-user message counts as unread.
+        if last_read_at is None or last.created_at > last_read_at:
             unread_ids.add(c.id)
 
     return render_template(
@@ -117,6 +132,7 @@ def inbox():
 @messages_bp.route("/<int:conversation_id>", methods=["GET", "POST"])
 @login_required
 def thread(conversation_id: int):
+    """Conversation thread view and message send handler."""
     convo = Conversation.query.get_or_404(conversation_id)
 
     if not convo.user_is_participant(current_user.id):
@@ -138,15 +154,9 @@ def thread(conversation_id: int):
         body = (request.form.get("body") or "").strip()
         if not body:
             flash("Message cannot be empty.", "warning")
-            return redirect(
-                url_for(
-                    "messages.thread",
-                    conversation_id=conversation_id,
-                    _anchor="compose",
-                )
-            )
+            return redirect(url_for("messages.thread", conversation_id=conversation_id, _anchor="compose"))
 
-        # Simple anti-spam: prevent rapid-fire sends (per user per conversation)
+        # Simple anti-spam: prevent rapid-fire sends (per user per conversation).
         last_sent = (
             Message.query.filter_by(conversation_id=convo.id, sender_id=current_user.id)
             .order_by(Message.created_at.desc())
@@ -154,13 +164,7 @@ def thread(conversation_id: int):
         )
         if last_sent and (datetime.utcnow() - last_sent.created_at).total_seconds() < 2:
             flash("You're sending messages too quickly. Please wait a moment.", "warning")
-            return redirect(
-                url_for(
-                    "messages.thread",
-                    conversation_id=conversation_id,
-                    _anchor="compose",
-                )
-            )
+            return redirect(url_for("messages.thread", conversation_id=conversation_id, _anchor="compose"))
 
         msg = Message(
             conversation_id=convo.id,
@@ -169,7 +173,7 @@ def thread(conversation_id: int):
         )
         db.session.add(msg)
 
-        # Mark as read for the sender immediately (DB-backed)
+        # Mark as read for the sender immediately.
         now = datetime.utcnow()
         read_row = ConversationRead.query.filter_by(
             conversation_id=convo.id,
@@ -187,12 +191,9 @@ def thread(conversation_id: int):
             read_row.last_read_at = now
 
         db.session.commit()
+        return redirect(url_for("messages.thread", conversation_id=conversation_id, _anchor="compose"))
 
-        return redirect(
-            url_for("messages.thread", conversation_id=conversation_id, _anchor="compose")
-        )
-
-    # GET: Mark this conversation as read (DB-backed)
+    # GET: mark this conversation as read for the current user.
     now = datetime.utcnow()
     read_row = ConversationRead.query.filter_by(
         conversation_id=convo.id,
@@ -210,20 +211,20 @@ def thread(conversation_id: int):
         read_row.last_read_at = now
 
     db.session.commit()
-
     return render_template("messages/thread.html", convo=convo)
 
 
 @messages_bp.get("/booking/<int:booking_id>")
 @login_required
 def booking_thread(booking_id: int):
-    """
-    Convenience route to jump from a booking to its conversation.
-    Lazy-creates the conversation if missing.
+    """Jump from a booking directly to its conversation.
+
+    This lazy-creates the conversation if missing so other parts of the app can
+    link to messages without worrying about setup timing.
     """
     booking = Booking.query.get_or_404(booking_id)
 
-    # Only booking participants can access
+    # Only booking participants can access.
     if current_user.id not in (booking.client_id, booking.provider_id):
         abort(403)
 
