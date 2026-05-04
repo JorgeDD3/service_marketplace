@@ -1,3 +1,11 @@
+{#
+  Client request-a-service form.
+
+  This is the “tell us what you need” flow:
+  - Clients submit a subject + description
+  - Admins review requests for quality/safety
+  - Providers can browse requests to spot demand (read-only)
+#}
 {% extends "base.html" %}
 {% block title %}Request a Service{% endblock %}
 
@@ -174,7 +182,7 @@
   </div>
 
   <div class="request-grid">
-    <!-- Main form -->
+    {# Main form: keep it short so clients actually submit it. #}
     <div class="card-panel">
       <div class="card-title">Request details</div>
 
@@ -211,7 +219,7 @@
       </form>
     </div>
 
-    <!-- Sidebar -->
+    {# Sidebar: small coaching so requests come in higher quality. #}
     <div class="card-panel">
       <div class="card-title">Tips for a great request</div>
 
