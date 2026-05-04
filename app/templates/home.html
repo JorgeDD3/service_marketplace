@@ -1,3 +1,9 @@
+{#
+  Landing page (public).
+
+  This is the first impression: quick explanation + strong CTA into the marketplace.
+  It also adapts to the signed-in role so demos feel smooth (client/provider/admin).
+#}
 {% extends "base.html" %}
 {% block title %}ServiceSphere{% endblock %}
 
@@ -88,7 +94,7 @@
     margin-top: 26px;
   }
 
-  .cta-primary,.cta-secondary{
+  .cta-primary, .cta-secondary{
     display:inline-flex;
     align-items:center;
     justify-content:center;
@@ -106,7 +112,10 @@
     background: linear-gradient(135deg, var(--brand), var(--brand2));
     box-shadow: 0 18px 36px rgba(37,99,235,.22);
   }
-  .cta-primary:hover{ transform: translateY(-1px); box-shadow: 0 22px 44px rgba(37,99,235,.24); }
+  .cta-primary:hover{
+    transform: translateY(-1px);
+    box-shadow: 0 22px 44px rgba(37,99,235,.24);
+  }
 
   .cta-secondary{
     background: rgba(255,255,255,0.9);
@@ -114,7 +123,10 @@
     border: 1px solid #dbe1ea;
     backdrop-filter: blur(10px);
   }
-  .cta-secondary:hover{ background:#ffffff; border-color:#cfd8e3; }
+  .cta-secondary:hover{
+    background:#ffffff;
+    border-color:#cfd8e3;
+  }
 
   .trust-row{
     display:flex;
@@ -210,9 +222,7 @@
   }
 
   /* SECTION */
-  .section{
-    background: var(--bg);
-  }
+  .section{ background: var(--bg); }
 
   .section-inner{
     max-width: 1280px;
@@ -281,10 +291,7 @@
     box-shadow: 0 18px 44px rgba(15,23,42,0.08);
   }
 
-  .cat-in{
-    position:relative;
-    z-index:1;
-  }
+  .cat-in{ position:relative; z-index:1; }
 
   .cat-top{
     display:flex;
@@ -333,44 +340,6 @@
     line-height: 1.6;
   }
 
-  /* Social proof */
-  .proof{
-    margin-top: 34px;
-    border: 1px solid var(--line);
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-    border-radius: 26px;
-    padding: 22px;
-    box-shadow: 0 12px 26px rgba(15,23,42,0.06);
-  }
-
-  .proof-grid{
-    display:grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 14px;
-    margin-top: 14px;
-  }
-
-  .quote{
-    border: 1px solid var(--line);
-    background:#fff;
-    border-radius: 22px;
-    padding: 18px;
-  }
-
-  .quote p{
-    margin:0;
-    color:#334155;
-    font-weight: 650;
-    line-height: 1.7;
-  }
-
-  .quote .who{
-    margin-top: 12px;
-    color:#64748b;
-    font-weight: 900;
-    font-size: 13px;
-  }
-
   /* Footer */
   .footer{
     border-top: 1px solid var(--line);
@@ -402,7 +371,6 @@
     .hero-grid{ grid-template-columns: 1fr; }
     .media-card{ height: 380px; }
     .cat-grid{ grid-template-columns: 1fr 1fr; }
-    .proof-grid{ grid-template-columns: 1fr; }
   }
 
   @media (max-width: 640px){
@@ -451,19 +419,22 @@
 
       <div class="hero-media">
         <div class="media-card">
-          <img class="media-img"
-               src="{{ url_for('static', filename='images/home-hero.jpg') }}"
-               alt="Instructor presenting a technical topic">
+          <img
+            class="media-img"
+            src="{{ url_for('static', filename='images/home-hero.jpg') }}"
+            alt="Instructor presenting a technical topic"
+          >
         </div>
         <div class="media-overlay"></div>
         <div class="media-caption">
-          <div class="media-badge">Servicesphere</div>
+          <div class="media-badge">ServiceSphere</div>
           <h2 class="media-title">A marketplace that feels real.</h2>
           <div class="media-text">
             Find, book, and manage services with a clean flow that stays out of your way.
           </div>
         </div>
       </div>
+
     </div>
   </div>
 </section>
@@ -478,56 +449,56 @@
     </div>
 
     <div class="cat-grid">
-  <a class="cat-tile" href="{{ url_for('main.services') }}">
-    <div class="cat-in">
-      <div class="cat-top">
-        <span class="cat-badge">Popular</span>
-        <span class="arrow">→</span>
-      </div>
-      <h3 class="cat-name">Academic Support</h3>
-      <div class="cat-desc">Study strategies, coaching, and help staying organized.</div>
-    </div>
-  </a>
+      <a class="cat-tile" href="{{ url_for('main.services') }}">
+        <div class="cat-in">
+          <div class="cat-top">
+            <span class="cat-badge">Popular</span>
+            <span class="arrow">→</span>
+          </div>
+          <h3 class="cat-name">Academic Support</h3>
+          <div class="cat-desc">Study strategies, coaching, and help staying organized.</div>
+        </div>
+      </a>
 
-  <a class="cat-tile" href="{{ url_for('main.services') }}">
-    <div class="cat-in">
-      <div class="cat-top">
-        <span class="cat-badge">Top rated</span>
-        <span class="arrow">→</span>
-      </div>
-      <h3 class="cat-name">Tutoring</h3>
-      <div class="cat-desc">One-on-one learning sessions across common subjects.</div>
-    </div>
-  </a>
+      <a class="cat-tile" href="{{ url_for('main.services') }}">
+        <div class="cat-in">
+          <div class="cat-top">
+            <span class="cat-badge">Top rated</span>
+            <span class="arrow">→</span>
+          </div>
+          <h3 class="cat-name">Tutoring</h3>
+          <div class="cat-desc">One-on-one learning sessions across common subjects.</div>
+        </div>
+      </a>
 
-  <a class="cat-tile" href="{{ url_for('main.services') }}">
-    <div class="cat-in">
-      <div class="cat-top">
-        <span class="cat-badge">Fast help</span>
-        <span class="arrow">→</span>
-      </div>
-      <h3 class="cat-name">Tech Help</h3>
-      <div class="cat-desc">Setup, troubleshooting, and practical tech support.</div>
-    </div>
-  </a>
+      <a class="cat-tile" href="{{ url_for('main.services') }}">
+        <div class="cat-in">
+          <div class="cat-top">
+            <span class="cat-badge">Fast help</span>
+            <span class="arrow">→</span>
+          </div>
+          <h3 class="cat-name">Tech Help</h3>
+          <div class="cat-desc">Setup, troubleshooting, and practical tech support.</div>
+        </div>
+      </a>
 
-  <a class="cat-tile" href="{{ url_for('main.services') }}">
-    <div class="cat-in">
-      <div class="cat-top">
-        <span class="cat-badge">New</span>
-        <span class="arrow">→</span>
-      </div>
-      <h3 class="cat-name">Fitness</h3>
-      <div class="cat-desc">Coaching sessions built around your schedule and goals.</div>
+      <a class="cat-tile" href="{{ url_for('main.services') }}">
+        <div class="cat-in">
+          <div class="cat-top">
+            <span class="cat-badge">New</span>
+            <span class="arrow">→</span>
+          </div>
+          <h3 class="cat-name">Fitness</h3>
+          <div class="cat-desc">Coaching sessions built around your schedule and goals.</div>
+        </div>
+      </a>
     </div>
-  </a>
-</div>
   </div>
 </section>
 
 <footer class="bleed footer">
   <div class="footer-inner">
-    <div>© {{ (now().year if now else "") }} ServiceSphere</div>
+    <div>ServiceSphere</div>
     <div style="display:flex; gap:14px; flex-wrap:wrap;">
       <a href="{{ url_for('main.services') }}">Services</a>
       {% if current_user.is_authenticated %}
