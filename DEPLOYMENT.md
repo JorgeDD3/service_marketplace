@@ -40,3 +40,4 @@ Railway must run a web server that binds to the port it provides via `$PORT`.
 Recommended start command:
 ```bash
 gunicorn wsgi:app --bind 0.0.0.0:$PORT
+```
