@@ -1,3 +1,9 @@
+{#
+  Provider weekly availability.
+
+  This page is the “normal schedule” editor. It sets the weekly rules that drive slot generation.
+  One-time exceptions (vacation, sick day, etc.) live in Time Off instead.
+#}
 {% extends "base.html" %}
 {% block title %}Availability{% endblock %}
 
@@ -150,6 +156,8 @@
     padding:12px;
   }
 
+  .window + .window{ margin-top:10px; }
+
   .window-label{
     color:#64748b;
     font-size:11px;
@@ -253,7 +261,7 @@
   }
 </style>
 
-{% macro normal_time(t) %}
+{% macro normal_time(t) -%}
   {% set parts = t.split(":") %}
   {% set h = parts[0]|int %}
   {% set m = parts[1] %}
@@ -261,7 +269,7 @@
   {% set hr = h if h <= 12 else h - 12 %}
   {% set hr = 12 if hr == 0 else hr %}
   {{ hr }}:{{ m }} {{ suffix }}
-{% endmacro %}
+{%- endmacro %}
 
 {% set day_labels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] %}
 
@@ -307,17 +315,19 @@
     </div>
 
     <div class="week-grid">
-      {% for d in range(0,7) %}
+      {% for d in range(0, 7) %}
         {% set day_rules = by_day.get(d) %}
         {% set first_rule = day_rules[0] if day_rules else none %}
 
         <div class="daycard">
           <div class="day-head">
             <div class="day-name">{{ day_labels[d] }}</div>
-            <button class="edit-day-btn"
-                    type="button"
-                    data-bs-toggle="modal"
-                    data-bs-target="#editDayModal{{ d }}">
+            <button
+              class="edit-day-btn"
+              type="button"
+              data-bs-toggle="modal"
+              data-bs-target="#editDayModal{{ d }}"
+            >
               Edit
             </button>
           </div>
@@ -351,7 +361,7 @@
           </div>
         </div>
 
-        <!-- Edit Modal -->
+        {# Edit modal per day: we keep these separate so each button targets a stable ID. #}
         <div class="modal fade" id="editDayModal{{ d }}" tabindex="-1" aria-labelledby="editDayModalLabel{{ d }}" aria-hidden="true">
           <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -372,37 +382,35 @@
                       <div class="col-6">
                         <label class="form-label">Start time</label>
                         <select class="form-select" name="start_time" required>
-  {% for h in range(7, 23) %}
-    {% for m in [0, 15, 30, 45] %}
-      {% set value = "%02d:%02d"|format(h, m) %}
-      <option value="{{ value }}" {% if first_rule.start_time == value %}selected{% endif %}>
-        {{ normal_time(value) }}
-      </option>
-    {% endfor %}
-  {% endfor %}
-</select>
+                          {% for h in range(7, 23) %}
+                            {% for m in [0, 15, 30, 45] %}
+                              {% set value = "%02d:%02d"|format(h, m) %}
+                              <option value="{{ value }}" {% if first_rule.start_time == value %}selected{% endif %}>
+                                {{ normal_time(value) }}
+                              </option>
+                            {% endfor %}
+                          {% endfor %}
+                        </select>
                       </div>
 
                       <div class="col-6">
                         <label class="form-label">End time</label>
                         <select class="form-select" name="end_time" required>
-  {% for h in range(7, 23) %}
-    {% for m in [0, 15, 30, 45] %}
-      {% set value = "%02d:%02d"|format(h, m) %}
-      <option value="{{ value }}" {% if first_rule.end_time == value %}selected{% endif %}>
-        {{ normal_time(value) }}
-      </option>
-    {% endfor %}
-  {% endfor %}
-</select>
+                          {% for h in range(7, 23) %}
+                            {% for m in [0, 15, 30, 45] %}
+                              {% set value = "%02d:%02d"|format(h, m) %}
+                              <option value="{{ value }}" {% if first_rule.end_time == value %}selected{% endif %}>
+                                {{ normal_time(value) }}
+                              </option>
+                            {% endfor %}
+                          {% endfor %}
+                        </select>
                       </div>
 
                       <div class="col-12">
                         <label class="form-label">Session length</label>
-<div class="form-control fw-bold">
-  60 minutes
-</div>
-<input type="hidden" name="slot_minutes" value="60">
+                        <div class="form-control fw-bold">60 minutes</div>
+                        <input type="hidden" name="slot_minutes" value="60">
                       </div>
 
                       <div class="col-12 d-grid">
@@ -420,9 +428,11 @@
                       </button>
                     </form>
 
-                    <form method="POST"
-                          action="{{ url_for('provider.delete_availability', rule_id=first_rule.id) }}"
-                          onsubmit="return confirm('Delete this availability window?');">
+                    <form
+                      method="POST"
+                      action="{{ url_for('provider.delete_availability', rule_id=first_rule.id) }}"
+                      onsubmit="return confirm('Delete this availability window?');"
+                    >
                       <button class="btn btn-outline-danger" type="submit">Delete availability</button>
                     </form>
                   </div>
@@ -434,37 +444,35 @@
                       <div class="col-6">
                         <label class="form-label">Start time</label>
                         <select class="form-select" name="start_time" required>
-  {% for h in range(7, 23) %}
-    {% for m in [0, 15, 30, 45] %}
-      {% set value = "%02d:%02d"|format(h, m) %}
-      <option value="{{ value }}" {% if value == "09:00" %}selected{% endif %}>
-        {{ normal_time(value) }}
-      </option>
-    {% endfor %}
-  {% endfor %}
-</select>
+                          {% for h in range(7, 23) %}
+                            {% for m in [0, 15, 30, 45] %}
+                              {% set value = "%02d:%02d"|format(h, m) %}
+                              <option value="{{ value }}" {% if value == "09:00" %}selected{% endif %}>
+                                {{ normal_time(value) }}
+                              </option>
+                            {% endfor %}
+                          {% endfor %}
+                        </select>
                       </div>
 
                       <div class="col-6">
                         <label class="form-label">End time</label>
                         <select class="form-select" name="end_time" required>
-  {% for h in range(7, 23) %}
-    {% for m in [0, 15, 30, 45] %}
-      {% set value = "%02d:%02d"|format(h, m) %}
-      <option value="{{ value }}" {% if value == "17:00" %}selected{% endif %}>
-        {{ normal_time(value) }}
-      </option>
-    {% endfor %}
-  {% endfor %}
-</select>
+                          {% for h in range(7, 23) %}
+                            {% for m in [0, 15, 30, 45] %}
+                              {% set value = "%02d:%02d"|format(h, m) %}
+                              <option value="{{ value }}" {% if value == "17:00" %}selected{% endif %}>
+                                {{ normal_time(value) }}
+                              </option>
+                            {% endfor %}
+                          {% endfor %}
+                        </select>
                       </div>
 
                       <div class="col-12">
                         <label class="form-label">Session length</label>
-<div class="form-control fw-bold">
-  60 minutes
-</div>
-<input type="hidden" name="slot_minutes" value="60">
+                        <div class="form-control fw-bold">60 minutes</div>
+                        <input type="hidden" name="slot_minutes" value="60">
                       </div>
 
                       <div class="col-12 d-grid">
