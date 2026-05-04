@@ -3,6 +3,8 @@
 
   This page is the “normal schedule” editor. It sets the weekly rules that drive slot generation.
   One-time exceptions (vacation, sick day, etc.) live in Time Off instead.
+
+  Note: split schedules are supported by adding multiple windows for the same weekday.
 #}
 {% extends "base.html" %}
 {% block title %}Availability{% endblock %}
@@ -415,6 +417,56 @@
 
                       <div class="col-12 d-grid">
                         <button class="btn btn-primary" type="submit">Save changes</button>
+                      </div>
+                    </div>
+                  </form>
+
+                  <hr>
+
+                  <div class="modal-sub" style="margin-bottom: 10px;">
+                    Add another window for {{ day_labels[d] }} (split schedule).
+                  </div>
+
+                  <form method="POST" action="{{ url_for('provider.availability') }}">
+                    <input type="hidden" name="day_of_week" value="{{ d }}">
+
+                    <div class="row g-3">
+                      <div class="col-6">
+                        <label class="form-label">Start time</label>
+                        <select class="form-select" name="start_time" required>
+                          {% for h in range(7, 23) %}
+                            {% for m in [0, 15, 30, 45] %}
+                              {% set value = "%02d:%02d"|format(h, m) %}
+                              <option value="{{ value }}" {% if value == "12:00" %}selected{% endif %}>
+                                {{ normal_time(value) }}
+                              </option>
+                            {% endfor %}
+                          {% endfor %}
+                        </select>
+                      </div>
+
+                      <div class="col-6">
+                        <label class="form-label">End time</label>
+                        <select class="form-select" name="end_time" required>
+                          {% for h in range(7, 23) %}
+                            {% for m in [0, 15, 30, 45] %}
+                              {% set value = "%02d:%02d"|format(h, m) %}
+                              <option value="{{ value }}" {% if value == "17:00" %}selected{% endif %}>
+                                {{ normal_time(value) }}
+                              </option>
+                            {% endfor %}
+                          {% endfor %}
+                        </select>
+                      </div>
+
+                      <div class="col-12">
+                        <label class="form-label">Session length</label>
+                        <div class="form-control fw-bold">60 minutes</div>
+                        <input type="hidden" name="slot_minutes" value="60">
+                      </div>
+
+                      <div class="col-12 d-grid">
+                        <button class="btn btn-primary" type="submit">Add window</button>
                       </div>
                     </div>
                   </form>
