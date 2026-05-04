@@ -1,16 +1,20 @@
+{#
+  Provider profile editor.
+
+  ERD-safe: provider_profiles only stores bio, hourly_rate, availability_notes (plus timestamps).
+  This page stays intentionally minimal and only exposes those fields.
+#}
 {% extends "base.html" %}
 {% block title %}Provider Profile{% endblock %}
 {% block container_class %}container-dashboard{% endblock %}
 
 {% block content %}
-{# ERD-safe: provider_profiles only has bio, hourly_rate, availability_notes, created_at.
-   (No display_name/headline/skills/social links/profile photo.) #}
 
 {% set email_prefix = current_user.email.split('@')[0] if current_user.email else 'provider' %}
 {% set fallback_name = email_prefix.replace('.', ' ').replace('_', ' ')|title %}
 {% set provider_name = (current_user.full_name if current_user.full_name else (current_user.name if current_user.name else fallback_name)) %}
 
-{# Initials-only avatar #}
+{# Initials-only avatar (no profile photo field in the ERD). #}
 {% set initials_a = provider_name[0]|upper if provider_name else 'P' %}
 {% set initials_b = provider_name.split(' ')[1][0]|upper if ' ' in provider_name else 'R' %}
 
@@ -69,7 +73,10 @@
 
   .pp-side-stack{ display:flex; flex-direction:column; gap:16px; }
   .pp-list{ display:flex; flex-direction:column; gap:10px; }
-  .pp-list-row{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 14px; border:1px solid #e6edf5; border-radius:14px; background:#fbfdff; }
+  .pp-list-row{
+    display:flex; justify-content:space-between; align-items:center; gap:12px;
+    padding:12px 14px; border:1px solid #e6edf5; border-radius:14px; background:#fbfdff;
+  }
   .pp-list-row strong{ color:#0f172a; }
   .pp-status-badge{ border-radius:999px; padding:4px 10px; font-size:12px; font-weight:900; }
   .pp-status-badge.yes{ background:#dcfce7; color:#166534; }
@@ -96,7 +103,7 @@
 </style>
 
 <div class="pp-wrap">
-  <!-- Top Bar -->
+  {# Top bar: identity + navigation + quick actions. #}
   <div class="card pp-card pp-topbar mb-3">
     <div class="card-body">
       <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
@@ -137,8 +144,11 @@
             {% endif %}
 
             <div class="d-flex gap-2">
-              <button class="btn btn-primary btn-sm" type="button"
-                onclick="const d=document.getElementById('ppEdit'); d.open=true; d.scrollIntoView({behavior:'smooth', block:'start'});">
+              <button
+                class="btn btn-primary btn-sm"
+                type="button"
+                onclick="const d=document.getElementById('ppEdit'); d.open=true; d.scrollIntoView({behavior:'smooth', block:'start'});"
+              >
                 Edit profile
               </button>
 
@@ -150,9 +160,8 @@
     </div>
   </div>
 
-  <!-- Main Layout -->
+  {# Main layout: left = what clients see, right = visibility checklist. #}
   <div class="pp-main-grid">
-    <!-- Left -->
     <div>
       <div class="card pp-card">
         <div class="card-body pp-card-body">
@@ -231,7 +240,7 @@
         </div>
       </div>
 
-      <!-- Edit Panel (ERD fields only) -->
+      {# Edit panel: only ERD-backed fields. #}
       <details id="ppEdit" class="pp-edit">
         <summary>
           <div class="pp-edit-head">
@@ -252,25 +261,36 @@
               <div class="row g-3">
                 <div class="col-12">
                   <label class="form-label fw-semibold">Bio</label>
-                  <textarea class="form-control" name="bio" rows="4"
-                    placeholder="Describe what you offer, your experience, and what clients can expect.">{{ profile.bio if profile and profile.bio else "" }}</textarea>
+                  <textarea
+                    class="form-control"
+                    name="bio"
+                    rows="4"
+                    placeholder="Describe what you offer, your experience, and what clients can expect."
+                  >{{ profile.bio if profile and profile.bio else "" }}</textarea>
                 </div>
 
                 <div class="col-md-6">
                   <label class="form-label fw-semibold">Hourly rate</label>
                   <div class="input-group">
                     <span class="input-group-text">$</span>
-                    <input class="form-control" name="hourly_rate" inputmode="decimal"
-                           value="{{ profile.hourly_rate if profile and profile.hourly_rate is not none else '' }}"
-                           placeholder="e.g. 50">
+                    <input
+                      class="form-control"
+                      name="hourly_rate"
+                      inputmode="decimal"
+                      value="{{ profile.hourly_rate if profile and profile.hourly_rate is not none else '' }}"
+                      placeholder="e.g. 50"
+                    >
                   </div>
                 </div>
 
                 <div class="col-md-6">
                   <label class="form-label fw-semibold">Availability notes</label>
-                  <input class="form-control" name="availability_notes"
-                         value="{{ profile.availability_notes if profile and profile.availability_notes else '' }}"
-                         placeholder="Example: Weekdays after 5pm, weekends flexible">
+                  <input
+                    class="form-control"
+                    name="availability_notes"
+                    value="{{ profile.availability_notes if profile and profile.availability_notes else '' }}"
+                    placeholder="Example: Weekdays after 5pm, weekends flexible"
+                  >
                 </div>
               </div>
             </div>
@@ -284,8 +304,7 @@
                 </a>
               {% endif %}
 
-              <button class="btn btn-outline-secondary" type="button"
-                      onclick="document.getElementById('ppEdit').open=false;">
+              <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('ppEdit').open=false;">
                 Cancel
               </button>
             </div>
@@ -294,7 +313,6 @@
       </details>
     </div>
 
-    <!-- Right -->
     <div class="pp-side-stack">
       <div class="card pp-card">
         <div class="card-body pp-card-body">
@@ -330,7 +348,6 @@
         </div>
       </div>
     </div>
-
   </div>
 </div>
 {% endblock %}
