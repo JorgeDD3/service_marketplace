@@ -1,7 +1,7 @@
 # Deployment (Railway)
 
 ServiceSphere is a Flask service marketplace (App Factory Pattern).
-Production is served via `wsgi.py` (`wsgi:app`).
+Production is served via `wsgi.py` (`wsgi:app`) behind Gunicorn.
 
 This document is the source of truth for how the deployed build runs on Railway.
 
@@ -10,10 +10,11 @@ This document is the source of truth for how the deployed build runs on Railway.
 - Dependencies installed from `requirements.txt`
 
 ## Railway deployment overview
-Railway builds the project from your GitHub repo and runs a single web process.
-You configure:
-- Environment variables (secrets + config)
-- The start command (how the app boots)
+This repo deploys using Railway’s GitHub integration.
+
+- Pushing to the connected branch (usually `main`) triggers an automatic deploy.
+- Railway builds the project and runs a single web service process.
+- Environment variables and the start command are configured in the Railway dashboard.
 
 ## Environment variables
 
@@ -22,7 +23,7 @@ You configure:
 - `SECRET_KEY=dev-only-change-me`
 
 ### Production (Railway)
-Set these in Railway’s Variables tab (do not commit real secrets):
+Set these in Railway’s **Variables** tab (do not commit real secrets):
 - `APP_CONFIG=production`
 - `SECRET_KEY=<strong random string>`
 
@@ -34,7 +35,7 @@ Notes:
 - Keep `SECRET_KEY` stable across deploys so sessions don’t invalidate unexpectedly.
 
 ## Start command
-Railway needs a command that runs the web server and exposes the port provided by Railway.
+Railway must run a web server that binds to the port it provides via `$PORT`.
 
 Recommended start command:
 ```bash
