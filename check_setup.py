@@ -7,44 +7,53 @@ Run:
 What it checks:
 - App factory can create the app
 - Flask extensions are initialized (db, login_manager)
-- Blueprints registered (auth)
-- Templates folder is discoverable
-- Database tables exist
+- Blueprints are registered
+- Templates loader is available
+- Database connection works and expected tables exist
 - Roles exist (client/provider/admin)
-- User model has expected fields
+- User model has expected fields + role relationship
 - login_manager.user_loader is present
 
-Also prints key production/proxy-related config values (cookies, scheme, etc.).
+Also prints a few deployment-related config values (helpful for Railway/local sanity).
 """
+
+from __future__ import annotations
 
 import os
 import sys
 import traceback
 
 
-def banner(msg: str):
+def banner(msg: str) -> None:
     print("\n" + "=" * 70)
     print(msg)
     print("=" * 70)
 
 
-def ok(msg: str):
+def ok(msg: str) -> None:
     print(f"[OK]  {msg}")
 
 
-def warn(msg: str):
-    print(f"[WARN]{msg}")
+def warn(msg: str) -> None:
+    print(f"[WARN] {msg}")
 
 
-def fail(msg: str):
-    print(f"[FAIL]{msg}")
+def fail(msg: str) -> None:
+    print(f"[FAIL] {msg}")
 
 
-def print_cookie_and_proxy_config(app):
-    banner("Config — Proxy/Cookies (sanity)")
+def print_deploy_config(app) -> None:
+    """Print a small set of config values that commonly break deployments."""
+    banner("Config — Deployment Sanity")
 
     ok(f"ENV APP_CONFIG: {os.getenv('APP_CONFIG')}")
-    ok(f"PREFERRED_URL_SCHEME: {app.config.get('PREFERRED_URL_SCHEME')}")
+    ok(f"ENV FLASK_ENV: {os.getenv('FLASK_ENV')}")
+    ok(f"ENV PORT: {os.getenv('PORT')}")
+    ok(f"SECRET_KEY set: {'YES' if app.config.get('SECRET_KEY') else 'NO'}")
+    ok(f"SQLALCHEMY_DATABASE_URI: {app.config.get('SQLALCHEMY_DATABASE_URI')}")
+    ok(f"ENV DATABASE_URL set: {'YES' if os.getenv('DATABASE_URL') else 'NO'}")
+
+    # Cookie settings can matter behind any reverse proxy (Railway or otherwise).
     ok(f"SESSION_COOKIE_PATH: {app.config.get('SESSION_COOKIE_PATH')}")
     ok(f"SESSION_COOKIE_SECURE: {app.config.get('SESSION_COOKIE_SECURE')}")
     ok(f"SESSION_COOKIE_HTTPONLY: {app.config.get('SESSION_COOKIE_HTTPONLY')}")
@@ -54,19 +63,20 @@ def print_cookie_and_proxy_config(app):
     ok(f"REMEMBER_COOKIE_SAMESITE: {app.config.get('REMEMBER_COOKIE_SAMESITE')}")
 
 
-def main():
-    banner("Service Marketplace — Setup Check")
+def main() -> None:
+    banner("ServiceSphere — Setup Check")
 
-    # ---- Step A: Import create_app ----
+    # Step A: import create_app
     try:
         from app import create_app
+
         ok("Imported create_app() from app")
     except Exception:
         fail("Could not import create_app() from app. Check app/__init__.py exports create_app.")
         traceback.print_exc()
         sys.exit(1)
 
-    # ---- Step B: Create app ----
+    # Step B: create app
     try:
         app = create_app()
         ok("create_app() executed successfully")
@@ -75,25 +85,17 @@ def main():
         traceback.print_exc()
         sys.exit(1)
 
-    # ---- Step C: Inspect config ----
+    # Step C: print deploy-related config (non-fatal)
     try:
-        ok(f"App name: {app.name}")
-        ok(f"ENV FLASK_ENV: {os.getenv('FLASK_ENV')}")
-        ok(f"SECRET_KEY set: {'YES' if app.config.get('SECRET_KEY') else 'NO'}")
-        ok(f"SQLALCHEMY_DATABASE_URI: {app.config.get('SQLALCHEMY_DATABASE_URI')}")
+        print_deploy_config(app)
     except Exception:
-        warn("Could not print some config values (non-fatal).")
-
-    # ---- Step C2: Print cookie/proxy config (helps with Turing reverse proxy debugging) ----
-    try:
-        print_cookie_and_proxy_config(app)
-    except Exception:
-        warn("Could not print cookie/proxy config values (non-fatal).")
+        warn("Could not print some deployment config values (non-fatal).")
         traceback.print_exc()
 
-    # ---- Step D: Check extensions ----
+    # Step D: extensions
     try:
         from app.extensions import db, login_manager
+
         ok("Imported db and login_manager from app.extensions")
     except Exception:
         fail("Could not import db/login_manager from app.extensions")
@@ -101,23 +103,23 @@ def main():
         sys.exit(1)
 
     with app.app_context():
-        # ---- Step E: Check blueprint registrations ----
+        # Step E: blueprint registrations
         try:
             bps = list(app.blueprints.keys())
             ok(f"Registered blueprints: {bps}")
             if "auth" not in bps:
-                warn("Blueprint 'auth' not found. If you haven't created it yet, that's fine.")
+                warn("Blueprint 'auth' not found. If you renamed it, update this check.")
         except Exception:
             warn("Could not list blueprints (non-fatal).")
 
-        # ---- Step F: Check templates folder ----
+        # Step F: templates loader
         try:
             j = app.jinja_loader
             ok(f"Jinja loader: {type(j).__name__}")
         except Exception:
             warn("Template loader check failed (non-fatal).")
 
-        # ---- Step G: Check DB connectivity and tables ----
+        # Step G: DB connectivity and expected tables
         try:
             _ = db.engine
             ok("DB engine reachable")
@@ -128,6 +130,7 @@ def main():
 
         try:
             from sqlalchemy import inspect
+
             inspector = inspect(db.engine)
             tables = inspector.get_table_names()
             ok(f"Tables found: {tables}")
@@ -142,7 +145,7 @@ def main():
             }
             missing = sorted(list(expected - set(tables)))
             if missing:
-                warn(f"Missing expected tables: {missing} (Did you run db.create_all()?)")
+                warn(f"Missing expected tables: {missing} (Did you run init-db / db.create_all?)")
             else:
                 ok("All expected tables exist")
         except Exception:
@@ -150,17 +153,18 @@ def main():
             traceback.print_exc()
             sys.exit(1)
 
-        # ---- Step H: Check models and role rows ----
+        # Step H: models + role rows
         try:
             from app.models import Role, User
+
             ok("Imported Role and User models")
         except Exception:
             fail("Could not import Role/User from app.models")
             traceback.print_exc()
             sys.exit(1)
 
-        # Check Role rows (supports either 'name' or 'role_name' column naming)
         try:
+            # Support either Role.role_name or Role.name
             if hasattr(Role, "role_name"):
                 role_col = Role.role_name
                 role_attr = "role_name"
@@ -172,19 +176,18 @@ def main():
 
             role_rows = Role.query.order_by(role_col.asc()).all()
             role_names = [getattr(r, role_attr) for r in role_rows]
-
             ok(f"Role rows in DB: {role_names}")
 
             needed = {"client", "provider", "admin"}
             if not needed.issubset(set(role_names)):
-                warn("Not all roles are present. You should run `flask seed` after adding cli.py.")
+                warn("Not all roles are present. Run `flask --app wsgi seed`.")
             else:
                 ok("All required roles present")
         except Exception:
             warn("Could not query Role table (non-fatal).")
             traceback.print_exc()
 
-        # Check User fields
+        # Step H2: User fields
         try:
             u = User()
             for field in ["email", "password_hash", "role_id"]:
@@ -201,7 +204,7 @@ def main():
             warn("User model field check failed (non-fatal).")
             traceback.print_exc()
 
-        # ---- Step I: Check Flask-Login user_loader ----
+        # Step I: Flask-Login user_loader
         try:
             loader = login_manager._user_callback
             if loader is None:
@@ -212,7 +215,7 @@ def main():
             warn("Could not inspect login_manager user_loader callback (non-fatal).")
             traceback.print_exc()
 
-    banner("Done. If you see WARN/FAIL, paste the output here and we'll fix in order.")
+    banner("Done. If you see WARN/FAIL, paste the output here and we’ll fix in order.")
 
 
 if __name__ == "__main__":
