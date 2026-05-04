@@ -1,3 +1,11 @@
+{#
+  Client sessions dashboard.
+
+  This page is where clients keep track of the lifecycle:
+  - upcoming vs past vs all filters (client-side)
+  - checkout gating (messaging unlocked only after paid)
+  - refund requests are tracked via admin_note tags (no schema changes)
+#}
 {% extends "base.html" %}
 {% block title %}My Sessions{% endblock %}
 
@@ -64,7 +72,7 @@
     box-shadow: 0 1px 2px rgba(0,0,0,0.06);
   }
 
-  /* ====== Bigger cards, 2 per row ====== */
+  /* Bigger cards, 2 per row */
   .bookings-grid{
     display:grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -117,6 +125,10 @@
     margin-top: 6px;
     color:#475569;
     font-weight: 600;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
   }
 
   .badge-row{
@@ -128,7 +140,6 @@
     text-transform: lowercase;
   }
 
-  /* Paid/unpaid + next step pills */
   .pill{
     display:inline-block;
     padding:4px 10px;
@@ -157,7 +168,6 @@
     color: #166534;
   }
 
-  /* Cleaner meta section */
   .meta-grid{
     display:grid;
     grid-template-columns: 1fr 1fr;
@@ -198,7 +208,6 @@
   }
   .note .meta-label{ margin-bottom: 4px; }
 
-  /* Actions at bottom */
   .actions{
     display:flex;
     align-items:center;
@@ -287,80 +296,79 @@
                 {{ b.service.title }}
               </a>
             </div>
-            <div class="provider-line">
-  Provider:
-  <span class="muted" style="font-weight:800;">
-    {{ b.provider.first_name }} {{ b.provider.last_name }}
-  </span>
 
-  <button
-    type="button"
-    class="about-btn"
-    data-bs-toggle="modal"
-    data-bs-target="#providerAboutModal"
-    data-provider-id="{{ b.provider.id }}"
-    data-provider-name="{{ (b.provider.first_name ~ ' ' ~ b.provider.last_name)|e }}"
-    data-provider-email="{{ (b.provider.email or '')|e }}"
-    data-provider-bio="{{ (b.provider.provider_profile.bio if b.provider.provider_profile else '')|e }}"
-    data-provider-hourly="{{ (b.provider.provider_profile.hourly_rate if b.provider.provider_profile else '')|e }}"
-    data-provider-notes="{{ (b.provider.provider_profile.availability_notes if b.provider.provider_profile else '')|e }}"
-  >
-    About
-  </button>
-</div>
+            <div class="provider-line">
+              <span>Provider:</span>
+              <span class="muted" style="font-weight:800;">
+                {{ b.provider.first_name }} {{ b.provider.last_name }}
+              </span>
+
+              <button
+                type="button"
+                class="about-btn"
+                data-bs-toggle="modal"
+                data-bs-target="#providerAboutModal"
+                data-provider-id="{{ b.provider.id }}"
+                data-provider-name="{{ (b.provider.first_name ~ ' ' ~ b.provider.last_name)|e }}"
+                data-provider-email="{{ (b.provider.email or '')|e }}"
+                data-provider-bio="{{ (b.provider.provider_profile.bio if b.provider.provider_profile else '')|e }}"
+                data-provider-hourly="{{ (b.provider.provider_profile.hourly_rate if b.provider.provider_profile else '')|e }}"
+                data-provider-notes="{{ (b.provider.provider_profile.availability_notes if b.provider.provider_profile else '')|e }}"
+              >
+                About
+              </button>
+            </div>
           </div>
 
-                    <div class="badge-row">
-  {# Refund state derived from admin_note + payment_status (NO ERD changes) #}
-  {% set note = (b.admin_note or "") %}
-  {% set refund_state = "none" %}
+          <div class="badge-row">
+            {# Refund state derived from admin_note + payment_status (no schema changes) #}
+            {% set note = (b.admin_note or "") %}
+            {% set refund_state = "none" %}
 
-  {% if b.payment_status == "refunded" %}
-    {% set refund_state = "refunded" %}
-  {% elif "[REFUND_APPROVED]" in note %}
-    {% set refund_state = "approved" %}
-  {% elif "[REFUND_DENIED]" in note %}
-    {% set refund_state = "denied" %}
-  {% elif note.startswith("[REFUND_REQUEST]") %}
-    {% set refund_state = "requested" %}
-  {% endif %}
+            {% if b.payment_status == "refunded" %}
+              {% set refund_state = "refunded" %}
+            {% elif "[REFUND_APPROVED]" in note %}
+              {% set refund_state = "approved" %}
+            {% elif "[REFUND_DENIED]" in note %}
+              {% set refund_state = "denied" %}
+            {% elif note.startswith("[REFUND_REQUEST]") %}
+              {% set refund_state = "requested" %}
+            {% endif %}
 
-<span class="status-badge {{ b.status }}">{{ b.status }}</span>
+            <span class="status-badge {{ b.status }}">{{ b.status }}</span>
 
-{% if "[AUTO] Cancelled:" in note %}
-  <span class="pill unpaid" title="{{ note }}">auto-cancelled</span>
-{% endif %}
+            {% if "[AUTO] Cancelled:" in note %}
+              <span class="pill unpaid" title="{{ note }}">auto-cancelled</span>
+            {% endif %}
 
-  {# Payment/refund pill #}
-  {% if refund_state == "requested" %}
-    <span class="pill unpaid">awaiting refund</span>
-  {% elif refund_state in ["approved", "refunded"] %}
-    <span class="pill paid">refunded</span>
-  {% elif refund_state == "denied" %}
-    <span class="pill unpaid">refund denied</span>
-  {% else %}
-    {% if b.payment_status == "paid" %}
-      <span class="pill paid">paid</span>
-    {% else %}
-      <span class="pill unpaid">unpaid</span>
-    {% endif %}
-  {% endif %}
+            {# Payment/refund pill #}
+            {% if refund_state == "requested" %}
+              <span class="pill unpaid">awaiting refund</span>
+            {% elif refund_state in ["approved", "refunded"] %}
+              <span class="pill paid">refunded</span>
+            {% elif refund_state == "denied" %}
+              <span class="pill unpaid">refund denied</span>
+            {% else %}
+              {% if b.payment_status == "paid" %}
+                <span class="pill paid">paid</span>
+              {% else %}
+                <span class="pill unpaid">unpaid</span>
+              {% endif %}
+            {% endif %}
 
-  {# Next-step pill (only when not in a refund flow) #}
-  {% if refund_state in ["requested", "approved", "refunded", "denied"] %}
-    {# no next-step pill #}
-  {% else %}
-    {% if b.payment_status != "paid" %}
-      <span class="pill next warn">needs checkout</span>
-    {% else %}
-      {% if b.status == "pending" %}
-        <span class="pill next">awaiting provider</span>
-      {% else %}
-        <span class="pill next good">ready to message</span>
-      {% endif %}
-    {% endif %}
-  {% endif %}
-</div>
+            {# Next-step pill (only when not in a refund flow) #}
+            {% if refund_state not in ["requested", "approved", "refunded", "denied"] %}
+              {% if b.payment_status != "paid" %}
+                <span class="pill next warn">needs checkout</span>
+              {% else %}
+                {% if b.status == "pending" %}
+                  <span class="pill next">awaiting provider</span>
+                {% else %}
+                  <span class="pill next good">ready to message</span>
+                {% endif %}
+              {% endif %}
+            {% endif %}
+          </div>
         </div>
 
         <div class="meta-grid">
@@ -368,10 +376,10 @@
             <span class="meta-label">Scheduled</span>
             <span class="meta-value">
               {% if b.booking_datetime %}
-  {{ b.booking_datetime.strftime("%a, %b %d, %Y, %I:%M %p") }}
-{% else %}
-  —
-{% endif %}
+                {{ b.booking_datetime.strftime("%a, %b %d, %Y, %I:%M %p") }}
+              {% else %}
+                —
+              {% endif %}
             </span>
           </div>
 
@@ -384,10 +392,10 @@
             <span class="meta-label">Requested</span>
             <span class="meta-value">
               {% if b.created_at %}
-  <span class="js-local-dt" data-utc="{{ b.created_at.isoformat() }}"></span>
-{% else %}
-  —
-{% endif %}
+                <span class="js-local-dt" data-utc="{{ b.created_at.isoformat() }}"></span>
+              {% else %}
+                —
+              {% endif %}
             </span>
           </div>
 
@@ -395,24 +403,24 @@
             <span class="meta-label">Paid</span>
             <span class="meta-value">
               {% if b.paid_at %}
-  <span class="js-local-dt" data-utc="{{ b.paid_at.isoformat() }}"></span>
-{% else %}
-  —
-{% endif %}
+                <span class="js-local-dt" data-utc="{{ b.paid_at.isoformat() }}"></span>
+              {% else %}
+                —
+              {% endif %}
             </span>
           </div>
         </div>
 
         {% set refund_requested = (b.admin_note or "").startswith("[REFUND_REQUEST]") %}
-{% if refund_requested %}
-  <div class="note">
-    <span class="meta-label">Refund</span>
-    <div class="meta-value" style="font-weight:700;">
-      Refund request sent to administrator.
-    </div>
-  </div>
-{% endif %}
-        
+        {% if refund_requested %}
+          <div class="note">
+            <span class="meta-label">Refund</span>
+            <div class="meta-value" style="font-weight:700;">
+              Refund request sent to administrator.
+            </div>
+          </div>
+        {% endif %}
+
         {% if b.provider_note %}
           <div class="note">
             <span class="meta-label">Provider note</span>
@@ -423,100 +431,103 @@
         <div class="actions">
           <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
             {# Actions: disable checkout for cancelled/refunded/past sessions #}
-{% set is_refunded = (b.payment_status == "refunded") or ("[REFUND_APPROVED]" in (b.admin_note or "")) %}
-{% set is_past_state = b.status in ["cancelled", "declined", "completed"] %}
+            {% set is_refunded = (b.payment_status == "refunded") or ("[REFUND_APPROVED]" in (b.admin_note or "")) %}
+            {% set is_past_state = b.status in ["cancelled", "declined", "completed"] %}
 
-{% if b.payment_status == "paid" %}
-  <a class="btn secondary" href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">Message</a>
-  <button
-  type="button"
-  class="btn ghost js-view-service"
-  data-bs-toggle="modal"
-  data-bs-target="#servicePreviewModal"
-  data-service-title="{{ (b.service.title or '')|e }}"
-  data-service-price="{{ '%.2f'|format(b.service.price or 0) }}"
-  data-service-duration="{{ b.service.duration_minutes or '' }}"
-  data-service-description="{{ (b.service.description or 'No description provided.')|e }}"
-  data-provider-name="{{ ((b.provider.first_name ~ ' ' ~ b.provider.last_name) if b.provider else '')|e }}"
->
-  View
-</button>
+            {% if b.payment_status == "paid" %}
+              <a class="btn secondary" href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">Message</a>
 
-{% else %}
-  {% if is_refunded or is_past_state %}
-    <button class="btn" type="button" disabled style="opacity:.6; cursor:not-allowed;">
-      Checkout
-    </button>
-    <span class="hint">
-      {% if is_refunded %}
-        Refunded sessions cannot be checked out.
-      {% else %}
-        Cancelled/declined sessions cannot be checked out.
-      {% endif %}
-    </span>
-    <button
-  type="button"
-  class="btn ghost js-view-service"
-  data-bs-toggle="modal"
-  data-bs-target="#servicePreviewModal"
-  data-service-title="{{ (b.service.title or '')|e }}"
-  data-service-price="{{ '%.2f'|format(b.service.price or 0) }}"
-  data-service-duration="{{ b.service.duration_minutes or '' }}"
-  data-service-description="{{ (b.service.description or 'No description provided.')|e }}"
-  data-provider-name="{{ ((b.provider.first_name ~ ' ' ~ b.provider.last_name) if b.provider else '')|e }}"
->
-  View
-</button>
-  {% else %}
-    <a class="btn" href="{{ url_for('main.checkout', booking_id=b.id) }}">Checkout</a>
-    <span class="hint">Pay to unlock messaging.</span>
-    <button
-  type="button"
-  class="btn ghost js-view-service"
-  data-bs-toggle="modal"
-  data-bs-target="#servicePreviewModal"
-  data-service-title="{{ (b.service.title or '')|e }}"
-  data-service-price="{{ '%.2f'|format(b.service.price or 0) }}"
-  data-service-duration="{{ b.service.duration_minutes or '' }}"
-  data-service-description="{{ (b.service.description or 'No description provided.')|e }}"
-  data-provider-name="{{ ((b.provider.first_name ~ ' ' ~ b.provider.last_name) if b.provider else '')|e }}"
->
-  View
-</button>
-  {% endif %}
-{% endif %}
+              <button
+                type="button"
+                class="btn ghost js-view-service"
+                data-bs-toggle="modal"
+                data-bs-target="#servicePreviewModal"
+                data-service-title="{{ (b.service.title or '')|e }}"
+                data-service-price="{{ '%.2f'|format(b.service.price or 0) }}"
+                data-service-duration="{{ b.service.duration_minutes or '' }}"
+                data-service-description="{{ (b.service.description or 'No description provided.')|e }}"
+                data-provider-name="{{ ((b.provider.first_name ~ ' ' ~ b.provider.last_name) if b.provider else '')|e }}"
+              >
+                View
+              </button>
+            {% else %}
+              {% if is_refunded or is_past_state %}
+                <button class="btn" type="button" disabled style="opacity:.6; cursor:not-allowed;">
+                  Checkout
+                </button>
+
+                <span class="hint">
+                  {% if is_refunded %}
+                    Refunded sessions cannot be checked out.
+                  {% else %}
+                    Cancelled/declined sessions cannot be checked out.
+                  {% endif %}
+                </span>
+
+                <button
+                  type="button"
+                  class="btn ghost js-view-service"
+                  data-bs-toggle="modal"
+                  data-bs-target="#servicePreviewModal"
+                  data-service-title="{{ (b.service.title or '')|e }}"
+                  data-service-price="{{ '%.2f'|format(b.service.price or 0) }}"
+                  data-service-duration="{{ b.service.duration_minutes or '' }}"
+                  data-service-description="{{ (b.service.description or 'No description provided.')|e }}"
+                  data-provider-name="{{ ((b.provider.first_name ~ ' ' ~ b.provider.last_name) if b.provider else '')|e }}"
+                >
+                  View
+                </button>
+              {% else %}
+                <a class="btn" href="{{ url_for('main.checkout', booking_id=b.id) }}">Checkout</a>
+                <span class="hint">Pay to unlock messaging.</span>
+
+                <button
+                  type="button"
+                  class="btn ghost js-view-service"
+                  data-bs-toggle="modal"
+                  data-bs-target="#servicePreviewModal"
+                  data-service-title="{{ (b.service.title or '')|e }}"
+                  data-service-price="{{ '%.2f'|format(b.service.price or 0) }}"
+                  data-service-duration="{{ b.service.duration_minutes or '' }}"
+                  data-service-description="{{ (b.service.description or 'No description provided.')|e }}"
+                  data-provider-name="{{ ((b.provider.first_name ~ ' ' ~ b.provider.last_name) if b.provider else '')|e }}"
+                >
+                  View
+                </button>
+              {% endif %}
+            {% endif %}
           </div>
 
           {# Refund button (paid only) #}
-{% set refund_requested = (b.admin_note or "").startswith("[REFUND_REQUEST]") %}
+          {% set refund_requested = (b.admin_note or "").startswith("[REFUND_REQUEST]") %}
 
-{% if b.payment_status == "paid" and b.status in ["pending", "accepted"] %}
-  <form method="POST"
-        action="{{ url_for('main.cancel_booking', booking_id=b.id) }}"
-        class="refund-form"
-        style="display:inline;">
-    <input type="hidden" name="refund_reason" value="">
+          {% if b.payment_status == "paid" and b.status in ["pending", "accepted"] %}
+            <form
+              method="POST"
+              action="{{ url_for('main.cancel_booking', booking_id=b.id) }}"
+              class="refund-form"
+              style="display:inline;"
+            >
+              <input type="hidden" name="refund_reason" value="">
 
-    {% if refund_requested %}
-      <button class="btn ghost" type="button" disabled style="opacity:.7; cursor:not-allowed;">
-        Refund requested
-      </button>
-    {% else %}
-      <button class="btn ghost refund-btn"
-              type="button"
-              data-booking-title="{{ b.service.title }}">
-        Request refund
-      </button>
-    {% endif %}
-  </form>
-{% endif %}
+              {% if refund_requested %}
+                <button class="btn ghost" type="button" disabled style="opacity:.7; cursor:not-allowed;">
+                  Refund requested
+                </button>
+              {% else %}
+                <button class="btn ghost refund-btn" type="button" data-booking-title="{{ b.service.title }}">
+                  Request refund
+                </button>
+              {% endif %}
+            </form>
+          {% endif %}
         </div>
       </div>
     {% endfor %}
   </div>
 {% endif %}
 
-<!-- Service Preview Modal -->
+{# Service preview modal: lets clients re-check what they bought without leaving sessions. #}
 <div class="modal fade" id="servicePreviewModal" tabindex="-1" aria-labelledby="servicePreviewModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content" style="border-radius: 18px;">
@@ -562,7 +573,7 @@
   </div>
 </div>
 
-<!-- Provider About Modal -->
+{# Provider about modal: quick profile context without leaving the sessions page. #}
 <div class="modal fade" id="providerAboutModal" tabindex="-1" aria-labelledby="providerAboutModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content" style="border-radius: 18px;">
@@ -604,15 +615,13 @@
       </div>
 
       <div class="modal-footer">
-  <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
-    Done
-  </button>
-</div>
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Done</button>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- Refund modal -->
+{# Refund modal: lightweight confirmation + reason capture before POSTing to cancel_booking. #}
 <div id="refundModalBackdrop" class="refund-backdrop" style="display:none;">
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="refundModalTitle">
     <div class="modal-head">
@@ -629,8 +638,12 @@
       </div>
 
       <label class="modal-label" for="refundReason">Reason (optional)</label>
-      <textarea id="refundReason" class="modal-textarea" rows="3"
-        placeholder="e.g., schedule conflict, provider unavailable, booked wrong time"></textarea>
+      <textarea
+        id="refundReason"
+        class="modal-textarea"
+        rows="3"
+        placeholder="e.g., schedule conflict, provider unavailable, booked wrong time"
+      ></textarea>
 
       <div class="modal-check">
         <input type="checkbox" id="refundConfirmCheck">
@@ -652,22 +665,19 @@
 </div>
 
 <style>
-
   .about-btn{
-  margin-left: 10px;
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
-  color: #0f172a;
-  border-radius: 999px;
-  padding: 4px 10px;
-  font-weight: 900;
-  font-size: 12px;
-  cursor: pointer;
-}
-.about-btn:hover{
-  background:#f1f5f9;
-}
-  /* Modal (page-local) */
+    margin-left: 10px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    color: #0f172a;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-weight: 900;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .about-btn:hover{ background:#f1f5f9; }
+
   .refund-backdrop{
     position: fixed;
     inset: 0;
@@ -695,8 +705,19 @@
     border-bottom: 1px solid #e5e7eb;
     background: #f8fafc;
   }
-  .modal-kicker{ color:#64748b; font-weight:900; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
-  .modal-title{ font-size: 20px; font-weight: 900; color:#0f172a; margin-top: 2px; }
+  .modal-kicker{
+    color:#64748b;
+    font-weight:900;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+  .modal-title{
+    font-size: 20px;
+    font-weight: 900;
+    color:#0f172a;
+    margin-top: 2px;
+  }
   .modal-x{
     border: 0;
     background: transparent;
@@ -708,7 +729,15 @@
   }
   .modal-body{ padding: 16px 18px; }
   .modal-subtitle{ color:#334155; font-weight: 700; margin-bottom: 12px; }
-  .modal-label{ display:block; font-weight: 900; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color:#64748b; margin: 10px 0 6px; }
+  .modal-label{
+    display:block;
+    font-weight: 900;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color:#64748b;
+    margin: 10px 0 6px;
+  }
   .modal-textarea{
     width: 100%;
     border: 1px solid #e5e7eb;
@@ -719,7 +748,10 @@
     color:#0f172a;
     background:#fff;
   }
-  .modal-textarea:focus{ border-color:#2563eb; box-shadow: 0 0 0 4px rgba(37,99,235,0.12); }
+  .modal-textarea:focus{
+    border-color:#2563eb;
+    box-shadow: 0 0 0 4px rgba(37,99,235,0.12);
+  }
   .modal-check{
     display:flex;
     gap: 10px;
@@ -747,134 +779,6 @@
 <script>
 (function () {
   const cards = Array.from(document.querySelectorAll(".booking-card"));
-
-    // ===== Service Preview modal wiring =====
-  const svcModal = document.getElementById("servicePreviewModal");
-  if (svcModal) {
-    svcModal.addEventListener("show.bs.modal", function (event) {
-      const btn = event.relatedTarget;
-      if (!btn) return;
-
-      const title = btn.getAttribute("data-service-title") || "—";
-      const price = btn.getAttribute("data-service-price") || "0.00";
-      const duration = btn.getAttribute("data-service-duration") || "—";
-      const desc = btn.getAttribute("data-service-description") || "No description provided.";
-      const provider = btn.getAttribute("data-provider-name") || "";
-
-      const titleEl = document.getElementById("svcTitle");
-      const priceEl = document.getElementById("svcPrice");
-      const durEl = document.getElementById("svcDuration");
-      const descEl = document.getElementById("svcDescription");
-      const provEl = document.getElementById("svcProvider");
-
-      if (titleEl) titleEl.textContent = title;
-      if (priceEl) priceEl.textContent = `$${price}`;
-      if (durEl) durEl.textContent = duration !== "—" ? `${duration} minutes` : "—";
-      if (descEl) descEl.textContent = desc;
-      if (provEl) provEl.textContent = provider ? `Provider: ${provider}` : "—";
-    });
-  }
-  // ===== end Service Preview modal wiring =====
-
-    // ===== Provider About modal wiring =====
-  const aboutModal = document.getElementById("providerAboutModal");
-  if (aboutModal) {
-    aboutModal.addEventListener("show.bs.modal", function (event) {
-      const btn = event.relatedTarget;
-      if (!btn) return;
-
-      const providerId = btn.getAttribute("data-provider-id") || "";
-      const name = btn.getAttribute("data-provider-name") || "—";
-      const email = btn.getAttribute("data-provider-email") || "";
-      const bio = btn.getAttribute("data-provider-bio") || "";
-      const hourly = btn.getAttribute("data-provider-hourly") || "";
-      const notes = btn.getAttribute("data-provider-notes") || "";
-
-      document.getElementById("p_name").textContent = name;
-      document.getElementById("p_email").textContent = email ? email : "—";
-      document.getElementById("p_bio").textContent = bio ? bio : "No bio provided.";
-      document.getElementById("p_notes").textContent = notes ? notes : "No availability notes.";
-      document.getElementById("p_hourly").textContent = hourly ? `$${hourly}/hr` : "—";
-
-      const link = document.getElementById("p_fullProfileLink");
-      if (link) {
-        link.href = providerId ? `/providers/${providerId}` : "#";
-      }
-    });
-  }
-  // ===== end Provider About modal wiring =====
-
-    // ===== Refund modal wiring =====
-  const refundBackdrop = document.getElementById("refundModalBackdrop");
-  const refundClose = document.getElementById("refundModalClose");
-  const refundCancel = document.getElementById("refundModalCancel");
-  const refundSubmit = document.getElementById("refundModalSubmit");
-  const refundReason = document.getElementById("refundReason");
-  const refundCheck = document.getElementById("refundConfirmCheck");
-  const refundServiceLine = document.getElementById("refundModalServiceLine");
-
-  let activeRefundForm = null;
-
-  function openRefundModal(formEl, serviceTitle){
-    activeRefundForm = formEl;
-    if (refundServiceLine){
-      refundServiceLine.textContent = `You’re requesting a refund and cancellation for: ${serviceTitle || "this session"}.`;
-    }
-    if (refundReason) refundReason.value = "";
-    if (refundCheck) refundCheck.checked = false;
-    if (refundSubmit) refundSubmit.disabled = true;
-    if (refundBackdrop) refundBackdrop.style.display = "flex";
-  }
-
-  function closeRefundModal(){
-    if (refundBackdrop) refundBackdrop.style.display = "none";
-    activeRefundForm = null;
-  }
-
-  document.querySelectorAll(".refund-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const formEl = btn.closest("form");
-      const title = btn.getAttribute("data-booking-title") || "";
-      openRefundModal(formEl, title);
-    });
-  });
-
-  function updateRefundSubmitState(){
-    if (!refundSubmit) return;
-    refundSubmit.disabled = !(refundCheck && refundCheck.checked);
-  }
-
-  if (refundCheck) refundCheck.addEventListener("change", updateRefundSubmitState);
-
-  if (refundSubmit) {
-    refundSubmit.addEventListener("click", () => {
-      if (!activeRefundForm) return;
-
-      // write reason into the hidden input
-      const hidden = activeRefundForm.querySelector('input[name="refund_reason"]');
-      if (hidden && refundReason) hidden.value = refundReason.value.trim();
-
-      activeRefundForm.submit();
-    });
-  }
-
-  if (refundClose) refundClose.addEventListener("click", closeRefundModal);
-  if (refundCancel) refundCancel.addEventListener("click", closeRefundModal);
-
-  // Close on backdrop click (but not when clicking inside modal)
-  if (refundBackdrop) {
-    refundBackdrop.addEventListener("click", (e) => {
-      if (e.target === refundBackdrop) closeRefundModal();
-    });
-  }
-
-  // Escape key closes modal
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && refundBackdrop && refundBackdrop.style.display !== "none") {
-      closeRefundModal();
-    }
-  });
-  // ===== end refund modal wiring =====
   const tabs = Array.from(document.querySelectorAll("#bookingTabs .tab"));
 
   const upcomingStatuses = new Set(["pending", "accepted"]);
@@ -940,11 +844,136 @@
   updateCounts();
   applyFilter("upcoming");
 
-    // ===== Local datetime rendering (browser local timezone) =====
+  // Service preview modal wiring
+  const svcModal = document.getElementById("servicePreviewModal");
+  if (svcModal) {
+    svcModal.addEventListener("show.bs.modal", function (event) {
+      const btn = event.relatedTarget;
+      if (!btn) return;
+
+      const title = btn.getAttribute("data-service-title") || "—";
+      const price = btn.getAttribute("data-service-price") || "0.00";
+      const duration = btn.getAttribute("data-service-duration") || "—";
+      const desc = btn.getAttribute("data-service-description") || "No description provided.";
+      const provider = btn.getAttribute("data-provider-name") || "";
+
+      const titleEl = document.getElementById("svcTitle");
+      const priceEl = document.getElementById("svcPrice");
+      const durEl = document.getElementById("svcDuration");
+      const descEl = document.getElementById("svcDescription");
+      const provEl = document.getElementById("svcProvider");
+
+      if (titleEl) titleEl.textContent = title;
+      if (priceEl) priceEl.textContent = `$${price}`;
+      if (durEl) durEl.textContent = duration !== "—" ? `${duration} minutes` : "—";
+      if (descEl) descEl.textContent = desc;
+      if (provEl) provEl.textContent = provider ? `Provider: ${provider}` : "—";
+    });
+  }
+
+  // Provider about modal wiring
+  const aboutModal = document.getElementById("providerAboutModal");
+  if (aboutModal) {
+    aboutModal.addEventListener("show.bs.modal", function (event) {
+      const btn = event.relatedTarget;
+      if (!btn) return;
+
+      const providerId = btn.getAttribute("data-provider-id") || "";
+      const name = btn.getAttribute("data-provider-name") || "—";
+      const email = btn.getAttribute("data-provider-email") || "";
+      const bio = btn.getAttribute("data-provider-bio") || "";
+      const hourly = btn.getAttribute("data-provider-hourly") || "";
+      const notes = btn.getAttribute("data-provider-notes") || "";
+
+      const nameEl = document.getElementById("p_name");
+      const emailEl = document.getElementById("p_email");
+      const bioEl = document.getElementById("p_bio");
+      const notesEl = document.getElementById("p_notes");
+      const hourlyEl = document.getElementById("p_hourly");
+
+      if (nameEl) nameEl.textContent = name;
+      if (emailEl) emailEl.textContent = email ? email : "—";
+      if (bioEl) bioEl.textContent = bio ? bio : "No bio provided.";
+      if (notesEl) notesEl.textContent = notes ? notes : "No availability notes.";
+      if (hourlyEl) hourlyEl.textContent = hourly ? `$${hourly}/hr` : "—";
+
+      const link = document.getElementById("p_fullProfileLink");
+      if (link) link.href = providerId ? `/providers/${providerId}` : "#";
+    });
+  }
+
+  // Refund modal wiring
+  const refundBackdrop = document.getElementById("refundModalBackdrop");
+  const refundClose = document.getElementById("refundModalClose");
+  const refundCancel = document.getElementById("refundModalCancel");
+  const refundSubmit = document.getElementById("refundModalSubmit");
+  const refundReason = document.getElementById("refundReason");
+  const refundCheck = document.getElementById("refundConfirmCheck");
+  const refundServiceLine = document.getElementById("refundModalServiceLine");
+
+  let activeRefundForm = null;
+
+  function openRefundModal(formEl, serviceTitle){
+    activeRefundForm = formEl;
+    if (refundServiceLine){
+      refundServiceLine.textContent = `You’re requesting a refund and cancellation for: ${serviceTitle || "this session"}.`;
+    }
+    if (refundReason) refundReason.value = "";
+    if (refundCheck) refundCheck.checked = false;
+    if (refundSubmit) refundSubmit.disabled = true;
+    if (refundBackdrop) refundBackdrop.style.display = "flex";
+  }
+
+  function closeRefundModal(){
+    if (refundBackdrop) refundBackdrop.style.display = "none";
+    activeRefundForm = null;
+  }
+
+  document.querySelectorAll(".refund-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const formEl = btn.closest("form");
+      const title = btn.getAttribute("data-booking-title") || "";
+      openRefundModal(formEl, title);
+    });
+  });
+
+  function updateRefundSubmitState(){
+    if (!refundSubmit) return;
+    refundSubmit.disabled = !(refundCheck && refundCheck.checked);
+  }
+
+  if (refundCheck) refundCheck.addEventListener("change", updateRefundSubmitState);
+
+  if (refundSubmit) {
+    refundSubmit.addEventListener("click", () => {
+      if (!activeRefundForm) return;
+
+      const hidden = activeRefundForm.querySelector('input[name="refund_reason"]');
+      if (hidden && refundReason) hidden.value = refundReason.value.trim();
+
+      activeRefundForm.submit();
+    });
+  }
+
+  if (refundClose) refundClose.addEventListener("click", closeRefundModal);
+  if (refundCancel) refundCancel.addEventListener("click", closeRefundModal);
+
+  if (refundBackdrop) {
+    refundBackdrop.addEventListener("click", (e) => {
+      if (e.target === refundBackdrop) closeRefundModal();
+    });
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && refundBackdrop && refundBackdrop.style.display !== "none") {
+      closeRefundModal();
+    }
+  });
+
+  // Local datetime rendering (browser local timezone)
   function toDate(iso) {
     if (!iso) return null;
 
-    // If server sends naive ISO (no timezone), treat as UTC by appending "Z"
     const hasTZ = /[zZ]|[+-]\d\d:\d\d$/.test(iso);
     const normalized = hasTZ ? iso : (iso + "Z");
     const d = new Date(normalized);
@@ -967,9 +996,6 @@
     const d = toDate(iso);
     el.textContent = d ? fmt(d) : "—";
   });
-  // ===== end local datetime rendering =====
-
-
 })();
 </script>
 {% endblock %}
