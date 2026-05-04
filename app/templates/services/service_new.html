@@ -3,7 +3,7 @@
 
   This form stays intentionally simple:
   - title + description are the core fields clients need
-  - price is optional (providers can discuss in messages)
+  - a price
   - a live preview helps providers write a clearer listing
 #}
 {% extends "base.html" %}
@@ -91,7 +91,7 @@
 
             <div class="row g-3 align-items-stretch">
               <div class="col-12 col-md-5">
-                <label class="form-label fw-semibold mb-1" for="price">Price (optional)</label>
+                <label class="form-label fw-semibold mb-1" for="price">Price</label>
                 <div class="input-group">
                   <span class="input-group-text">$</span>
                   <input
