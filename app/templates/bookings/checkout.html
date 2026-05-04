@@ -1,3 +1,11 @@
+{#
+  Checkout (demo).
+
+  This page is intentionally “payment-looking” but not a real processor:
+  - basic client-side validation and a review modal
+  - the server marks the booking as paid after POST validation
+  - no card details are stored
+#}
 {% extends "base.html" %}
 {% block title %}Checkout{% endblock %}
 
@@ -304,7 +312,6 @@
   .badge.unpaid{ background:#fff7ed; color:#9a3412; border-color:#fdba74; }
   .badge.paid{ background:#ecfdf5; color:#166534; border-color:#86efac; }
 
-    /* Review modal (no scrolling needed) */
   .review-modal-backdrop{
     position:fixed;
     inset:0;
@@ -395,21 +402,6 @@
     border-top:1px solid #e5e7eb;
     flex-wrap:wrap;
   }
-
-  .pay-submit{
-    margin-top:0;
-    width:auto;
-    padding:14px 18px;
-    border:none;
-    border-radius:16px;
-    background:#16a34a;
-    color:#fff;
-    font-weight:900;
-    font-size:16px;
-    cursor:pointer;
-    box-shadow:0 8px 16px rgba(22, 163, 74, 0.20);
-  }
-  .pay-submit:hover{ background:#15803d; }
 
   .pay-cancel{
     border:none;
@@ -546,11 +538,11 @@
           <div class="section-subtitle">Choose how you’d like to pay for this session.</div>
 
           <div class="payment-methods" style="grid-template-columns: 1fr; max-width: 340px;">
-  <div class="pay-option">
-    <input type="radio" id="pm_card" name="payment_method" value="card" checked>
-    <label for="pm_card">Credit / Debit Card</label>
-  </div>
-</div>
+            <div class="pay-option">
+              <input type="radio" id="pm_card" name="payment_method" value="card" checked>
+              <label for="pm_card">Credit / Debit Card</label>
+            </div>
+          </div>
 
           <div id="cardFields">
             <h2 class="section-title" style="font-size:22px;">Card Details</h2>
@@ -581,10 +573,12 @@
 
           <div class="checkout-actions">
             <button type="button" class="btn-primary" id="continueToReview">Continue to Summary</button>
-            <a class="btn-secondary" href="{{ url_for('main.my_bookings') }}" style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">Cancel</a>
+            <a class="btn-secondary" href="{{ url_for('main.my_bookings') }}" style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">
+              Cancel
+            </a>
           </div>
 
-                    <!-- Review modal (no scroll) -->
+          {# Review modal: keeps the “step 2” flow clean without leaving the page. #}
           <div id="reviewBackdrop" class="review-modal-backdrop" aria-hidden="true"></div>
 
           <div id="reviewModal" class="review-modal" role="dialog" aria-modal="true" aria-labelledby="reviewTitle">
@@ -716,12 +710,12 @@
   function qs(sel){ return document.querySelector(sel); }
   function qsa(sel){ return Array.from(document.querySelectorAll(sel)); }
 
-  // Try to find the checkout form (so "Pay" submits correctly)
+  // Try to find the checkout form (so "Pay" submits correctly).
   const form = document.getElementById("checkoutForm") || qs("form[action*='/checkout/']") || qs("form");
 
   function getText(el){ return el ? (el.textContent || "").trim() : ""; }
 
-  // Pull data from the Order Summary card (right side)
+  // Pull data from the Order Summary card (right side).
   function summaryData(){
     const service = getText(qs(".summary-service")) || "Session";
     const provider = getText(qs(".summary-provider")) || "";
@@ -763,7 +757,7 @@
     return { backdrop, modal };
   }
 
-    function isValidFutureExp(value){
+  function isValidFutureExp(value){
     const match = value.trim().match(/^(\d{2})\/(\d{2})$/);
     if (!match) return false;
 
@@ -780,13 +774,14 @@
   }
 
   function openModal(){
-        const expInput = document.getElementById("card_exp");
+    const expInput = document.getElementById("card_exp");
 
     if (expInput && !isValidFutureExp(expInput.value)) {
       alert("Please enter a valid expiration date that is not in the past. Use MM/YY format.");
       expInput.focus();
       return;
     }
+
     const { backdrop, modal } = ensureModal();
     const s = summaryData();
 
@@ -858,7 +853,7 @@
 
     if (payBtn) {
       payBtn.onclick = function () {
-        // Submit the actual checkout form (POST /checkout/<id>)
+        // Submit the actual checkout form (POST /checkout/<id>).
         if (form) form.submit();
       };
     }
