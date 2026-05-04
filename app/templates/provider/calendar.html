@@ -1,3 +1,13 @@
+{#
+  Provider weekly calendar.
+
+  This is a visual “week timeline” view that overlays:
+  - normal weekly availability (rules)
+  - existing bookings
+  - time off blocks
+
+  The UI is designed to be scan-first: providers can spot gaps and conflicts quickly.
+#}
 {% extends "base.html" %}
 {% block title %}Provider Calendar{% endblock %}
 
@@ -96,9 +106,7 @@
     font-weight:900;
   }
 
-  .timeline-card{
-    overflow:hidden;
-  }
+  .timeline-card{ overflow:hidden; }
 
   .timeline-head{
     padding:10px 16px;
@@ -146,7 +154,7 @@
     padding:12px 16px 8px;
   }
 
-    .cal-grid{
+  .cal-grid{
     display:grid;
     grid-template-columns:64px repeat(7, minmax(130px, 1fr));
     border:1px solid #e5e7eb;
@@ -177,24 +185,24 @@
     font-size:13px;
   }
 
-    .time-rail{
+  .time-rail{
     background:#f8fafc;
     border-right:1px solid rgba(148,163,184,.35);
   }
 
   .tick{
-  height:37px;
-  border-bottom:1px solid #e2e8f0;
-  display:flex;
-  align-items:flex-start;
-  justify-content:flex-end;
-  padding:4px 8px 0 8px; /* small top padding only */
-  font-size:13px;
-  color:#64748b;
-  font-weight:750;
-}
+    height:37px;
+    border-bottom:1px solid #e2e8f0;
+    display:flex;
+    align-items:flex-start;
+    justify-content:flex-end;
+    padding:4px 8px 0 8px;
+    font-size:13px;
+    color:#64748b;
+    font-weight:750;
+  }
 
-      .day-col{
+  .day-col{
     position:relative;
     border-right:1px solid rgba(148,163,184,.28);
   }
@@ -202,24 +210,21 @@
   .day-col:last-child{ border-right:none; }
 
   .day-body{
-  position:relative;
-  height:407px;
-  background:#fff;
-}
+    position:relative;
+    height:407px;
+    background:#fff;
+  }
 
-      .slot{
-  height:18.5px;
-  border-bottom:1px solid rgba(148,163,184,.25);
-}
+  .slot{
+    height:18.5px;
+    border-bottom:1px solid rgba(148,163,184,.25);
+  }
 
-/* Slightly darker line every full hour */
-.slot:nth-child(2n){
-  border-bottom:1px solid rgba(100,116,139,.45);
-}
+  .slot:nth-child(2n){
+    border-bottom:1px solid rgba(100,116,139,.45);
+  }
 
-
-
-    .slot.unavail{ background:#f1f5f9; }
+  .slot.unavail{ background:#f1f5f9; }
   .slot.past{ background:#e0f2fe; }
 
   .slot-link{
