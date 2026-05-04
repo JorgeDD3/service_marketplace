@@ -1,22 +1,35 @@
-# app/cli.py
+"""
+CLI commands for ServiceSphere.
+
+These commands are mainly for local development and sponsor demos:
+- init-db: create tables (db.create_all)
+- seed: create base roles (client/provider/admin)
+- create-demo: create demo accounts + sample services (idempotent)
+- delete-demo: remove demo accounts (best-effort; may fail if FK history exists)
+"""
+
+from __future__ import annotations
+
 from flask import current_app
 from werkzeug.security import generate_password_hash
 
 from .extensions import db
-from .models import Role, User, ProviderProfile, Service
+from .models import ProviderProfile, Role, Service, User
 
 
-def register_cli_commands(app):
+def register_cli_commands(app) -> None:
+    """Register `flask` CLI commands on the app instance."""
+
     @app.cli.command("init-db")
-    def init_db():
-        """Create database tables."""
+    def init_db() -> None:
+        """Create database tables (dev only)."""
         with current_app.app_context():
             db.create_all()
         print("✅ Database tables created (db.create_all).")
 
     @app.cli.command("seed")
-    def seed():
-        """Seed initial data like roles."""
+    def seed() -> None:
+        """Seed initial data (roles). Safe to run multiple times."""
         roles = ["client", "provider", "admin"]
         created = 0
 
@@ -30,18 +43,25 @@ def register_cli_commands(app):
         print(f"Seed complete. Roles created: {created}")
 
     @app.cli.command("create-demo")
-    def create_demo():
-        """Create demo accounts and demo marketplace data. Idempotent."""
+    def create_demo() -> None:
+        """Create demo accounts and sample marketplace data. Idempotent."""
         roles = {r.role_name: r for r in Role.query.all()}
         missing = [x for x in ["admin", "provider", "client"] if x not in roles]
         if missing:
             print(f"Missing roles: {missing}. Run `flask --app wsgi seed` first.")
             return
 
-        def get_or_create_user(first, last, email, password, role_name):
+        def get_or_create_user(
+            first: str,
+            last: str,
+            email: str,
+            password: str,
+            role_name: str,
+        ) -> tuple[User, bool]:
             user = User.query.filter_by(email=email).first()
             if user:
                 return user, False
+
             user = User(
                 first_name=first,
                 last_name=last,
@@ -54,20 +74,12 @@ def register_cli_commands(app):
             db.session.commit()
             return user, True
 
-        created_any = False
-
-        admin, c1 = get_or_create_user(
-            "Demo", "Admin", "admin_demo@example.com", "Password123!", "admin"
-        )
-        provider, c2 = get_or_create_user(
-            "Demo", "Provider", "provider_demo@example.com", "Password123!", "provider"
-        )
-        client, c3 = get_or_create_user(
-            "Demo", "Client", "client_demo@example.com", "Password123!", "client"
-        )
+        admin, c1 = get_or_create_user("Demo", "Admin", "admin_demo@example.com", "Password123!", "admin")
+        provider, c2 = get_or_create_user("Demo", "Provider", "provider_demo@example.com", "Password123!", "provider")
+        client, c3 = get_or_create_user("Demo", "Client", "client_demo@example.com", "Password123!", "client")
         created_any = c1 or c2 or c3
 
-        # Ensure provider profile exists for provider demo
+        # Ensure provider profile exists for provider demo.
         prof = ProviderProfile.query.filter_by(user_id=provider.id).first()
         if not prof:
             prof = ProviderProfile(user_id=provider.id)
@@ -89,10 +101,9 @@ def register_cli_commands(app):
             db.session.commit()
             created_any = True
 
-        # Ensure provider verification row exists (idempotent)
+        # Ensure provider verification row exists (idempotent).
         prof.get_or_create_verification()
 
-        # Demo services for provider demo
         sample_services = [
             {
                 "title": "Golf Lessons",
@@ -136,12 +147,9 @@ def register_cli_commands(app):
         services_created = 0
 
         for item in sample_services:
-            existing = Service.query.filter_by(
-                provider_profile_id=prof.id,
-                title=item["title"],
-            ).first()
-
+            existing = Service.query.filter_by(provider_profile_id=prof.id, title=item["title"]).first()
             if existing:
+                # Backfill category if the schema supports it and it's currently missing.
                 if hasattr(existing, "category") and not getattr(existing, "category", None):
                     existing.category = item["category"]
                     db.session.commit()
@@ -154,7 +162,6 @@ def register_cli_commands(app):
                 price=item["price"],
                 is_active=True,
             )
-
             if hasattr(Service, "category"):
                 service.category = item["category"]
 
@@ -174,8 +181,12 @@ def register_cli_commands(app):
             print("(No changes; demo data already existed.)")
 
     @app.cli.command("delete-demo")
-    def delete_demo():
-        """Delete demo accounts (admin/provider/client) and related provider profile. Idempotent."""
+    def delete_demo() -> None:
+        """Delete demo accounts and related provider profile. Idempotent.
+
+        Note: If you have FK constraints to bookings/services/etc, this may fail.
+        If it fails, we can adjust to delete dependent demo rows safely.
+        """
         emails = [
             "admin_demo@example.com",
             "provider_demo@example.com",
@@ -187,15 +198,12 @@ def register_cli_commands(app):
             print("No demo users found. Nothing to delete.")
             return
 
-        # Delete provider profile first (if any)
         provider = next((u for u in users if u.email == "provider_demo@example.com"), None)
         if provider:
             prof = ProviderProfile.query.filter_by(user_id=provider.id).first()
             if prof:
                 db.session.delete(prof)
 
-        # NOTE: If you have FK constraints to bookings/services/etc, this may fail.
-        # If it fails, we’ll adjust to delete dependent rows safely.
         for u in users:
             db.session.delete(u)
 
