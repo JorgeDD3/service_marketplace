@@ -1,3 +1,11 @@
+{#
+  Provider service creation.
+
+  This form stays intentionally simple:
+  - title + description are the core fields clients need
+  - price is optional (providers can discuss in messages)
+  - a live preview helps providers write a clearer listing
+#}
 {% extends "base.html" %}
 {% block title %}New Service{% endblock %}
 
@@ -20,31 +28,33 @@
 
     <div class="row g-3 align-items-start">
 
-      <!-- LEFT COLUMN -->
+      {# Left: the actual service fields we store. #}
       <div class="col-12 col-lg-8">
         <div class="card shadow-sm border-0 h-100" style="border-radius: 18px;">
           <div class="card-body p-3 p-md-4">
 
-            <!-- Title -->
+            {# Title: short + outcome-focused is the goal. #}
             <div class="mb-3">
               <div class="d-flex align-items-center justify-content-between mb-1">
                 <label class="form-label fw-semibold mb-0" for="title">Service title</label>
                 <div class="small text-muted"><span id="titleCount">0</span>/80</div>
               </div>
 
-              <input id="title"
-                     name="title"
-                     type="text"
-                     class="form-control form-control-lg"
-                     maxlength="80"
-                     placeholder="e.g., Computer Science Tutoring (Data Structures)"
-                     required>
+              <input
+                id="title"
+                name="title"
+                type="text"
+                class="form-control form-control-lg"
+                maxlength="80"
+                placeholder="e.g., Computer Science Tutoring (Data Structures)"
+                required
+              >
 
               <div class="invalid-feedback">Title is required.</div>
               <div class="form-text">Be specific: subject + outcome works best.</div>
             </div>
 
-            <!-- Description -->
+            {# Description: everything else lives here (no extra ERD fields). #}
             <div class="mb-3">
               <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-1">
                 <label class="form-label fw-semibold mb-0" for="description">Description</label>
@@ -62,12 +72,14 @@
                 </div>
               </div>
 
-              <textarea id="description"
-                        name="description"
-                        class="form-control"
-                        rows="4"
-                        maxlength="1200"
-                        placeholder="What will the client get? Topics covered? Typical session length?"></textarea>
+              <textarea
+                id="description"
+                name="description"
+                class="form-control"
+                rows="4"
+                maxlength="1200"
+                placeholder="What will the client get? Topics covered? Typical session length?"
+              ></textarea>
 
               <div class="d-flex justify-content-between align-items-center mt-1">
                 <div class="form-text mb-0">
@@ -77,19 +89,20 @@
               </div>
             </div>
 
-            <!-- Price -->
             <div class="row g-3 align-items-stretch">
               <div class="col-12 col-md-5">
                 <label class="form-label fw-semibold mb-1" for="price">Price (optional)</label>
                 <div class="input-group">
                   <span class="input-group-text">$</span>
-                  <input id="price"
-       name="price"
-       type="number"
-       class="form-control"
-       step="5"
-       min="0"
-       placeholder="50">
+                  <input
+                    id="price"
+                    name="price"
+                    type="number"
+                    class="form-control"
+                    step="5"
+                    min="0"
+                    placeholder="50"
+                  >
                 </div>
                 <div class="form-text">Leave blank if you want to discuss pricing in messages.</div>
               </div>
@@ -105,8 +118,10 @@
             </div>
           </div>
 
-          <div class="border-top px-3 px-md-4 py-3"
-               style="background:#fff; border-bottom-left-radius:18px; border-bottom-right-radius:18px;">
+          <div
+            class="border-top px-3 px-md-4 py-3"
+            style="background:#fff; border-bottom-left-radius:18px; border-bottom-right-radius:18px;"
+          >
             <div class="d-flex align-items-center justify-content-between gap-3">
               <a class="btn btn-outline-secondary" href="{{ url_for('provider_services.my_services') }}">
                 Cancel
@@ -120,7 +135,7 @@
         </div>
       </div>
 
-      <!-- RIGHT COLUMN -->
+      {# Right: live preview to help providers write clearly. #}
       <div class="col-12 col-lg-4">
         <div class="card shadow-sm border-0" style="border-radius: 18px;">
           <div class="card-body p-4">
@@ -136,9 +151,11 @@
 
             <div id="previewTitle" class="h5 mb-1">Service title…</div>
             <div id="previewPrice" class="text-muted small mb-2">Pricing: message to discuss</div>
-            <div id="previewDesc"
-                 class="small"
-                 style="white-space: pre-wrap; line-height: 1.4;">
+            <div
+              id="previewDesc"
+              class="small"
+              style="white-space: pre-wrap; line-height: 1.4;"
+            >
               Add a description to help clients understand what they are booking.
             </div>
 
@@ -162,30 +179,34 @@
 <script>
   // Bootstrap validation
   (function () {
-    const forms = document.querySelectorAll('.needs-validation');
+    const forms = document.querySelectorAll(".needs-validation");
     Array.from(forms).forEach(function (form) {
-      form.addEventListener('submit', function (event) {
-        if (!form.checkValidity()) {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-        form.classList.add('was-validated');
-      }, false);
+      form.addEventListener(
+        "submit",
+        function (event) {
+          if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+          form.classList.add("was-validated");
+        },
+        false
+      );
     });
   })();
 
   // Counters + preview + quick inserts
   (function () {
-    const title = document.getElementById('title');
-    const desc = document.getElementById('description');
-    const price = document.getElementById('price');
+    const title = document.getElementById("title");
+    const desc = document.getElementById("description");
+    const price = document.getElementById("price");
 
-    const titleCount = document.getElementById('titleCount');
-    const descCount = document.getElementById('descCount');
+    const titleCount = document.getElementById("titleCount");
+    const descCount = document.getElementById("descCount");
 
-    const previewTitle = document.getElementById('previewTitle');
-    const previewDesc = document.getElementById('previewDesc');
-    const previewPrice = document.getElementById('previewPrice');
+    const previewTitle = document.getElementById("previewTitle");
+    const previewDesc = document.getElementById("previewDesc");
+    const previewPrice = document.getElementById("previewPrice");
 
     function setText(el, value) {
       if (el) el.textContent = value;
@@ -198,74 +219,76 @@
 
     function fmtMoney(value) {
       const num = Number(value);
-      if (!Number.isFinite(num)) return '';
+      if (!Number.isFinite(num)) return "";
       return num.toFixed(2);
     }
 
     function updatePreview() {
-      const t = (title?.value || '').trim();
-      const d = (desc?.value || '').trim();
-      const p = (price?.value || '').trim();
+      const t = (title?.value || "").trim();
+      const d = (desc?.value || "").trim();
+      const p = (price?.value || "").trim();
 
-      setText(previewTitle, t || 'Service title…');
+      setText(previewTitle, t || "Service title…");
       setText(
         previewDesc,
-        d || 'Add a description to help clients understand what they are booking.'
+        d || "Add a description to help clients understand what they are booking."
       );
 
       if (p) {
         setText(previewPrice, `Starting at $${fmtMoney(p)}`);
       } else {
-        setText(previewPrice, 'Pricing: message to discuss');
+        setText(previewPrice, "Pricing: message to discuss");
       }
     }
 
     function addLine(line) {
       if (!desc) return;
-      const val = desc.value || '';
-      const needsNewline = val.length && !val.endsWith('\n');
-      desc.value = val + (needsNewline ? '\n' : '') + line + '\n';
+
+      const val = desc.value || "";
+      const needsNewline = val.length && !val.endsWith("\n");
+      desc.value = val + (needsNewline ? "\n" : "") + line + "\n";
+
       desc.focus();
       updateCounters();
       updatePreview();
     }
 
-    document.getElementById('btnAddExperience')?.addEventListener('click', () => {
-      addLine('• Experience: ');
+    document.getElementById("btnAddExperience")?.addEventListener("click", () => {
+      addLine("• Experience: ");
     });
 
-    document.getElementById('btnAddCert')?.addEventListener('click', () => {
-      addLine('• Certification: ');
+    document.getElementById("btnAddCert")?.addEventListener("click", () => {
+      addLine("• Certification: ");
     });
 
-    document.getElementById('btnAddTemplate')?.addEventListener('click', () => {
+    document.getElementById("btnAddTemplate")?.addEventListener("click", () => {
       addLine("What you'll get:");
-      addLine('• ');
-      addLine('');
-      addLine('Topics covered:');
-      addLine('• ');
-      addLine('');
-      addLine('Session length:');
-      addLine('• ');
-      addLine('');
-      addLine('Experience:');
-      addLine('• ');
-      addLine('');
-      addLine('Certifications (optional):');
-      addLine('• ');
+      addLine("• ");
+      addLine("");
+      addLine("Topics covered:");
+      addLine("• ");
+      addLine("");
+      addLine("Session length:");
+      addLine("• ");
+      addLine("");
+      addLine("Experience:");
+      addLine("• ");
+      addLine("");
+      addLine("Certifications (optional):");
+      addLine("• ");
     });
 
-    title?.addEventListener('input', () => {
+    title?.addEventListener("input", () => {
       updateCounters();
       updatePreview();
     });
 
-    desc?.addEventListener('input', () => {
+    desc?.addEventListener("input", () => {
       updateCounters();
       updatePreview();
     });
 
-    price?.addEventListener('input', updatePreview);
+    price?.addEventListener("input", updatePreview);
 
     updateCounters();
     updatePreview();
