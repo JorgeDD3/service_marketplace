@@ -1,3 +1,11 @@
+{#
+  Public services marketplace.
+
+  This page is the main browsing experience:
+  - category pills are derived from active services so UI matches inventory
+  - search + sort stay GET-based for shareable URLs
+  - clients get quick access to sessions + service request form
+#}
 {% extends "base.html" %}
 {% block title %}Services{% endblock %}
 
@@ -11,32 +19,32 @@
   }
 
   /* One consistent column system for the whole page */
-  .services-page {
-  --content-max: 1400px;   /* was 1200 */
-  --controls-max: 1040px;  /* keep controls narrower */
-  max-width: var(--content-max);
-  margin: 0 auto;
-}
+  .services-page{
+    --content-max: 1400px;
+    --controls-max: 1040px;
+    max-width: var(--content-max);
+    margin: 0 auto;
+  }
 
-  .services-hero {
+  .services-hero{
     text-align: center;
     margin: 6px 0 16px 0;
   }
 
-  .services-hero h1 {
+  .services-hero h1{
     margin-bottom: 8px;
     font-weight: 800;
     font-size: 2.35rem;
     letter-spacing: -0.02em;
   }
 
-  .services-hero p {
+  .services-hero p{
     margin: 0;
     color: #6c757d;
     font-size: 1.05rem;
   }
 
-  .services-categories {
+  .services-categories{
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
@@ -45,7 +53,7 @@
     max-width: var(--controls-max);
   }
 
-  .category-pill {
+  .category-pill{
     display: inline-block;
     padding: 10px 16px;
     border-radius: 999px;
@@ -58,13 +66,13 @@
     transition: all 0.15s ease;
   }
 
-  .category-pill:hover {
+  .category-pill:hover{
     border-color: #0d6efd;
     color: #0d6efd;
     text-decoration: none;
   }
 
-  .category-pill.active {
+  .category-pill.active{
     background: #0d6efd;
     border-color: #0d6efd;
     color: #fff;
@@ -102,7 +110,7 @@
     padding-right: 16px;
   }
 
-  .services-results {
+  .services-results{
     text-align: center;
     color: #6c757d;
     margin: 8px 0 16px 0;
@@ -110,12 +118,12 @@
   }
 
   /* Quick access aligned to controls */
-  .quick-access-wrap {
-  max-width: var(--content-max); /* wider */
-  margin: 0 auto 18px auto;
-}
+  .quick-access-wrap{
+    max-width: var(--content-max);
+    margin: 0 auto 18px auto;
+  }
 
-  .quick-access {
+  .quick-access{
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -137,7 +145,7 @@
   }
 
   /* Balanced quick access layout */
-  .quick-access-balanced {
+  .quick-access-balanced{
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -145,26 +153,26 @@
     padding: 1.35rem 1.5rem;
   }
 
-  .quick-access-copy {
+  .quick-access-copy{
     flex: 1 1 auto;
     min-width: 0;
   }
 
-  .quick-access-title {
+  .quick-access-title{
     font-size: 1.15rem;
     font-weight: 700;
     color: #111827;
     margin-bottom: 0.25rem;
   }
 
-  .quick-access-text {
+  .quick-access-text{
     font-size: 0.98rem;
     color: #6b7280;
     line-height: 1.45;
     margin: 0;
   }
 
-  .quick-access-actions {
+  .quick-access-actions{
     display: flex;
     align-items: center;
     justify-content: flex-end;
@@ -173,7 +181,7 @@
     margin-left: auto;
   }
 
-  .quick-access-btn {
+  .quick-access-btn{
     min-width: 180px;
     height: 46px;
     border-radius: 12px;
@@ -184,26 +192,26 @@
     white-space: nowrap;
   }
 
-  @media (max-width: 768px) {
-    .quick-access-balanced {
+  @media (max-width: 768px){
+    .quick-access-balanced{
       flex-direction: column;
       align-items: stretch;
     }
 
-    .quick-access-actions {
+    .quick-access-actions{
       width: 100%;
       justify-content: stretch;
       flex-direction: column;
     }
 
-    .quick-access-btn {
+    .quick-access-btn{
       width: 100%;
       min-width: 0;
     }
   }
 
   /* Cards grid: centered tracks + consistent widths */
-  .services-grid {
+  .services-grid{
     display: grid;
     gap: 18px;
     align-items: stretch;
@@ -212,19 +220,19 @@
   }
 
   @media (max-width: 1200px){
-    .services-grid {
+    .services-grid{
       grid-template-columns: repeat(2, minmax(320px, 360px));
     }
   }
 
   @media (max-width: 768px){
-    .services-grid {
+    .services-grid{
       grid-template-columns: minmax(0, 1fr);
       justify-content: stretch;
     }
   }
 
-  .service-card {
+  .service-card{
     background: #fff;
     border: 1px solid #dee2e6;
     border-radius: 18px;
@@ -237,12 +245,12 @@
     transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
 
-  .service-card:hover {
+  .service-card:hover{
     transform: translateY(-3px);
     box-shadow: 0 8px 22px rgba(0, 0, 0, 0.08);
   }
 
-  .service-card-top {
+  .service-card-top{
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -250,21 +258,21 @@
     margin-bottom: 10px;
   }
 
-  .service-title {
+  .service-title{
     margin: 0;
     font-size: 1.22rem;
     line-height: 1.25;
     font-weight: 800;
   }
 
-  .service-title a {
+  .service-title a{
     text-decoration: none;
     color: #0f172a;
   }
 
-  .service-title a:hover { text-decoration: underline; }
+  .service-title a:hover{ text-decoration: underline; }
 
-  .service-price {
+  .service-price{
     white-space: nowrap;
     font-weight: 800;
     font-size: 1.05rem;
@@ -272,20 +280,20 @@
     text-align:right;
   }
 
-  .service-duration {
+  .service-duration{
     font-size: 0.9rem;
     color: #6c757d;
     font-weight: 600;
     margin-left: 6px;
   }
 
-  .service-provider {
+  .service-provider{
     margin-bottom: 10px;
     color: #495057;
     font-size: 0.97rem;
   }
 
-  .service-category-badge {
+  .service-category-badge{
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -299,24 +307,24 @@
     width: fit-content;
   }
 
-  .service-description {
+  .service-description{
     color: #212529;
     margin-bottom: 14px;
     flex-grow: 1;
   }
 
-  .service-description p { margin: 0; }
+  .service-description p{ margin: 0; }
 
-  .read-more-link {
+  .read-more-link{
     display: inline-block;
     margin-top: 8px;
     font-weight: 800;
     text-decoration: none;
   }
 
-  .read-more-link:hover { text-decoration: underline; }
+  .read-more-link:hover{ text-decoration: underline; }
 
-  .service-actions {
+  .service-actions{
     margin-top: auto;
     display: flex;
     justify-content: flex-start;
@@ -324,7 +332,7 @@
     align-items:center;
   }
 
-  .service-actions .btn {
+  .service-actions .btn{
     height: 44px;
     border-radius: 12px;
     font-weight: 800;
@@ -332,7 +340,7 @@
     padding-right: 16px;
   }
 
-  .empty-state {
+  .empty-state{
     max-width: var(--controls-max);
     margin: 0 auto;
     background: #fff;
@@ -343,7 +351,7 @@
     color: #6c757d;
   }
 
-  .empty-state h3 {
+  .empty-state h3{
     margin-bottom: 8px;
     color: #212529;
     font-weight: 800;
@@ -462,6 +470,7 @@
               {% else %}
                 <span class="text-muted">Message</span>
               {% endif %}
+
               {% if s.duration_minutes %}
                 <span class="service-duration">• {{ s.duration_minutes }} min</span>
               {% endif %}
