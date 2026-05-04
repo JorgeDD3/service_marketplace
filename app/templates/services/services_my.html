@@ -1,3 +1,12 @@
+{#
+  Provider services manager.
+
+  This is where providers maintain the listings clients can browse and book.
+  I keep it status-driven and ERD-safe:
+  - hide/unhide preserves booking history
+  - admin-moderated hides are locked from provider-side unhide
+  - edits are done in-place via a small modal per service
+#}
 {% extends "base.html" %}
 {% block title %}My Services{% endblock %}
 
@@ -278,12 +287,14 @@
               {{ desc[:170] }}{% if is_long %}…{% endif %}
 
               {% if is_long %}
-                <button class="btn btn-sm btn-link p-0 ms-1 align-baseline"
-                        type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#svcDesc{{ s.id }}"
-                        aria-expanded="false"
-                        aria-controls="svcDesc{{ s.id }}">
+                <button
+                  class="btn btn-sm btn-link p-0 ms-1 align-baseline"
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#svcDesc{{ s.id }}"
+                  aria-expanded="false"
+                  aria-controls="svcDesc{{ s.id }}"
+                >
                   Show more
                 </button>
 
@@ -307,35 +318,41 @@
           {% endif %}
 
           <div class="action-row">
-            <button class="btn btn-outline-primary btn-sm"
-                    type="button"
-                    data-bs-toggle="modal"
-                    data-bs-target="#editServiceModal{{ s.id }}">
+            <button
+              class="btn btn-outline-primary btn-sm"
+              type="button"
+              data-bs-toggle="modal"
+              data-bs-target="#editServiceModal{{ s.id }}"
+            >
               Edit service
             </button>
 
             {% if (not s.is_active) and s.moderation_note %}
-              <button type="button"
-                      class="btn btn-outline-secondary btn-sm"
-                      disabled
-                      title="Hidden by an admin">
+              <button
+                type="button"
+                class="btn btn-outline-secondary btn-sm"
+                disabled
+                title="Hidden by an admin"
+              >
                 Locked
               </button>
             {% else %}
-              <form method="POST"
-                    action="{{ url_for('main.provider_toggle_service', service_id=s.id) }}"
-                    class="m-0">
-                <button type="submit"
-                        class="btn btn-sm {% if s.is_active %}btn-outline-secondary{% else %}btn-outline-success{% endif %}">
+              <form method="POST" action="{{ url_for('main.provider_toggle_service', service_id=s.id) }}" class="m-0">
+                <button
+                  type="submit"
+                  class="btn btn-sm {% if s.is_active %}btn-outline-secondary{% else %}btn-outline-success{% endif %}"
+                >
                   {% if s.is_active %}Hide{% else %}Unhide{% endif %}
                 </button>
               </form>
             {% endif %}
 
-            <form method="POST"
-                  action="{{ url_for('main.provider_delete_service', service_id=s.id) }}"
-                  class="m-0"
-                  onsubmit="return confirm('Delete this service? This cannot be undone.');">
+            <form
+              method="POST"
+              action="{{ url_for('main.provider_delete_service', service_id=s.id) }}"
+              class="m-0"
+              onsubmit="return confirm('Delete this service? This cannot be undone.');"
+            >
               <button type="submit" class="btn btn-sm btn-outline-danger">
                 Delete
               </button>
@@ -343,7 +360,13 @@
           </div>
         </div>
 
-        <div class="modal fade" id="editServiceModal{{ s.id }}" tabindex="-1" aria-labelledby="editServiceModalLabel{{ s.id }}" aria-hidden="true">
+        <div
+          class="modal fade"
+          id="editServiceModal{{ s.id }}"
+          tabindex="-1"
+          aria-labelledby="editServiceModalLabel{{ s.id }}"
+          aria-hidden="true"
+        >
           <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
               <form method="POST" action="{{ url_for('main.provider_edit_service', service_id=s.id) }}">
@@ -364,14 +387,25 @@
                   <div class="row g-2 mb-3">
                     <div class="col-md-6">
                       <label class="form-label">Price</label>
-                      <input class="form-control" name="price" type="number" step="0.01" min="0"
-                             value="{{ s.price if s.price is not none else 0 }}" required>
+                      <input
+                        class="form-control"
+                        name="price"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value="{{ s.price if s.price is not none else 0 }}"
+                        required
+                      >
                     </div>
 
                     <div class="col-md-6">
                       <label class="form-label">Category</label>
-                      <input class="form-control" name="category" value="{{ s.category or '' }}"
-                             placeholder="Tutoring / Coaching / Consulting">
+                      <input
+                        class="form-control"
+                        name="category"
+                        value="{{ s.category or '' }}"
+                        placeholder="Tutoring / Coaching / Consulting"
+                      >
                     </div>
                   </div>
 
