@@ -1,36 +1,40 @@
+{#
+  Provider dashboard.
+
+  This is the “one page to run your provider day” view:
+  - quick setup warning when a provider isn’t ready for bookings
+  - primary actions (calendar/bookings/messages/availability/services/requests)
+  - a few simple KPIs for at-a-glance context
+#}
 {% extends "base.html" %}
 {% block title %}Provider Dashboard{% endblock %}
 
-{# Use the new wide + tight wrapper from base.html so the page fills on Mac #}
 {% block container_class %}container-dashboard{% endblock %}
 
 {% block content %}
 <style>
   :root{
-  --ink:#0b1220;
-  --muted:#64748b;
-  --line:#e5e7eb;
+    --ink:#0b1220;
+    --muted:#64748b;
+    --line:#e5e7eb;
 
-  --blueA:#1d4ed8;  --blueB:#2563eb;
-  --greenA:#059669; --greenB:#10b981;
-  --purpleA:#6d28d9;--purpleB:#7c3aed;
-  --orangeA:#c2410c;--orangeB:#f97316;
+    --blueA:#1d4ed8;  --blueB:#2563eb;
+    --greenA:#059669; --greenB:#10b981;
+    --purpleA:#6d28d9;--purpleB:#7c3aed;
+    --orangeA:#c2410c;--orangeB:#f97316;
 
-  /* NEW (unique tile colors) */
-  --tealA:#0f766e;  --tealB:#14b8a6;
-  --slateA:#334155; --slateB:#0f172a;
-}
+    --tealA:#0f766e;  --tealB:#14b8a6;
+    --slateA:#334155; --slateB:#0f172a;
+  }
 
-  /* Prevent tiny “1–10px” scrollbars from rounding/margins */
   html, body { height: 100%; }
   body { overflow-x: hidden; }
 
-  /* One-screen layout, wider to use gutters */
   .pd-shell{
-    max-width: 1600px;               /* was 1320 */
-    margin: 10px auto;              /* was 16px */
-    padding: 0 12px;                /* was 18px */
-    min-height: calc(100vh - 64px); /* slightly tighter */
+    max-width: 1600px;
+    margin: 10px auto;
+    padding: 0 12px;
+    min-height: calc(100vh - 64px);
     display:flex;
     flex-direction:column;
     gap: 10px;
@@ -42,6 +46,7 @@
     justify-content:space-between;
     gap:14px;
     margin-bottom: 6px;
+    flex-wrap: wrap;
   }
 
   .pd-title{
@@ -71,7 +76,7 @@
     display:inline-flex;
     align-items:center;
     gap:8px;
-    padding: 8px 11px;              /* slightly smaller */
+    padding: 8px 11px;
     border-radius: 999px;
     border: 1px solid var(--line);
     background: rgba(255,255,255,.9);
@@ -106,7 +111,7 @@
     align-items:center;
     justify-content:center;
     text-decoration:none;
-    padding: 9px 11px;              /* tighter */
+    padding: 9px 11px;
     border-radius: 12px;
     border:1px solid #dbe3ee;
     background:#fff;
@@ -118,21 +123,20 @@
   }
   .mini-link:hover{ background:#f8fafc; color: var(--ink); }
 
-  /* Main grid fills remaining height */
   .pd-main{
     flex:1;
     min-height:0;
     display:grid;
-    grid-template-columns: 1.25fr 0.75fr; /* use more width for tiles */
+    grid-template-columns: 1.25fr 0.75fr;
     gap: 10px;
   }
 
   .panel{
     background:#fff;
     border: 1px solid #dbe3ee;
-    border-radius: 20px;           /* slightly tighter */
+    border-radius: 20px;
     box-shadow: 0 10px 22px rgba(15,23,42,0.05);
-    padding: 14px;                 /* tighter */
+    padding: 14px;
     min-height:0;
   }
 
@@ -152,10 +156,7 @@
     line-height: 1.45;
   }
 
-    .left{
-    display:block;
-    min-height:0;
-  }
+  .left{ display:block; min-height:0; }
 
   .action-grid{
     display:grid;
@@ -169,7 +170,7 @@
     border-radius: 20px;
     padding: 16px;
     color:#fff;
-    min-height: 118px;              /* smaller to avoid scroll */
+    min-height: 118px;
     box-shadow: 0 18px 32px rgba(15,23,42,0.10);
     transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
     position:relative;
@@ -228,44 +229,11 @@
   }
 
   .bg-blue{   background: linear-gradient(135deg, var(--blueA), var(--blueB)); }
-.bg-green{  background: linear-gradient(135deg, var(--greenA), var(--greenB)); }
-.bg-purple{ background: linear-gradient(135deg, var(--purpleA), var(--purpleB)); }
-.bg-orange{ background: linear-gradient(135deg, var(--orangeA), var(--orangeB)); }
-.bg-teal{   background: linear-gradient(135deg, var(--tealA), var(--tealB)); }
-.bg-slate{  background: linear-gradient(135deg, var(--slateA), var(--slateB)); }
-
-  .secondary-grid{
-    display:grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-
-  .secondary{
-    display:block;
-    text-decoration:none;
-    border-radius: 16px;
-    border: 1px solid #dbe3ee;
-    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-    padding: 12px;
-    transition: .15s ease;
-    color: var(--ink);
-    min-height: 74px;               /* smaller */
-  }
-  .secondary:hover{
-    transform: translateY(-1px);
-    border-color:#bfdbfe;
-    box-shadow: 0 12px 22px rgba(37,99,235,.10);
-    color: var(--ink);
-  }
-
-  .secondary .t{ font-weight: 950; letter-spacing: -0.01em; }
-  .secondary .d{
-    margin-top: 6px;
-    color: var(--muted);
-    font-weight: 650;
-    font-size: 12.5px;
-    line-height: 1.35;
-  }
+  .bg-green{  background: linear-gradient(135deg, var(--greenA), var(--greenB)); }
+  .bg-purple{ background: linear-gradient(135deg, var(--purpleA), var(--purpleB)); }
+  .bg-orange{ background: linear-gradient(135deg, var(--orangeA), var(--orangeB)); }
+  .bg-teal{   background: linear-gradient(135deg, var(--tealA), var(--tealB)); }
+  .bg-slate{  background: linear-gradient(135deg, var(--slateA), var(--slateB)); }
 
   .right{
     display:grid;
@@ -275,16 +243,16 @@
   }
 
   .hero{
-  height: 600px;      
-  flex: 0 0 auto;     
-  min-height: 0;
-  position: relative;
-  border-radius: 18px;
-  overflow: hidden;
-  border: 1px solid #dbe3ee;
-  box-shadow: 0 18px 40px rgba(15,23,42,0.14);
-  background:#fff;
-}
+    height: 600px;
+    flex: 0 0 auto;
+    min-height: 0;
+    position: relative;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid #dbe3ee;
+    box-shadow: 0 18px 40px rgba(15,23,42,0.14);
+    background:#fff;
+  }
 
   .hero img{
     width:100%;
@@ -341,11 +309,11 @@
   }
 
   .kpis{
-  display:grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 10px; /* NEW: pushes KPIs down slightly */
-}
+    display:grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+  }
 
   .kpi{
     border:1px solid #dbe3ee;
@@ -357,29 +325,29 @@
   }
 
   .kpi .k{
-  font-size: 11.5px;   
-  font-weight: 950;
-  text-transform: uppercase;
-  letter-spacing:.10em;
-  color:#64748b;
-  margin-bottom: 8px; 
-}
+    font-size: 11.5px;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing:.10em;
+    color:#64748b;
+    margin-bottom: 8px;
+  }
 
-.kpi .v{
-  font-size: 22px;
-  font-weight: 950;
-  color: var(--ink);
-  line-height: 1;
-  margin-bottom: 8px; 
-}
+  .kpi .v{
+    font-size: 22px;
+    font-weight: 950;
+    color: var(--ink);
+    line-height: 1;
+    margin-bottom: 8px;
+  }
 
-.kpi .s{
-  font-size: 13px;     
-  color:#475569;
-  font-weight: 650;
-  line-height: 1.2;
-  margin-bottom: 8px; 
-}
+  .kpi .s{
+    font-size: 13px;
+    color:#475569;
+    font-weight: 650;
+    line-height: 1.2;
+    margin-bottom: 8px;
+  }
 
   @media (max-width: 1100px){
     .pd-shell{ min-height: auto; }
@@ -389,45 +357,48 @@
 
   @media (max-width: 720px){
     .action-grid{ grid-template-columns: 1fr; }
-    .secondary-grid{ grid-template-columns: 1fr; }
   }
 </style>
 
 <div class="pd-shell">
-  <div class="pd-top">
-    {% if show_setup_notice %}
-  <div style="
-      width:100%;
-      margin-top:14px;
-      padding:14px 18px;
-      border-radius:14px;
-      background:#fff7ed;
-      border:1px solid #fed7aa;
-      color:#9a3412;
-      font-weight:700;
-      box-shadow: 0 8px 20px rgba(15,23,42,.06);
-  ">
-    <div style="margin-bottom:6px;">
-      ⚠️ You must complete your provider setup before clients can book you.
+
+  {% if show_setup_notice %}
+    <div
+      style="
+        width:100%;
+        margin-top:14px;
+        padding:14px 18px;
+        border-radius:14px;
+        background:#fff7ed;
+        border:1px solid #fed7aa;
+        color:#9a3412;
+        font-weight:700;
+        box-shadow: 0 8px 20px rgba(15,23,42,.06);
+      "
+    >
+      <div style="margin-bottom:6px;">
+        ⚠️ You must complete your provider setup before clients can book you.
+      </div>
+
+      <ul style="margin:0; padding-left:18px; font-weight:600;">
+        {% if needs_profile_setup %}
+          <li>
+            Add your bio in
+            <a href="{{ url_for('provider.profile') }}">Profile</a>
+          </li>
+        {% endif %}
+
+        {% if needs_availability_setup %}
+          <li>
+            Set your weekly availability in
+            <a href="{{ url_for('provider.availability') }}">Availability</a>
+          </li>
+        {% endif %}
+      </ul>
     </div>
+  {% endif %}
 
-    <ul style="margin:0; padding-left:18px; font-weight:600;">
-      {% if needs_profile_setup %}
-        <li>
-          Add your bio in 
-          <a href="{{ url_for('provider.profile') }}">Profile</a>
-        </li>
-      {% endif %}
-
-      {% if needs_availability_setup %}
-        <li>
-          Set your weekly availability in 
-          <a href="{{ url_for('provider.availability') }}">Availability</a>
-        </li>
-      {% endif %}
-    </ul>
-  </div>
-{% endif %}
+  <div class="pd-top">
     <div>
       <h1 class="pd-title">Provider Dashboard</h1>
       <div class="pd-sub">Manage bookings, availability, services, and messages — all in one place.</div>
@@ -445,7 +416,6 @@
     </div>
 
     <div class="pd-actions-top">
-    
       <a class="mini-link" href="{{ url_for('provider.profile') }}">Profile</a>
       <a class="mini-link" href="{{ url_for('provider.settings') }}">Settings</a>
       {% if nav_verification_status != "verified" %}
@@ -461,66 +431,63 @@
         <p>Everything you do day-to-day starts here.</p>
 
         <div class="action-grid">
-  <a class="action bg-teal" href="{{ url_for('provider.calendar_view') }}">
-    <div class="action-title">Calendar</div>
-    <div class="action-text">View your week with bookings, availability, and time off.</div>
-    <div class="action-chip">Open calendar →</div>
-  </a>
+          <a class="action bg-teal" href="{{ url_for('provider.calendar_view') }}">
+            <div class="action-title">Calendar</div>
+            <div class="action-text">View your week with bookings, availability, and time off.</div>
+            <div class="action-chip">Open calendar →</div>
+          </a>
 
-  <a class="action bg-blue" href="{{ url_for('main.provider_bookings') }}">
-    <div class="action-title">Bookings</div>
-    <div class="action-text">Review and respond to new booking requests.</div>
-    <div class="action-chip">Open bookings →</div>
-  </a>
+          <a class="action bg-blue" href="{{ url_for('main.provider_bookings') }}">
+            <div class="action-title">Bookings</div>
+            <div class="action-text">Review and respond to new booking requests.</div>
+            <div class="action-chip">Open bookings →</div>
+          </a>
 
-  <a class="action bg-purple" href="{{ url_for('messages.inbox') }}">
-    <div class="action-title">Messages</div>
-    <div class="action-text">Keep conversations organized with clients.</div>
-    <div class="action-chip">Go to inbox →</div>
-  </a>
+          <a class="action bg-purple" href="{{ url_for('messages.inbox') }}">
+            <div class="action-title">Messages</div>
+            <div class="action-text">Keep conversations organized with clients.</div>
+            <div class="action-chip">Go to inbox →</div>
+          </a>
 
-  <a class="action bg-green" href="{{ url_for('provider.availability') }}">
-    <div class="action-title">Availability</div>
-    <div class="action-text">Set working hours so clients can book accurately.</div>
-    <div class="action-chip">Edit hours →</div>
-  </a>
+          <a class="action bg-green" href="{{ url_for('provider.availability') }}">
+            <div class="action-title">Availability</div>
+            <div class="action-text">Set working hours so clients can book accurately.</div>
+            <div class="action-chip">Edit hours →</div>
+          </a>
 
-  <a class="action bg-orange" href="{{ url_for('provider_services.my_services') }}">
-    <div class="action-title">Services</div>
-    <div class="action-text">Create and manage listings clients can browse.</div>
-    <div class="action-chip">Manage services →</div>
-  </a>
+          <a class="action bg-orange" href="{{ url_for('provider_services.my_services') }}">
+            <div class="action-title">Services</div>
+            <div class="action-text">Create and manage listings clients can browse.</div>
+            <div class="action-chip">Manage services →</div>
+          </a>
 
-  <a class="action bg-slate" href="{{ url_for('provider.requests_board') }}">
-    <div class="action-title">Client Requests</div>
-    <div class="action-text">Browse what clients need and plan your next service.</div>
-    <div class="action-chip">View requests →</div>
-  </a>
-</div>
+          <a class="action bg-slate" href="{{ url_for('provider.requests_board') }}">
+            <div class="action-title">Client Requests</div>
+            <div class="action-text">Browse what clients need and plan your next service.</div>
+            <div class="action-chip">View requests →</div>
+          </a>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi">
+            <div class="k">Pending paid</div>
+            <div class="v">{{ pending_paid_count if pending_paid_count is defined else "—" }}</div>
+            <div class="s">Needs your decision.</div>
+          </div>
+
+          <div class="kpi">
+            <div class="k">Upcoming</div>
+            <div class="v">{{ upcoming_count if upcoming_count is defined else "—" }}</div>
+            <div class="s">On your schedule.</div>
+          </div>
+
+          <div class="kpi">
+            <div class="k">Services</div>
+            <div class="v">{{ services_count if services_count is defined else "—" }}</div>
+            <div class="s">Visible to clients.</div>
+          </div>
+        </div>
       </div>
-
-      <div class="action-grid">
-
-</div>
-
-<div class="kpis">
-  <div class="kpi">
-    <div class="k">Pending paid</div>
-    <div class="v">{{ pending_paid_count if pending_paid_count is defined else "—" }}</div>
-    <div class="s">Needs your decision.</div>
-  </div>
-  <div class="kpi">
-    <div class="k">Upcoming</div>
-    <div class="v">{{ upcoming_count if upcoming_count is defined else "—" }}</div>
-    <div class="s">On your schedule.</div>
-  </div>
-  <div class="kpi">
-    <div class="k">Services</div>
-    <div class="v">{{ services_count if services_count is defined else "—" }}</div>
-    <div class="s">Visible to clients.</div>
-  </div>
-</div>
-      
     </div>
 
     <div class="right">
@@ -532,8 +499,6 @@
           <div class="hero-text">Review bookings, update hours, and respond to clients — all from one dashboard.</div>
         </div>
       </div>
-
-      
     </div>
   </div>
 </div>
