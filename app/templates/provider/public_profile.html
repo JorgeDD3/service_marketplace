@@ -1,3 +1,9 @@
+{#
+  Public provider profile (marketplace view).
+
+  This is what clients see when they click a provider. It stays read-only and
+  lightweight: bio + verification state + certifications (if provided).
+#}
 {% extends "base.html" %}
 {% block title %}Provider Profile{% endblock %}
 
@@ -46,6 +52,7 @@
     font-weight: 800;
     border:1px solid #e5e7eb;
     background:#ffffff;
+    text-transform: lowercase;
   }
   .pill.verified{ border-left: 6px solid #16a34a; }
   .pill.pending{ border-left: 6px solid #f59e0b; }
@@ -77,24 +84,27 @@
   <div class="top">
     <div>
       <h1 class="name">{{ provider.first_name }} {{ provider.last_name }}</h1>
-      <div class="muted">Provider Profile</div>
+      <div class="muted">Provider profile</div>
     </div>
 
     <div>
+      {% set st = "unverified" %}
       {% if profile and profile.verification %}
-        {% set st = profile.verification.status %}
-        <span class="pill
-          {% if st == 'verified' %} verified
-          {% elif st == 'pending_review' %} pending
-          {% elif st == 'rejected' %} rejected
-          {% else %} unverified
-          {% endif %}
-        ">
-          {{ st.replace('_',' ') }}
-        </span>
-      {% else %}
-        <span class="pill unverified">unverified</span>
+        {% set st = (profile.verification.status or "unverified") %}
       {% endif %}
+
+      {% set pill_class = "unverified" %}
+      {% if st == "verified" %}
+        {% set pill_class = "verified" %}
+      {% elif st == "pending_review" %}
+        {% set pill_class = "pending" %}
+      {% elif st == "rejected" %}
+        {% set pill_class = "rejected" %}
+      {% endif %}
+
+      <span class="pill {{ pill_class }}">
+        {{ st.replace("_", " ") }}
+      </span>
     </div>
   </div>
 
@@ -109,6 +119,8 @@
 
   <div class="section">
     <h3>Certifications</h3>
+
+    {# Certifications are stored as free-form text; split by line for display. #}
     {% set certs = [] %}
     {% if profile and profile.certifications %}
       {% set raw = profile.certifications %}
