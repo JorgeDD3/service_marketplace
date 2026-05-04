@@ -14,11 +14,10 @@ from .extensions import db, login_manager
 class URLPrefixMiddleware:
     """Make URL generation work when the app is mounted under a subpath.
 
-    On the Ole Miss server this app may be hosted under something like:
-      /~gddelp/service_marketplace/
-
-    Apache ProxyPass typically strips the prefix before forwarding to gunicorn,
-    so we set SCRIPT_NAME but do not rewrite PATH_INFO.
+    This is only needed when a reverse proxy hosts the app under a path prefix
+    (ex: https://example.com/myapp/). In that setup the proxy often strips the
+    prefix before forwarding to the WSGI server, so we set SCRIPT_NAME but do
+    not rewrite PATH_INFO.
     """
 
     def __init__(self, app, prefix: str):
@@ -48,7 +47,7 @@ def create_app():
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
     # Subpath mount support (Jeff's config)
-    # Example: export URL_PREFIX="/~gddelp/service_marketplace"
+    # Optional subpath mount support (only needed if you're hosting under a prefix like /myapp).
     url_prefix = os.getenv("URL_PREFIX", "").strip()
     if url_prefix:
         app.wsgi_app = URLPrefixMiddleware(app.wsgi_app, url_prefix)
