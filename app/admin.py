@@ -1,37 +1,45 @@
-# app/admin.py
 """
 Admin blueprint for ServiceSphere.
 
-This module contains admin-only moderation tooling:
-- moderation hub with "needs attention" counts
-- user enable/disable (with guardrails)
+This module is the admin-only moderation toolkit:
+- moderation hub with “needs attention” counts
+- user enable/disable with guardrails
 - service hide/unhide + moderation notes
 - booking console + force-cancel
 - refund request queue + decision workflow
 - provider verification queue + document downloads
 
-All admin routes require login + the admin role.
+All routes require login + the admin role.
 """
+
+from __future__ import annotations
 
 from datetime import datetime
 import os
 
 from flask import (
     Blueprint,
+    abort,
+    current_app,
+    flash,
+    redirect,
     render_template,
     request,
-    redirect,
-    url_for,
-    flash,
-    current_app,
     send_from_directory,
-    abort,
+    url_for,
 )
-from flask_login import login_required, current_user
+from flask_login import current_user, login_required
 
 from .decorators import role_required
 from .extensions import db
-from .models import Booking, ProviderProfile, ProviderVerification, Service, ServiceRequest, User
+from .models import (
+    Booking,
+    ProviderProfile,
+    ProviderVerification,
+    Service,
+    ServiceRequest,
+    User,
+)
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -40,9 +48,9 @@ admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 @login_required
 @role_required("admin")
 def dashboard():
-    """Admin entry route.
+    """Stable admin entry route.
 
-    I keep /admin/ as a stable link and redirect it to the moderation hub.
+    I keep /admin/ as a predictable link and redirect it to the moderation hub.
     """
     return redirect(url_for("admin.moderation"))
 
@@ -53,7 +61,7 @@ def dashboard():
 def moderation():
     """Admin moderation hub.
 
-    Shows high-level counts so an admin knows what to triage first.
+    Shows high-level counts so an admin can triage quickly.
     """
     pending_verifications = ProviderVerification.query.filter_by(status="pending_review").count()
     open_service_requests = ServiceRequest.query.filter_by(status="open").count()
@@ -102,6 +110,8 @@ def toggle_user_active(user_id: int):
     - when re-enabled, only tagged services are restored
     """
     target = User.query.get_or_404(user_id)
+
+    # Marker used to safely restore only services auto-hidden by this workflow.
     auto_marker = "[AUTO_DISABLED_BY_USER]"
 
     # Guardrail: admin cannot disable themself.
@@ -109,7 +119,7 @@ def toggle_user_active(user_id: int):
         flash("You cannot disable your own account.", "danger")
         return redirect(url_for("admin.users"))
 
-    # Guardrail: do not disable the last remaining admin.
+    # Guardrail: do not disable the last remaining active admin.
     is_target_admin = target.has_role("admin")
     if is_target_admin and target.is_active:
         active_admin_count = (
