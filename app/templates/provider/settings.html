@@ -1,26 +1,17 @@
+{#
+  Settings page (provider account).
+
+  This is a lightweight self-service page:
+  - email can be updated (account_update)
+  - password can be updated with current password (password_update)
+  - verification status is shown for quick context
+#}
 {% extends "base.html" %}
 {% block container_class %}container-wide{% endblock %}
 {% block title %}Settings{% endblock %}
 
 {% block content %}
 <style>
-
-.pw-eye {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  border: none;
-  background: transparent;
-  font-size: 16px;
-  cursor: pointer;
-  color: #64748b;
-}
-
-.pw-eye:hover {
-  color: #0b1220;
-}
-
   :root{
     --ink:#0b1220;
     --muted:#64748b;
@@ -33,6 +24,20 @@
   }
 
   body { background: var(--bg); }
+
+  .pw-eye {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    font-size: 16px;
+    cursor: pointer;
+    color: #64748b;
+  }
+
+  .pw-eye:hover { color: #0b1220; }
 
   .st-container{
     width: min(1320px, calc(100vw - 64px));
@@ -47,9 +52,7 @@
     height: 100%;
   }
 
-  .st-header{
-    padding: 22px 22px;
-  }
+  .st-header{ padding: 22px 22px; }
 
   .st-title{
     margin:0;
@@ -243,7 +246,7 @@
 
 <div class="st-container">
 
-  <!-- Header -->
+  {# Header: context + navigation #}
   <div class="st-card st-header mb-3">
     <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
       <div>
@@ -271,10 +274,8 @@
     </div>
   </div>
 
-  <!-- Main grid -->
   <div class="st-grid">
-
-    <!-- Account -->
+    {# Account card: email is the only editable field here #}
     <div class="st-card st-section" id="accountCard">
       <div class="d-flex justify-content-between align-items-start gap-2">
         <div>
@@ -289,8 +290,8 @@
           </div>
 
           <div class="section-sub">
-  Manage your login and contact details. Only your email can be edited here.
-</div>
+            Manage your login and contact details. Only your email can be edited here.
+          </div>
         </div>
 
         <button type="button" class="iconbtn" id="accountEditBtn" aria-label="Edit account">
@@ -302,7 +303,6 @@
       </div>
 
       <div class="section-body">
-        <!-- VIEW MODE -->
         <div class="view-only mt-2">
           <div class="rowline">
             <div class="klabel">Email</div>
@@ -326,21 +326,22 @@
           </div>
         </div>
 
-        <!-- EDIT MODE -->
         <div class="edit-only mt-3">
           <form method="POST" autocomplete="off">
             <input type="hidden" name="form_type" value="account_update">
 
             <div class="mb-3">
               <label class="form-label fw-semibold mb-1">Email</label>
-              <input class="form-control"
-       type="email"
-       name="account_email"
-       value="{{ email }}"
-       required
-       pattern="^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$"
-       oninvalid="this.setCustomValidity('Please enter a valid email address, like name@example.com')"
-       oninput="this.setCustomValidity('')">
+              <input
+                class="form-control"
+                type="email"
+                name="account_email"
+                value="{{ email }}"
+                required
+                pattern="^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$"
+                oninvalid="this.setCustomValidity('Please enter a valid email address, like name@example.com')"
+                oninput="this.setCustomValidity('')"
+              >
             </div>
 
             <div class="mb-3">
@@ -357,7 +358,7 @@
       </div>
     </div>
 
-    <!-- Security -->
+    {# Security card: password update requires current password #}
     <div class="st-card st-section">
       <div>
         <h2 class="section-title">Security</h2>
@@ -391,25 +392,25 @@
               <div class="col-12">
                 <label class="form-label fw-semibold mb-1">Current password</label>
                 <div class="position-relative">
-  <input class="form-control pe-5" type="password" name="current_password" id="current_password" required>
-  <button type="button" class="pw-eye" data-target="current_password">👁</button>
-</div>
+                  <input class="form-control pe-5" type="password" name="current_password" id="current_password" required>
+                  <button type="button" class="pw-eye" data-target="current_password">👁</button>
+                </div>
               </div>
 
               <div class="col-md-6">
                 <label class="form-label fw-semibold mb-1">New password</label>
                 <div class="position-relative">
-  <input class="form-control pe-5" type="password" name="new_password" id="new_password" minlength="8" required>
-  <button type="button" class="pw-eye" data-target="new_password">👁</button>
-</div>
+                  <input class="form-control pe-5" type="password" name="new_password" id="new_password" minlength="8" required>
+                  <button type="button" class="pw-eye" data-target="new_password">👁</button>
+                </div>
               </div>
 
               <div class="col-md-6">
                 <label class="form-label fw-semibold mb-1">Confirm new password</label>
                 <div class="position-relative">
-  <input class="form-control pe-5" type="password" name="confirm_password" id="confirm_password" minlength="8" required>
-  <button type="button" class="pw-eye" data-target="confirm_password">👁</button>
-</div>
+                  <input class="form-control pe-5" type="password" name="confirm_password" id="confirm_password" minlength="8" required>
+                  <button type="button" class="pw-eye" data-target="confirm_password">👁</button>
+                </div>
               </div>
 
               <div class="col-12 d-flex gap-2 pt-2">
@@ -426,35 +427,36 @@
 </div>
 
 <script>
-  (function(){
-    const card = document.getElementById("accountCard");
-    const editBtn = document.getElementById("accountEditBtn");
-    const cancelBtn = document.getElementById("accountCancelBtn");
+(function(){
+  const card = document.getElementById("accountCard");
+  const editBtn = document.getElementById("accountEditBtn");
+  const cancelBtn = document.getElementById("accountCancelBtn");
 
-    if(card && editBtn){
-      editBtn.addEventListener("click", () => {
-        card.classList.add("is-editing");
-      });
-    }
+  if (card && editBtn) {
+    editBtn.addEventListener("click", () => {
+      card.classList.add("is-editing");
+    });
+  }
 
-    if(card && cancelBtn){
-      cancelBtn.addEventListener("click", () => {
-        card.classList.remove("is-editing");
-      });
-    }
-  })();
+  if (card && cancelBtn) {
+    cancelBtn.addEventListener("click", () => {
+      card.classList.remove("is-editing");
+    });
+  }
+})();
 
-  (function(){
-    const t = document.getElementById("pwToggle");
-    const p = document.getElementById("pwPanel");
+(function(){
+  const t = document.getElementById("pwToggle");
+  const p = document.getElementById("pwPanel");
 
-    if(t && p){
-      t.addEventListener("click", () => {
-        p.classList.toggle("is-open");
-      });
-    }
-  })();
-document.querySelectorAll(".pw-eye").forEach(btn => {
+  if (t && p) {
+    t.addEventListener("click", () => {
+      p.classList.toggle("is-open");
+    });
+  }
+})();
+
+document.querySelectorAll(".pw-eye").forEach((btn) => {
   btn.addEventListener("click", function () {
     const input = document.getElementById(this.dataset.target);
     if (!input) return;
@@ -468,6 +470,5 @@ document.querySelectorAll(".pw-eye").forEach(btn => {
     }
   });
 });
-
 </script>
 {% endblock %}
