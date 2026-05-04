@@ -1,3 +1,7 @@
+-- ServiceSphere schema.sql (SQLite)
+-- Generated from: sqlite3 instance/site.db ".schema"
+-- This file is a snapshot; the source of truth is app/models.py
+
 CREATE TABLE roles (
 	id INTEGER NOT NULL, 
 	role_name VARCHAR(50) NOT NULL, 
