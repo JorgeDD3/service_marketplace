@@ -12,7 +12,7 @@ def _is_production() -> bool:
     """Best-effort production check.
 
     I keep this lightweight because the app may run under different configs
-    (local dev, Turing deployment). In production, we should not show reset
+    (local dev only). In production, we should not show reset links on-screen.
     links in the UI.
     """
     return (
