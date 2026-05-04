@@ -12,7 +12,7 @@ if [[ -z "${server_header}" ]]; then
   exit 1
 fi
 
-# We expect Werkzeug in dev; on Turing it may be gunicorn.
+# Local dev uses Werkzeug; production usually reports gunicorn (or a proxy in front of it).
 if [[ "${server_header}" != *"Werkzeug"* && "${server_header}" != *"gunicorn"* ]]; then
   echo "❌ Unexpected server responding: ${server_header}"
   echo "   Make sure Flask/Gunicorn is running on this port."
