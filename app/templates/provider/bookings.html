@@ -1,3 +1,11 @@
+{#
+  Provider booking requests dashboard.
+
+  This page is a quick triage view for providers:
+  - paid + pending bookings need a decision (accept/decline)
+  - unpaid pending bookings are visible but locked
+  - history stays collapsible so the page stays fast to scan
+#}
 {% extends "base.html" %}
 {% block container_class %}container-wide{% endblock %}
 {% block title %}Booking Requests{% endblock %}
@@ -258,7 +266,7 @@
     line-height:1.25;
   }
 
-    .action-row{
+  .action-row{
     display:grid;
     grid-template-columns:auto 1fr 1fr;
     gap:10px;
@@ -286,13 +294,8 @@
   }
 
   @media(max-width:980px){
-    .action-row{
-      grid-template-columns:1fr;
-    }
-
-    .decision-form{
-      grid-template-columns:1fr;
-    }
+    .action-row{ grid-template-columns:1fr; }
+    .decision-form{ grid-template-columns:1fr; }
   }
 
   .empty-box{
@@ -348,7 +351,6 @@
 </style>
 
 <div class="pb-wrap">
-
   <div class="pb-card pb-header">
     <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
       <div>
@@ -432,28 +434,32 @@
                     </a>
                     <div class="client-line">Client: {{ b.client.first_name }} {{ b.client.last_name }}</div>
                   </div>
+
                   <div class="badge-row">
-  <span class="pb-pill pending">pending</span>
-  <span class="pb-pill paid">paid</span>
-</div>
+                    <span class="pb-pill pending">pending</span>
+                    <span class="pb-pill paid">paid</span>
+                  </div>
                 </div>
 
                 <div class="compact-row">
                   <div class="compact-box">
                     <div class="compact-label">Session time</div>
-                    <div class="compact-value">{{ b.booking_datetime.strftime("%a, %b %d • %I:%M %p") if b.booking_datetime else "—" }}</div>
+                    <div class="compact-value">
+                      {{ b.booking_datetime.strftime("%a, %b %d • %I:%M %p") if b.booking_datetime else "—" }}
+                    </div>
                   </div>
+
                   <div class="compact-box">
                     <div class="compact-label">Requested</div>
                     <div class="compact-value">
-  {% if b.created_at %}
-    <span class="local-datetime-short" data-utc="{{ b.created_at.isoformat() }}Z">
-      {{ b.created_at.strftime("%b %d • %I:%M %p") }}
-    </span>
-  {% else %}
-    —
-  {% endif %}
-</div>
+                      {% if b.created_at %}
+                        <span class="local-datetime-short" data-utc="{{ b.created_at.isoformat() }}Z">
+                          {{ b.created_at.strftime("%b %d • %I:%M %p") }}
+                        </span>
+                      {% else %}
+                        —
+                      {% endif %}
+                    </div>
                   </div>
                 </div>
 
@@ -504,9 +510,9 @@
                   </div>
 
                   <div class="badge-row">
-  <span class="pb-pill pending">pending</span>
-  <span class="pb-pill pending">unpaid</span>
-</div>
+                    <span class="pb-pill pending">pending</span>
+                    <span class="pb-pill pending">unpaid</span>
+                  </div>
                 </div>
 
                 <div class="compact-row" style="margin-top:8px;">
@@ -533,11 +539,14 @@
     </div>
 
     <div class="pb-card pb-section full">
-      <button class="history-toggle" type="button"
-              data-bs-toggle="collapse"
-              data-bs-target="#historyCollapse"
-              aria-expanded="false"
-              aria-controls="historyCollapse">
+      <button
+        class="history-toggle"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#historyCollapse"
+        aria-expanded="false"
+        aria-controls="historyCollapse"
+      >
         <div>
           <h2 class="section-title">History</h2>
           <div class="section-sub">Accepted, declined, cancelled, and completed records.</div>
@@ -564,42 +573,42 @@
                     Session:
                     <strong>{{ b.booking_datetime.strftime("%b %d, %Y • %I:%M %p") if b.booking_datetime else "—" }}</strong>
                   </div>
+
                   <div class="history-meta">
                     Decision:
-{% if b.decided_at %}
-  <strong class="local-datetime" data-utc="{{ b.decided_at.isoformat() }}Z">
-    {{ b.decided_at.strftime("%b %d, %Y • %I:%M %p") }}
-  </strong>
-{% else %}
-  <strong>—</strong>
-{% endif %}
+                    {% if b.decided_at %}
+                      <strong class="local-datetime" data-utc="{{ b.decided_at.isoformat() }}Z">
+                        {{ b.decided_at.strftime("%b %d, %Y • %I:%M %p") }}
+                      </strong>
+                    {% else %}
+                      <strong>—</strong>
+                    {% endif %}
                   </div>
                 </div>
 
                 <div class="d-flex gap-2 flex-wrap justify-content-end">
-  {% set note = (b.admin_note or "") %}
+                  {% set note = (b.admin_note or "") %}
 
-  <span class="pb-pill {% if b.status in ['declined', 'cancelled'] %}bad{% endif %}">
-    {{ b.status }}
-  </span>
+                  <span class="pb-pill {% if b.status in ['declined', 'cancelled'] %}bad{% endif %}">
+                    {{ b.status }}
+                  </span>
 
-  {% if "[AUTO] Cancelled:" in note %}
-    <span class="pb-pill bad">auto-cancelled</span>
-  {% endif %}
+                  {% if "[AUTO] Cancelled:" in note %}
+                    <span class="pb-pill bad">auto-cancelled</span>
+                  {% endif %}
 
-  <span class="pb-pill {% if b.payment_status == 'paid' %}paid{% else %}pending{% endif %}">
-    {{ b.payment_status }}
-  </span>
+                  <span class="pb-pill {% if b.payment_status == 'paid' %}paid{% else %}pending{% endif %}">
+                    {{ b.payment_status }}
+                  </span>
 
-  {% if b.payment_status == "paid" %}
-    <a class="btn btn-outline-secondary btn-sm"
-       href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">
-      Messages
-    </a>
-  {% else %}
-    <span class="client-line">No provider action</span>
-  {% endif %}
-</div>
+                  {% if b.payment_status == "paid" %}
+                    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('messages.booking_thread', booking_id=b.id) }}#compose">
+                      Messages
+                    </a>
+                  {% else %}
+                    <span class="client-line">No provider action</span>
+                  {% endif %}
+                </div>
               </div>
             {% endfor %}
           </div>
@@ -609,8 +618,9 @@
 
   {% endif %}
 </div>
+
 <script>
-document.querySelectorAll(".local-datetime").forEach(el => {
+document.querySelectorAll(".local-datetime").forEach((el) => {
   const d = new Date(el.dataset.utc);
   if (!isNaN(d)) {
     el.textContent = d.toLocaleString([], {
@@ -622,7 +632,8 @@ document.querySelectorAll(".local-datetime").forEach(el => {
     }).replace(",", " •");
   }
 });
-document.querySelectorAll(".local-datetime-short").forEach(el => {
+
+document.querySelectorAll(".local-datetime-short").forEach((el) => {
   const d = new Date(el.dataset.utc);
   if (!isNaN(d)) {
     el.textContent = d.toLocaleString([], {
@@ -633,7 +644,6 @@ document.querySelectorAll(".local-datetime-short").forEach(el => {
     }).replace(",", " •");
   }
 });
-
 </script>
 
 {% endblock %}
