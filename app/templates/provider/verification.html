@@ -1,3 +1,10 @@
+{#
+  Provider verification (MVP).
+
+  This is an admin-reviewed trust signal for the marketplace.
+  Providers submit identity details + optional docs; admins approve/reject.
+  The UI stays simple and status-driven so it’s easy to demo and hard to break.
+#}
 {% extends "base.html" %}
 {% block container_class %}container-wide{% endblock %}
 {% block title %}Provider Verification{% endblock %}
@@ -189,7 +196,6 @@
 {% set vstatus = verification.status if verification else "not_submitted" %}
 
 <div class="verify-wrap">
-
   <div class="verify-card verify-header">
     <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
       <div>
@@ -221,8 +227,7 @@
   </div>
 
   <div class="verify-grid">
-
-    <!-- Left panel -->
+    {# Left: explains the workflow so providers know what to submit. #}
     <div class="verify-card panel">
       <h2 class="panel-title">How verification works</h2>
       <div class="panel-sub">
@@ -268,7 +273,7 @@
       {% endif %}
     </div>
 
-    <!-- Right panel -->
+    {# Right: shows the current record and the status the admin sees. #}
     <div class="verify-card panel">
       <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">
         <div>
@@ -422,13 +427,11 @@
           Submit verification to get the <strong>Verified</strong> badge on your services.
         {% endif %}
       </div>
-
     </div>
-
   </div>
 </div>
 
-<!-- Modal -->
+{# Verification modal: same form handles first submit and resubmits. #}
 <div class="modal fade" id="verifyModal" tabindex="-1" aria-labelledby="verifyModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content" style="border-radius:18px;">
@@ -491,7 +494,6 @@
           </button>
         </div>
       </form>
-
     </div>
   </div>
 </div>
